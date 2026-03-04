@@ -12,7 +12,7 @@ class ConsoleLineItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = switch (entry.source) {
-      ConsoleEntrySource.server => scheme.onSurface,
+      ConsoleEntrySource.server => const Color(0xFFE5E7EB),
       ConsoleEntrySource.user => scheme.primary,
       ConsoleEntrySource.system => scheme.error,
     };
@@ -21,7 +21,7 @@ class ConsoleLineItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: RichText(
         text: TextSpan(
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF9CA3AF)),
           children: [
             TextSpan(text: '[${DateFormat.Hms().format(entry.timestamp)}] '),
             TextSpan(text: entry.message, style: TextStyle(color: color, fontFamily: 'Consolas')),
@@ -31,4 +31,3 @@ class ConsoleLineItem extends StatelessWidget {
     );
   }
 }
-

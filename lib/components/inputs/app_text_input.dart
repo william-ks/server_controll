@@ -12,6 +12,7 @@ class AppTextInput extends StatelessWidget {
     this.enabled = true,
     this.onSubmitted,
     this.onChanged,
+    this.keyboardType,
   });
 
   final String? label;
@@ -23,6 +24,7 @@ class AppTextInput extends StatelessWidget {
   final bool enabled;
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
+  final TextInputType? keyboardType;
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +33,7 @@ class AppTextInput extends StatelessWidget {
       enabled: enabled,
       onSubmitted: onSubmitted,
       onChanged: onChanged,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -41,4 +44,3 @@ class AppTextInput extends StatelessWidget {
     );
   }
 }
-

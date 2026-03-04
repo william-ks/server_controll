@@ -6,23 +6,18 @@ import '../../../models/console_entry.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
 
 class ConsoleState {
-  const ConsoleState({required this.entries, required this.autoScroll});
+  const ConsoleState({required this.entries});
 
   final List<ConsoleEntry> entries;
-  final bool autoScroll;
 
   ConsoleState copyWith({
     List<ConsoleEntry>? entries,
-    bool? autoScroll,
   }) {
-    return ConsoleState(
-      entries: entries ?? this.entries,
-      autoScroll: autoScroll ?? this.autoScroll,
-    );
+    return ConsoleState(entries: entries ?? this.entries);
   }
 
   factory ConsoleState.initial() {
-    return const ConsoleState(entries: [], autoScroll: true);
+    return const ConsoleState(entries: []);
   }
 }
 
@@ -56,10 +51,6 @@ class ConsoleNotifier extends Notifier<ConsoleState> {
     await ref.read(serverRuntimeProvider.notifier).sendCommand(trimmed);
   }
 
-  void toggleAutoScroll() {
-    state = state.copyWith(autoScroll: !state.autoScroll);
-  }
-
   void _append(ConsoleEntrySource source, String message) {
     final next = List<ConsoleEntry>.from(state.entries)
       ..add(ConsoleEntry(source: source, timestamp: DateTime.now(), message: message));
@@ -72,4 +63,3 @@ class ConsoleNotifier extends Notifier<ConsoleState> {
     state = state.copyWith(entries: next);
   }
 }
-

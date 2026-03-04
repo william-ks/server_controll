@@ -806,3 +806,25 @@ Tabela `whitelist_players`:
 - Backup permanece como placeholder na Home;
 - comandos rápidos no Console estão estruturados, com lista inicial simples;
 - foco desta fase: base arquitetural e módulos Home/Console/Whitelist.
+
+## 24. Ajustes de UI/UX (04/03/2026 - rodada 2)
+
+- Persistência de tema corrigida:
+  - tema inicial agora é carregado antes do `runApp`;
+  - alternância funciona com um clique sem race condition.
+- Sidebar:
+  - animação de abertura/fechamento mais suave;
+  - item ativo com mesmo destaque de hover primary + indicador lateral.
+- Console:
+  - fundo quase preto;
+  - auto-scroll inteligente por posição do usuário (sem botão manual).
+- Componentes base:
+  - `AppModal` criado (Header/Body/Actions com ícone + título + fechar);
+  - `AppButton` com estados visuais refinados e suporte a `text`, `icon` e `textIcon`.
+- Home:
+  - cards de Status/Uptime/Jogadores com ícones primary e menor excesso de cor.
+- Whitelist:
+  - box central com barra de pesquisa local;
+  - filtro em tempo real por nickname/UUID.
+- Config:
+  - navegação por abas adicionada (`Arquivos`, `Backup`, `Propriedades`) com estilo pill e estado ativo.

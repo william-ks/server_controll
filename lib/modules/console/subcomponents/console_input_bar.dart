@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../components/buttons/app_icon_button.dart';
 import '../../../components/inputs/app_text_input.dart';
-import '../../../components/shared/app_variant.dart';
 import 'quick_commands_modal.dart';
 
 class ConsoleInputBar extends StatefulWidget {
-  const ConsoleInputBar({super.key, required this.onSend, required this.autoScroll, required this.onToggleScroll});
+  const ConsoleInputBar({super.key, required this.onSend});
 
   final ValueChanged<String> onSend;
-  final bool autoScroll;
-  final VoidCallback onToggleScroll;
 
   @override
   State<ConsoleInputBar> createState() => _ConsoleInputBarState();
@@ -64,20 +61,11 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
         ),
         const SizedBox(width: 8),
         AppIconButton(
-          icon: widget.autoScroll ? Icons.vertical_align_bottom : Icons.pause,
-          onPressed: widget.onToggleScroll,
-          variant: AppVariant.info,
-          tooltip: 'Alternar auto-scroll',
-        ),
-        const SizedBox(width: 8),
-        AppIconButton(
           icon: Icons.send_rounded,
           onPressed: _send,
-          variant: AppVariant.primary,
           tooltip: 'Enviar comando',
         ),
       ],
     );
   }
 }
-

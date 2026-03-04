@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../components/buttons/app_button.dart';
+import '../../../components/modal/app_modal.dart';
+
 class QuickCommandsModal extends StatelessWidget {
   const QuickCommandsModal({super.key, required this.onPick});
 
@@ -13,31 +16,32 @@ class QuickCommandsModal extends StatelessWidget {
       'time set day',
     ];
 
-    return Dialog(
-      child: SizedBox(
-        width: 420,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Comandos rápidos', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              for (final command in commands)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(command),
-                  onTap: () {
-                    onPick(command);
-                    Navigator.of(context).pop();
-                  },
-                ),
-            ],
-          ),
-        ),
+    return AppModal(
+      icon: Icons.menu_book_rounded,
+      title: 'Comandos rápidos',
+      width: 460,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final command in commands)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(command),
+              onTap: () {
+                onPick(command);
+                Navigator.of(context).pop();
+              },
+            ),
+        ],
       ),
+      actions: [
+        AppButton(
+          label: 'Fechar',
+          onPressed: () => Navigator.of(context).pop(),
+          transparent: true,
+          icon: Icons.close_rounded,
+        ),
+      ],
     );
   }
 }
-

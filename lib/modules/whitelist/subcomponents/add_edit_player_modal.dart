@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../components/buttons/app_button.dart';
+import '../../../components/inputs/app_text_input.dart';
+import '../../../components/modal/app_modal.dart';
 import '../models/whitelist_player.dart';
 
 class AddEditPlayerModal extends StatefulWidget {
@@ -40,33 +43,37 @@ class _AddEditPlayerModalState extends State<AddEditPlayerModal> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.player == null ? 'Adicionar jogador' : 'Editar jogador'),
-      content: SizedBox(
+    return AppModal(
+      icon: widget.player == null ? Icons.person_add_rounded : Icons.edit_rounded,
+      title: widget.player == null ? 'Adicionar jogador' : 'Editar jogador',
+      body: SizedBox(
         width: 460,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            AppTextInput(
               controller: _nicknameController,
-              decoration: const InputDecoration(labelText: 'Nickname'),
+              label: 'Nickname',
             ),
             const SizedBox(height: 12),
-            TextField(
+            AppTextInput(
               controller: _uuidController,
-              decoration: const InputDecoration(labelText: 'UUID (opcional)'),
+              label: 'UUID (opcional)',
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    _iconPath == null ? 'Sem ícone' : _iconPath!,
+                    _iconPath == null ? 'Sem ícone selecionado' : _iconPath!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                TextButton(
+                AppButton(
+                  label: 'Escolher ícone',
+                  icon: Icons.upload_file_rounded,
+                  transparent: true,
                   onPressed: () async {
                     final nickname = _nicknameController.text.trim();
                     if (nickname.isEmpty) {
@@ -78,7 +85,6 @@ class _AddEditPlayerModalState extends State<AddEditPlayerModal> {
                     }
                     setState(() => _iconPath = path);
                   },
-                  child: const Text('Escolher ícone'),
                 ),
               ],
             ),
@@ -86,11 +92,14 @@ class _AddEditPlayerModalState extends State<AddEditPlayerModal> {
         ),
       ),
       actions: [
-        TextButton(
+        AppButton(
+          label: 'Cancelar',
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
+          icon: Icons.close_rounded,
+          transparent: true,
         ),
-        FilledButton(
+        AppButton(
+          label: 'Salvar',
           onPressed: () async {
             await widget.onSave(
               nickname: _nicknameController.text,
@@ -101,10 +110,9 @@ class _AddEditPlayerModalState extends State<AddEditPlayerModal> {
               Navigator.of(context).pop();
             }
           },
-          child: const Text('Salvar'),
+          icon: Icons.check_rounded,
         ),
       ],
     );
   }
 }
-

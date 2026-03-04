@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../shared/app_variant.dart';
 
+enum AppButtonType { text, icon, textIcon }
+
 class AppButton extends StatelessWidget {
   const AppButton({
     super.key,
@@ -9,6 +11,7 @@ class AppButton extends StatelessWidget {
     required this.onPressed,
     this.variant = AppVariant.primary,
     this.icon,
+    this.type = AppButtonType.text,
     this.transparent = false,
     this.isLoading = false,
     this.isDisabled = false,
@@ -19,6 +22,7 @@ class AppButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final AppVariant variant;
   final IconData? icon;
+  final AppButtonType type;
   final bool transparent;
   final bool isLoading;
   final bool isDisabled;
@@ -26,50 +30,109 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = AppVariantPalette.resolve(variant);
-    final foreground = transparent ? color : Colors.white;
+    final baseColor = AppVariantPalette.resolve(variant);
+    final requestedType = type == AppButtonType.text && icon != null ? AppButtonType.textIcon : type;
+    final effectiveType = requestedType == AppButtonType.textIcon && icon == null ? AppButtonType.text : requestedType;
+    final foreground = transparent ? baseColor : Colors.white;
 
-    final child = Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (isLoading)
-          SizedBox(
-            height: 16,
-            width: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(foreground),
-            ),
-          ),
-        if (!isLoading && icon != null) ...[
-          Icon(icon, size: 18),
-        ],
-        if (isLoading || icon != null) const SizedBox(width: 8),
-        Text(label),
-      ],
+    final child = _ButtonChild(
+      label: label,
+      icon: icon,
+      type: effectiveType,
+      loading: isLoading,
+      foreground: foreground,
+    );
+
+    final style = ButtonStyle(
+      padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 14, vertical: 11)),
+      shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+      elevation: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.pressed)) return 0;
+        return transparent ? 0 : 1;
+      }),
+      side: WidgetStateProperty.resolveWith((states) {
+        if (!transparent) return BorderSide.none;
+        final alpha = states.contains(WidgetState.hovered) ? 0.95 : 0.7;
+        return BorderSide(color: baseColor.withValues(alpha: alpha));
+      }),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return transparent ? Colors.transparent : baseColor.withValues(alpha: 0.24);
+        }
+        if (transparent) {
+          if (states.contains(WidgetState.hovered)) return baseColor.withValues(alpha: 0.1);
+          if (states.contains(WidgetState.pressed)) return baseColor.withValues(alpha: 0.18);
+          return Colors.transparent;
+        }
+        if (states.contains(WidgetState.pressed)) return baseColor.withValues(alpha: 0.82);
+        if (states.contains(WidgetState.hovered)) return baseColor.withValues(alpha: 0.92);
+        return baseColor;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return foreground.withValues(alpha: 0.7);
+        }
+        return foreground;
+      }),
     );
 
     final button = ElevatedButton(
       onPressed: isDisabled || isLoading ? null : onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: transparent ? Colors.transparent : color,
-        foregroundColor: foreground,
-        disabledBackgroundColor: color.withValues(alpha: 0.25),
-        disabledForegroundColor: foreground.withValues(alpha: 0.7),
-        elevation: transparent ? 0 : 1,
-        side: transparent ? BorderSide(color: color) : BorderSide.none,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+      style: style,
       child: child,
     );
 
     if (expand) {
       return SizedBox(width: double.infinity, child: button);
     }
-
     return button;
+  }
+}
+
+class _ButtonChild extends StatelessWidget {
+  const _ButtonChild({
+    required this.label,
+    required this.icon,
+    required this.type,
+    required this.loading,
+    required this.foreground,
+  });
+
+  final String label;
+  final IconData? icon;
+  final AppButtonType type;
+  final bool loading;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return SizedBox(
+        height: 16,
+        width: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(foreground),
+        ),
+      );
+    }
+
+    if (type == AppButtonType.icon) {
+      return Icon(icon, size: 18);
+    }
+
+    if (type == AppButtonType.textIcon && icon != null) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          const SizedBox(width: 8),
+          Icon(icon, size: 18),
+        ],
+      );
+    }
+
+    return Text(label);
   }
 }
 

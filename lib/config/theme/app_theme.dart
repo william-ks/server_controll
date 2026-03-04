@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'app_styles.dart';
 import 'app_theme_extension.dart';
 import 'app_typography.dart';
 
@@ -20,6 +21,34 @@ class AppTheme {
     ),
     dividerColor: AppColors.borderLight.withValues(alpha: 0.35),
     textTheme: AppTypography.light,
+    cardTheme: CardThemeData(
+      color: AppColors.surfaceLight,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: AppStyles.radiusMd),
+      shadowColor: Colors.black.withValues(alpha: 0.08),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: AppColors.surfaceLight,
+      shape: RoundedRectangleBorder(borderRadius: AppStyles.radiusLg),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: AppStyles.radiusSm,
+        borderSide: BorderSide(color: AppColors.borderLight.withValues(alpha: 0.7)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: AppStyles.radiusSm,
+        borderSide: BorderSide(color: AppColors.borderLight.withValues(alpha: 0.7)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: AppStyles.radiusSm,
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+      ),
+    ),
     extensions: <ThemeExtension<dynamic>>[
       AppThemeExtension(
         cardBackground: AppColors.surfaceLight,
@@ -27,8 +56,8 @@ class AppTheme {
         secondaryText: AppColors.textSecondaryLight,
         sidebarItemBackground: const Color(0xFFF1F5F9),
         subtleDivider: AppColors.textPrimaryLight.withValues(alpha: 0.1),
-        selectedIndicator: AppColors.secondary,
-        hoverOverlay: AppColors.secondary.withValues(alpha: 0.08),
+        selectedIndicator: AppColors.primary,
+        hoverOverlay: AppColors.primary.withValues(alpha: 0.16),
       ),
     ],
   );
@@ -46,15 +75,43 @@ class AppTheme {
     ),
     dividerColor: Colors.white.withValues(alpha: 0.08),
     textTheme: AppTypography.dark,
+    cardTheme: CardThemeData(
+      color: AppColors.surfaceDark,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: AppStyles.radiusMd),
+      shadowColor: Colors.black.withValues(alpha: 0.28),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: AppColors.surfaceDark,
+      shape: RoundedRectangleBorder(borderRadius: AppStyles.radiusLg),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: const Color(0xFF222222),
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: AppStyles.radiusSm,
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: AppStyles.radiusSm,
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: AppStyles.radiusSm,
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+      ),
+    ),
     extensions: <ThemeExtension<dynamic>>[
       AppThemeExtension(
         cardBackground: AppColors.surfaceDark,
         cardBorder: AppColors.borderDark,
         secondaryText: AppColors.textSecondaryDark,
-        sidebarItemBackground: const Color(0xFF232323),
+        sidebarItemBackground: AppColors.primary.withValues(alpha: 0.16),
         subtleDivider: Colors.white.withValues(alpha: 0.1),
         selectedIndicator: AppColors.primary,
-        hoverOverlay: AppColors.primary.withValues(alpha: 0.12),
+        hoverOverlay: AppColors.primary.withValues(alpha: 0.16),
       ),
     ],
   );

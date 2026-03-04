@@ -69,20 +69,22 @@ class _SidebarTile extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final ext = theme.extension<AppThemeExtension>()!;
+    final activeBg = scheme.primary.withValues(alpha: 0.16);
 
     return Material(
-      color: active ? ext.sidebarItemBackground : Colors.transparent,
-      borderRadius: BorderRadius.circular(12),
+      color: active ? activeBg : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        hoverColor: ext.hoverOverlay,
+        borderRadius: BorderRadius.circular(10),
+        hoverColor: activeBg,
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           child: Row(
             children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
                 width: 4,
                 height: 28,
                 decoration: BoxDecoration(
@@ -91,13 +93,13 @@ class _SidebarTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Icon(icon, color: active ? ext.selectedIndicator : scheme.onSurfaceVariant),
+              Icon(icon, color: active ? scheme.primary : scheme.onSurfaceVariant),
               const SizedBox(width: 12),
               Text(
                 label,
                 style: TextStyle(
                   fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                  color: active ? scheme.onSurface : scheme.onSurface,
+                  color: scheme.onSurface,
                 ),
               ),
             ],

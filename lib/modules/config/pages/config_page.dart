@@ -1,38 +1,130 @@
 import 'package:flutter/material.dart';
 
 import '../../../config/routes/routes_config.dart';
+import '../../../config/theme/app_styles.dart';
 import '../../../layout/default_layout.dart';
 
-class ConfigPage extends StatelessWidget {
+enum ConfigTab { arquivos, backup, propriedades }
+
+class ConfigPage extends StatefulWidget {
   const ConfigPage({super.key});
 
   @override
+  State<ConfigPage> createState() => _ConfigPageState();
+}
+
+class _ConfigPageState extends State<ConfigPage> {
+  ConfigTab _active = ConfigTab.arquivos;
+
+  @override
   Widget build(BuildContext context) {
-    return const DefaultLayout(
+    return DefaultLayout(
       title: 'MineControl',
       currentRoute: AppRoutes.config,
-      child: _ConfigBody(),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: AppStyles.radiusLg,
+            border: Border.all(color: Theme.of(context).dividerColor),
+            boxShadow: AppStyles.softShadow(opacity: 0.18),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _TabChip(
+                    label: 'Arquivos',
+                    active: _active == ConfigTab.arquivos,
+                    onTap: () => setState(() => _active = ConfigTab.arquivos),
+                  ),
+                  _TabChip(
+                    label: 'Backup',
+                    active: _active == ConfigTab.backup,
+                    onTap: () => setState(() => _active = ConfigTab.backup),
+                  ),
+                  _TabChip(
+                    label: 'Propriedades',
+                    active: _active == ConfigTab.propriedades,
+                    onTap: () => setState(() => _active = ConfigTab.propriedades),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(child: _TabContent(tab: _active)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _ConfigBody extends StatelessWidget {
-  const _ConfigBody();
+class _TabChip extends StatelessWidget {
+  const _TabChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    final scheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppStyles.radiusFull,
       child: Container(
-        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).dividerColor),
+          borderRadius: AppStyles.radiusFull,
+          border: Border.all(color: active ? scheme.primary : Theme.of(context).dividerColor),
+          color: active ? scheme.primary.withValues(alpha: 0.14) : Colors.transparent,
         ),
-        padding: const EdgeInsets.all(20),
-        child: const Text('Configurações em construção.'),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? scheme.primary : scheme.onSurface,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _TabContent extends StatelessWidget {
+  const _TabContent({required this.tab});
+
+  final ConfigTab tab;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = switch (tab) {
+      ConfigTab.arquivos => 'Configurações de Arquivos em construção.',
+      ConfigTab.backup => 'Configurações de Backup em construção.',
+      ConfigTab.propriedades => 'Configurações de Propriedades em construção.',
+    };
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.65),
+        borderRadius: AppStyles.radiusMd,
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Text(text),
     );
   }
 }

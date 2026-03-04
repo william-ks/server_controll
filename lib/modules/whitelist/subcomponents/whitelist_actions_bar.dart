@@ -35,7 +35,7 @@ class WhitelistActionsBar extends StatelessWidget {
           transparent: true,
         ),
         AppButton(
-          label: 'Sincronizar pendentes',
+          label: 'Sincronizar',
           icon: Icons.sync_rounded,
           onPressed: onSyncPending,
           variant: AppVariant.warning,
@@ -45,4 +45,3 @@ class WhitelistActionsBar extends StatelessWidget {
     );
   }
 }
-

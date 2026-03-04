@@ -7,26 +7,44 @@ class ConsoleOutputView extends StatefulWidget {
   const ConsoleOutputView({
     super.key,
     required this.entries,
-    required this.autoScroll,
   });
 
   final List<ConsoleEntry> entries;
-  final bool autoScroll;
 
   @override
   State<ConsoleOutputView> createState() => _ConsoleOutputViewState();
 }
 
 class _ConsoleOutputViewState extends State<ConsoleOutputView> {
+  static const double _bottomThreshold = 48;
   final ScrollController _scrollController = ScrollController();
+  bool _stickToBottom = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleScroll);
+  }
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+    final distance = _scrollController.position.maxScrollExtent - _scrollController.offset;
+    _stickToBottom = distance <= _bottomThreshold;
+  }
 
   @override
   void didUpdateWidget(covariant ConsoleOutputView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.autoScroll && widget.entries.length != oldWidget.entries.length) {
+    if (widget.entries.length != oldWidget.entries.length && _stickToBottom) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
-          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+          );
         }
       });
     }
@@ -34,6 +52,7 @@ class _ConsoleOutputViewState extends State<ConsoleOutputView> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_handleScroll);
     _scrollController.dispose();
     super.dispose();
   }
@@ -42,8 +61,8 @@ class _ConsoleOutputViewState extends State<ConsoleOutputView> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF0B0B0B),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: ListView.builder(
@@ -56,4 +75,3 @@ class _ConsoleOutputViewState extends State<ConsoleOutputView> {
     );
   }
 }
-

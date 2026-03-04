@@ -10,7 +10,16 @@ class AppStyles {
 
   static const EdgeInsets pagePadding = EdgeInsets.all(spacingMd);
 
-  static BorderRadius get radiusMd => BorderRadius.circular(12);
-  static BorderRadius get radiusLg => BorderRadius.circular(16);
-}
+  static BorderRadius get radiusSm => BorderRadius.circular(8);
+  static BorderRadius get radiusMd => BorderRadius.circular(10);
+  static BorderRadius get radiusLg => BorderRadius.circular(12);
+  static BorderRadius get radiusFull => BorderRadius.circular(999);
 
+  static List<BoxShadow> softShadow({double opacity = 0.16}) => [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: opacity),
+          blurRadius: 16,
+          offset: const Offset(0, 4),
+        ),
+      ];
+}

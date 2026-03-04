@@ -51,18 +51,21 @@ class _DefaultLayoutState extends ConsumerState<DefaultLayout> {
             child: Row(
               children: [
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeInOutCubicEmphasized,
                   width: _sidebarOpen ? 240 : 0,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 150),
-                    opacity: _sidebarOpen ? 1 : 0,
-                    child: _sidebarOpen
-                        ? AppSidebar(
-                            currentRoute: widget.currentRoute,
-                            onNavigate: _navigate,
-                          )
-                        : const SizedBox.shrink(),
+                  child: ClipRect(
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 240),
+                      curve: Curves.easeInOut,
+                      opacity: _sidebarOpen ? 1 : 0,
+                      child: _sidebarOpen
+                          ? AppSidebar(
+                              currentRoute: widget.currentRoute,
+                              onNavigate: _navigate,
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ),
                 ),
                 Expanded(child: widget.child),
