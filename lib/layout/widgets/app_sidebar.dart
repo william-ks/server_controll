@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../config/routes/routes_config.dart';
+import '../../config/theme/app_theme_extension.dart';
 import '../models/navigation_item.dart';
 
 class AppSidebar extends StatelessWidget {
@@ -22,18 +23,18 @@ class AppSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final items = _items();
 
     return Container(
       width: 240,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        border: Border(right: BorderSide(color: Theme.of(context).dividerColor)),
+        border: Border(right: BorderSide(color: ext.subtleDivider)),
       ),
       child: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         children: [
-          const SizedBox(height: 8),
           for (final item in items)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -65,24 +66,38 @@ class _SidebarTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final ext = theme.extension<AppThemeExtension>()!;
+
     return Material(
-      color: active ? scheme.primary.withValues(alpha: 0.14) : Colors.transparent,
+      color: active ? ext.sidebarItemBackground : Colors.transparent,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
+        hoverColor: ext.hoverOverlay,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           child: Row(
             children: [
-              Icon(icon, color: active ? scheme.primary : scheme.onSurfaceVariant),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 4,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: active ? ext.selectedIndicator : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(icon, color: active ? ext.selectedIndicator : scheme.onSurfaceVariant),
               const SizedBox(width: 12),
               Text(
                 label,
                 style: TextStyle(
                   fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                  color: active ? scheme.primary : scheme.onSurface,
+                  color: active ? scheme.onSurface : scheme.onSurface,
                 ),
               ),
             ],
@@ -92,4 +107,3 @@ class _SidebarTile extends StatelessWidget {
     );
   }
 }
-

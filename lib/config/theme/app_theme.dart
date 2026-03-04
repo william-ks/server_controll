@@ -14,16 +14,21 @@ class AppTheme {
     colorScheme: const ColorScheme.light(
       primary: AppColors.primary,
       secondary: AppColors.secondary,
+      tertiary: AppColors.accent,
       surface: AppColors.surfaceLight,
       error: AppColors.danger,
     ),
+    dividerColor: AppColors.borderLight.withValues(alpha: 0.35),
     textTheme: AppTypography.light,
-    extensions: const <ThemeExtension<dynamic>>[
+    extensions: <ThemeExtension<dynamic>>[
       AppThemeExtension(
         cardBackground: AppColors.surfaceLight,
         cardBorder: AppColors.borderLight,
         secondaryText: AppColors.textSecondaryLight,
-        sidebarItemBackground: Color(0xFFF1F5F9),
+        sidebarItemBackground: const Color(0xFFF1F5F9),
+        subtleDivider: AppColors.textPrimaryLight.withValues(alpha: 0.1),
+        selectedIndicator: AppColors.secondary,
+        hoverOverlay: AppColors.secondary.withValues(alpha: 0.08),
       ),
     ],
   );
@@ -35,18 +40,22 @@ class AppTheme {
     colorScheme: const ColorScheme.dark(
       primary: AppColors.primary,
       secondary: AppColors.secondary,
+      tertiary: AppColors.accent,
       surface: AppColors.surfaceDark,
       error: AppColors.danger,
     ),
+    dividerColor: Colors.white.withValues(alpha: 0.08),
     textTheme: AppTypography.dark,
-    extensions: const <ThemeExtension<dynamic>>[
+    extensions: <ThemeExtension<dynamic>>[
       AppThemeExtension(
         cardBackground: AppColors.surfaceDark,
         cardBorder: AppColors.borderDark,
         secondaryText: AppColors.textSecondaryDark,
-        sidebarItemBackground: Color(0xFF1E2533),
+        sidebarItemBackground: const Color(0xFF232323),
+        subtleDivider: Colors.white.withValues(alpha: 0.1),
+        selectedIndicator: AppColors.primary,
+        hoverOverlay: AppColors.primary.withValues(alpha: 0.12),
       ),
     ],
   );
 }
-

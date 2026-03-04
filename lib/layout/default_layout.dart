@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/providers/theme_provider.dart';
 import 'widgets/app_header.dart';
 import 'widgets/app_sidebar.dart';
 
-class DefaultLayout extends StatefulWidget {
+class DefaultLayout extends ConsumerStatefulWidget {
   const DefaultLayout({
     super.key,
     required this.currentRoute,
@@ -16,10 +18,10 @@ class DefaultLayout extends StatefulWidget {
   final String title;
 
   @override
-  State<DefaultLayout> createState() => _DefaultLayoutState();
+  ConsumerState<DefaultLayout> createState() => _DefaultLayoutState();
 }
 
-class _DefaultLayoutState extends State<DefaultLayout> {
+class _DefaultLayoutState extends ConsumerState<DefaultLayout> {
   bool _sidebarOpen = true;
 
   void _navigate(String route) {
@@ -31,21 +33,38 @@ class _DefaultLayoutState extends State<DefaultLayout> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
+    final isDark = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
+
     return Scaffold(
       body: Column(
         children: [
           AppHeader(
             title: widget.title,
+            sidebarOpen: _sidebarOpen,
             onToggleSidebar: () => setState(() => _sidebarOpen = !_sidebarOpen),
+            onToggleTheme: () => ref.read(themeModeProvider.notifier).toggle(),
+            isDarkMode: isDark,
           ),
           Expanded(
             child: Row(
               children: [
-                if (_sidebarOpen)
-                  AppSidebar(
-                    currentRoute: widget.currentRoute,
-                    onNavigate: _navigate,
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  width: _sidebarOpen ? 240 : 0,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 150),
+                    opacity: _sidebarOpen ? 1 : 0,
+                    child: _sidebarOpen
+                        ? AppSidebar(
+                            currentRoute: widget.currentRoute,
+                            onNavigate: _navigate,
+                          )
+                        : const SizedBox.shrink(),
                   ),
+                ),
                 Expanded(child: widget.child),
               ],
             ),
@@ -55,4 +74,3 @@ class _DefaultLayoutState extends State<DefaultLayout> {
     );
   }
 }
-
