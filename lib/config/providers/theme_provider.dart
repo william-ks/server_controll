@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../database/app_database.dart';
+import '../../database/app_database.dart';
 
 final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
 
@@ -38,3 +38,5 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
     await setMode(state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark);
   }
 }
+
+

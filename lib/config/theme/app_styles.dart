@@ -13,3 +13,4 @@ class AppStyles {
   static BorderRadius get radiusMd => BorderRadius.circular(12);
   static BorderRadius get radiusLg => BorderRadius.circular(16);
 }
+

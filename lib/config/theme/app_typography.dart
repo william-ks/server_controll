@@ -25,3 +25,4 @@ class AppTypography {
     displayColor: AppColors.textPrimaryDark,
   );
 }
+

@@ -27,3 +27,4 @@ class MigrationV1 implements Migration {
     });
   }
 }
+

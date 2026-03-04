@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../models/server_lifecycle_state.dart';
-import '../../../../theme/app_colors.dart';
+import '../../../../config/theme/app_colors.dart';
 
 class UptimeCard extends StatelessWidget {
   const UptimeCard({super.key, required this.uptime, required this.lifecycle});
@@ -54,3 +54,4 @@ class _MetricCard extends StatelessWidget {
     );
   }
 }
+

@@ -25,3 +25,4 @@ class MigrationV2 implements Migration {
     });
   }
 }
+

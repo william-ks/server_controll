@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
+import '../../config/theme/app_colors.dart';
 
 enum AppVariant { primary, secondary, success, info, warning, danger }
 
@@ -18,3 +18,4 @@ class AppVariantPalette {
     };
   }
 }
+

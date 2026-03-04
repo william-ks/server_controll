@@ -31,3 +31,4 @@ class ConsoleLineItem extends StatelessWidget {
     );
   }
 }
+

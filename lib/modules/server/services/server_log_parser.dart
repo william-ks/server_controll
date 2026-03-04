@@ -16,3 +16,4 @@ class ServerLogParser {
     return line.toLowerCase().contains('stopping server');
   }
 }
+

@@ -9,3 +9,4 @@ class AppRouter {
     for (final definition in AppRoutes.definitions) definition.path: definition.builder,
   };
 }
+

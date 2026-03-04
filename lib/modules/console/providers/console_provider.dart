@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/console_entry.dart';
-import '../../../providers/server_runtime_provider.dart';
+import '../../../modules/server/providers/server_runtime_provider.dart';
 
 class ConsoleState {
   const ConsoleState({required this.entries, required this.autoScroll});
@@ -72,3 +72,4 @@ class ConsoleNotifier extends Notifier<ConsoleState> {
     state = state.copyWith(entries: next);
   }
 }
+

@@ -107,3 +107,4 @@ class _AddEditPlayerModalState extends State<AddEditPlayerModal> {
     );
   }
 }
+

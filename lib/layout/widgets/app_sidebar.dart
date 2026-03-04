@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../routes/routes_config.dart';
+import '../../config/routes/routes_config.dart';
 import '../models/navigation_item.dart';
 
 class AppSidebar extends StatelessWidget {
@@ -92,3 +92,4 @@ class _SidebarTile extends StatelessWidget {
     );
   }
 }
+

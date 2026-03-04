@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../providers/server_runtime_provider.dart';
+import '../../../modules/server/providers/server_runtime_provider.dart';
 
 final homeActionsProvider = Provider<HomeActions>((ref) {
   return HomeActions(ref);
@@ -17,3 +17,4 @@ class HomeActions {
 
   Future<void> restartServer() => _ref.read(serverRuntimeProvider.notifier).restartServer();
 }
+

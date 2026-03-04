@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../layout/default_layout.dart';
-import '../../../routes/routes_config.dart';
+import '../../../config/routes/routes_config.dart';
 import '../providers/console_provider.dart';
 import '../subcomponents/console_input_bar.dart';
 import '../subcomponents/console_output_view.dart';
@@ -40,3 +40,4 @@ class ConsolePage extends ConsumerWidget {
     );
   }
 }
+

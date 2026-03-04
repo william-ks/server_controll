@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../modules/console/pages/console_page.dart';
-import '../modules/home/pages/home_page.dart';
-import '../modules/whitelist/pages/whitelist_page.dart';
+import '../../modules/console/pages/console_page.dart';
+import '../../modules/home/pages/home_page.dart';
+import '../../modules/whitelist/pages/whitelist_page.dart';
 
 class RouteDefinition {
   const RouteDefinition({
@@ -47,3 +47,5 @@ class AppRoutes {
     return definitions.firstWhere((route) => route.path == path, orElse: () => definitions.first);
   }
 }
+
+

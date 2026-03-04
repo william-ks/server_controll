@@ -48,3 +48,4 @@ class AppSelect<T> extends StatelessWidget {
     );
   }
 }
+

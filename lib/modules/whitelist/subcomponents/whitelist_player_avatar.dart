@@ -24,3 +24,4 @@ class WhitelistPlayerAvatar extends StatelessWidget {
     );
   }
 }
+

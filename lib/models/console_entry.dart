@@ -11,3 +11,4 @@ class ConsoleEntry {
   final DateTime timestamp;
   final String message;
 }
+

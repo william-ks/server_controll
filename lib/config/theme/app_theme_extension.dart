@@ -43,3 +43,4 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     );
   }
 }
+

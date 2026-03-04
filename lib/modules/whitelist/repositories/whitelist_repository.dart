@@ -57,3 +57,4 @@ class WhitelistRepository {
     return rows.map(WhitelistPlayer.fromMap).toList();
   }
 }
+

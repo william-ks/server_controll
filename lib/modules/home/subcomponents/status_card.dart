@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../models/server_lifecycle_state.dart';
-import '../../../../theme/app_colors.dart';
+import '../../../../config/theme/app_colors.dart';
 
 class StatusCard extends StatelessWidget {
   const StatusCard({super.key, required this.lifecycle});
@@ -46,3 +46,4 @@ class _MetricCard extends StatelessWidget {
     );
   }
 }
+

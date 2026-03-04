@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../theme/app_colors.dart';
+import '../../../../config/theme/app_colors.dart';
 
 class ActivePlayersCard extends StatelessWidget {
   const ActivePlayersCard({super.key, required this.activePlayers});
@@ -33,3 +33,4 @@ class ActivePlayersCard extends StatelessWidget {
     );
   }
 }
+

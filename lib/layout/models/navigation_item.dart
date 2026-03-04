@@ -11,3 +11,4 @@ class NavigationItem {
   final String label;
   final IconData icon;
 }
+

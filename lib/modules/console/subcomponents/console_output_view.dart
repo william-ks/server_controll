@@ -56,3 +56,4 @@ class _ConsoleOutputViewState extends State<ConsoleOutputView> {
     );
   }
 }
+

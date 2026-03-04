@@ -52,3 +52,4 @@ class WhitelistPlayerCard extends StatelessWidget {
     );
   }
 }
+

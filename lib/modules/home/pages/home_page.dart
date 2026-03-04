@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../config/routes/routes_config.dart';
 import '../../../layout/default_layout.dart';
-import '../../../providers/server_runtime_provider.dart';
-import '../../../routes/routes_config.dart';
+import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../providers/home_provider.dart';
 import '../subcomponents/active_players_card.dart';
 import '../subcomponents/server_actions_bar.dart';
@@ -26,6 +26,13 @@ class HomePage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('Bem-vindo ao MineControl', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 4),
+            Text(
+              'Controle seu servidor Minecraft local com monitoramento em tempo real.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),

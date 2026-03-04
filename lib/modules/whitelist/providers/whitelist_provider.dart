@@ -4,8 +4,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/server_lifecycle_state.dart';
-import '../../../providers/server_runtime_provider.dart';
-import '../../../services/whitelist_sync_service.dart';
+import '../../../models/server_runtime_state.dart';
+import '../../../modules/server/providers/server_runtime_provider.dart';
+import '../services/whitelist_sync_service.dart';
 import '../models/whitelist_player.dart';
 import '../repositories/whitelist_repository.dart';
 
@@ -50,7 +51,7 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
 
   @override
   WhitelistState build() {
-    ref.listen(serverRuntimeProvider, (previous, next) {
+    ref.listen<ServerRuntimeState>(serverRuntimeProvider, (previous, next) {
       final wasOnline = previous?.lifecycle == ServerLifecycleState.online;
       final isOnline = next.lifecycle == ServerLifecycleState.online;
       if (!wasOnline && isOnline) {
@@ -138,3 +139,5 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
     return _syncService.persistIcon(nickname: nickname, sourcePath: sourcePath);
   }
 }
+
+

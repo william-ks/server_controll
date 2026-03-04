@@ -10,3 +10,4 @@ class MigrationRunner {
 
   static int get latestVersion => all.last.version;
 }
+

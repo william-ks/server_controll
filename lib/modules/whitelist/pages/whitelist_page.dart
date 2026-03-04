@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../layout/default_layout.dart';
-import '../../../routes/routes_config.dart';
+import '../../../config/routes/routes_config.dart';
 import '../providers/whitelist_provider.dart';
 import '../subcomponents/add_edit_player_modal.dart';
 import '../subcomponents/whitelist_actions_bar.dart';
@@ -79,3 +79,4 @@ class WhitelistPage extends ConsumerWidget {
     );
   }
 }
+

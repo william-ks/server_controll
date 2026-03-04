@@ -80,3 +80,4 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
     );
   }
 }
+

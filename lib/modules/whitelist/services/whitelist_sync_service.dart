@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../database/app_database.dart';
-import '../modules/whitelist/models/whitelist_player.dart';
-import '../modules/whitelist/repositories/whitelist_repository.dart';
+import '../../../database/app_database.dart';
+import '../models/whitelist_player.dart';
+import '../repositories/whitelist_repository.dart';
 
 class WhitelistSyncService {
   WhitelistSyncService(this._repository);
@@ -103,3 +103,5 @@ class WhitelistSyncService {
     return targetPath;
   }
 }
+
+

@@ -45,3 +45,4 @@ class WhitelistActionsBar extends StatelessWidget {
     );
   }
 }
+
