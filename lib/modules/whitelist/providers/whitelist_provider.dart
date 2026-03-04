@@ -6,9 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../../models/server_runtime_state.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
-import '../services/whitelist_sync_service.dart';
 import '../models/whitelist_player.dart';
 import '../repositories/whitelist_repository.dart';
+import '../services/whitelist_sync_service.dart';
 
 class WhitelistState {
   const WhitelistState({
@@ -59,12 +59,17 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
       }
     });
 
-    unawaited(load());
+    Future<void>(() => load(initialLoad: true));
     return WhitelistState.initial();
   }
 
-  Future<void> load() async {
-    state = state.copyWith(loading: true, clearError: true);
+  Future<void> load({bool initialLoad = false}) async {
+    if (initialLoad) {
+      state = const WhitelistState(players: [], loading: true);
+    } else {
+      state = state.copyWith(loading: true, clearError: true);
+    }
+
     try {
       final players = await _repository.getAll();
       state = state.copyWith(players: players, loading: false);
@@ -139,5 +144,3 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
     return _syncService.persistIcon(nickname: nickname, sourcePath: sourcePath);
   }
 }
-
-
