@@ -1,76 +1,65 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../components/buttons/app_button.dart';
-import '../../../components/buttons/app_icon_button.dart';
-import '../../../components/inputs/app_text_input.dart';
-import '../../../components/selects/app_select.dart';
-import '../../../components/shared/app_variant.dart';
 import '../../../layout/default_layout.dart';
+import '../../../providers/server_runtime_provider.dart';
 import '../../../routes/routes_config.dart';
+import '../providers/home_provider.dart';
+import '../subcomponents/active_players_card.dart';
+import '../subcomponents/server_actions_bar.dart';
+import '../subcomponents/status_card.dart';
+import '../subcomponents/uptime_card.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final runtime = ref.watch(serverRuntimeProvider);
+    final actions = ref.read(homeActionsProvider);
 
-class _HomePageState extends State<HomePage> {
-  final _controller = TextEditingController();
-  String? _selectValue;
-
-  @override
-  Widget build(BuildContext context) {
     return DefaultLayout(
       title: 'MineControl',
       currentRoute: AppRoutes.home,
-      child: ListView(
+      child: Padding(
         padding: const EdgeInsets.all(16),
-        children: [
-          const Text('Buttons'),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              AppButton(label: 'Primary', onPressed: () {}, variant: AppVariant.primary),
-              AppButton(label: 'Success', onPressed: () {}, variant: AppVariant.success),
-              AppButton(label: 'Warning', onPressed: () {}, variant: AppVariant.warning),
-              AppButton(label: 'Danger', onPressed: () {}, variant: AppVariant.danger),
-              AppButton(label: 'Ghost', onPressed: () {}, transparent: true),
-              AppButton(label: 'Loading', onPressed: () {}, isLoading: true),
-              AppButton(label: 'Disabled', onPressed: null, isDisabled: true),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: MediaQuery.of(context).size.width > 1100 ? 3 : 1,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 3.5,
+              children: [
+                StatusCard(lifecycle: runtime.lifecycle),
+                UptimeCard(uptime: runtime.uptime, lifecycle: runtime.lifecycle),
+                ActivePlayersCard(activePlayers: runtime.activePlayers),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ServerActionsBar(
+              lifecycle: runtime.lifecycle,
+              onStart: actions.startServer,
+              onStop: actions.stopServer,
+              onRestart: actions.restartServer,
+              onBackup: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Backup será implementado em task futura.')),
+                );
+              },
+            ),
+            if (runtime.lastError != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Erro: ${runtime.lastError}',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ],
-          ),
-          const SizedBox(height: 16),
-          const Text('Icon Buttons'),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              AppIconButton(icon: Icons.play_arrow_rounded, onPressed: () {}, variant: AppVariant.success),
-              AppIconButton(icon: Icons.stop_rounded, onPressed: () {}, variant: AppVariant.danger),
-              AppIconButton(icon: Icons.info_outline_rounded, onPressed: () {}, transparent: true),
-            ],
-          ),
-          const SizedBox(height: 16),
-          AppTextInput(
-            label: 'Comando',
-            hint: 'Digite um comando',
-            controller: _controller,
-            prefixIcon: const Icon(Icons.terminal_rounded),
-          ),
-          const SizedBox(height: 16),
-          AppSelect<String>(
-            label: 'Ambiente',
-            value: _selectValue,
-            items: const [
-              AppSelectItem(value: 'local', label: 'Local'),
-              AppSelectItem(value: 'test', label: 'Teste'),
-            ],
-            onChanged: (value) => setState(() => _selectValue = value),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
