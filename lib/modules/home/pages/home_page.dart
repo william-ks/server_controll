@@ -7,6 +7,7 @@ import '../../../layout/default_layout.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../providers/home_provider.dart';
 import '../subcomponents/active_players_card.dart';
+import '../subcomponents/kick_players_modal.dart';
 import '../subcomponents/server_actions_bar.dart';
 import '../subcomponents/status_card.dart';
 import '../subcomponents/uptime_card.dart';
@@ -43,13 +44,6 @@ class HomePage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Bem-vindo ao MineControl', style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 4),
-              Text(
-                'Controle seu servidor Minecraft local com monitoramento em tempo real.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
               GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -72,6 +66,12 @@ class HomePage extends ConsumerWidget {
                 onBackup: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Backup será implementado em task futura.')),
+                  );
+                },
+                onKickPlayers: () {
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => const KickPlayersModal(),
                   );
                 },
               ),

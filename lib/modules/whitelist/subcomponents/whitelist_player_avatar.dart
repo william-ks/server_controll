@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../../config/theme/app_colors.dart';
+
 class WhitelistPlayerAvatar extends StatelessWidget {
   const WhitelistPlayerAvatar({super.key, this.iconPath});
 
@@ -9,19 +11,21 @@ class WhitelistPlayerAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (iconPath == null || iconPath!.isEmpty || !File(iconPath!).existsSync()) {
-      return const SizedBox(width: 44, height: 44);
-    }
+    final fileExists = iconPath != null && iconPath!.isNotEmpty && File(iconPath!).existsSync();
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.file(
-        File(iconPath!),
-        width: 44,
-        height: 44,
-        fit: BoxFit.cover,
-      ),
+    return CircleAvatar(
+      radius: 22,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      child: fileExists
+          ? ClipOval(
+              child: Image.file(
+                File(iconPath!),
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+              ),
+            )
+          : const Icon(Icons.person_rounded, color: AppColors.neutral),
     );
   }
 }
-

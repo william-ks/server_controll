@@ -15,10 +15,12 @@ class ConsoleInputBar extends StatefulWidget {
 
 class _ConsoleInputBarState extends State<ConsoleInputBar> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -31,6 +33,12 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
     _controller.clear();
   }
 
+  void _insertCommand(String command) {
+    _controller.text = command;
+    _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+    _focusNode.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -40,12 +48,7 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
           onPressed: () {
             showDialog<void>(
               context: context,
-              builder: (_) => QuickCommandsModal(
-                onPick: (command) {
-                  _controller.text = command;
-                  _send();
-                },
-              ),
+              builder: (_) => QuickCommandsModal(onInsert: _insertCommand),
             );
           },
           tooltip: 'Comandos rápidos',
@@ -55,8 +58,10 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
         Expanded(
           child: AppTextInput(
             controller: _controller,
+            focusNode: _focusNode,
             hint: 'Digite um comando e pressione Enter',
             onSubmitted: (_) => _send(),
+            suffixIcon: const Icon(Icons.terminal_rounded),
           ),
         ),
         const SizedBox(width: 8),

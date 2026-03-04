@@ -33,28 +33,31 @@ class _ConfigPageState extends State<ConfigPage> {
           ),
           padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _TabChip(
-                    label: 'Arquivos',
-                    active: _active == ConfigTab.arquivos,
-                    onTap: () => setState(() => _active = ConfigTab.arquivos),
-                  ),
-                  _TabChip(
-                    label: 'Backup',
-                    active: _active == ConfigTab.backup,
-                    onTap: () => setState(() => _active = ConfigTab.backup),
-                  ),
-                  _TabChip(
-                    label: 'Propriedades',
-                    active: _active == ConfigTab.propriedades,
-                    onTap: () => setState(() => _active = ConfigTab.propriedades),
-                  ),
-                ],
+              Align(
+                alignment: Alignment.center,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _TabChip(
+                      label: 'Arquivos',
+                      active: _active == ConfigTab.arquivos,
+                      onTap: () => setState(() => _active = ConfigTab.arquivos),
+                    ),
+                    _TabChip(
+                      label: 'Backup',
+                      active: _active == ConfigTab.backup,
+                      onTap: () => setState(() => _active = ConfigTab.backup),
+                    ),
+                    _TabChip(
+                      label: 'Propriedades',
+                      active: _active == ConfigTab.propriedades,
+                      onTap: () => setState(() => _active = ConfigTab.propriedades),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               Expanded(child: _TabContent(tab: _active)),

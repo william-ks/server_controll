@@ -828,3 +828,28 @@ Tabela `whitelist_players`:
   - filtro em tempo real por nickname/UUID.
 - Config:
   - navegação por abas adicionada (`Arquivos`, `Backup`, `Propriedades`) com estilo pill e estado ativo.
+
+## 25. Home Dashboard + Kick Players + refinamentos de Whitelist/Config/Console (04/03/2026)
+
+- Home:
+  - remoção dos textos introdutórios;
+  - cards de status com ícone + título bold + valor;
+  - status padronizado em maiúsculo;
+  - backup habilitado apenas offline;
+  - botão de desconectar jogadores com modal de kick (todos / um / vários) e mensagem padrão.
+- Servidor:
+  - estado inclui `onlinePlayers`;
+  - provider `onlinePlayersProvider` para consumo em UI;
+  - parsing de `/list` e eventos de join/leave para atualizar jogadores online.
+- Whitelist:
+  - formulário do modal refatorado para componente dedicado;
+  - seletor de ícone com visual de input e posicionado acima de nickname;
+  - confirmação de deleção via `AppModal`;
+  - cards com avatar circular padrão, ações coloridas, destaque quando ID vazio e badge ONLINE/OFFLINE.
+- Config:
+  - navegação por abas centralizada no topo.
+- Sidebar:
+  - ordenação ajustada: Chunky antes de Config (Config como último item).
+- Console:
+  - modal de comandos rápidos em cards com título/descrição;
+  - ações por card: copiar e inserir no input (sem executar automaticamente).

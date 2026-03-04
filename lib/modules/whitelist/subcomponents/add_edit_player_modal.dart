@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../components/buttons/app_button.dart';
-import '../../../components/inputs/app_text_input.dart';
 import '../../../components/modal/app_modal.dart';
+import '../../../components/shared/app_variant.dart';
 import '../models/whitelist_player.dart';
+import 'whitelist_add_player_form.dart';
 
 class AddEditPlayerModal extends StatefulWidget {
   const AddEditPlayerModal({
@@ -46,57 +47,33 @@ class _AddEditPlayerModalState extends State<AddEditPlayerModal> {
     return AppModal(
       icon: widget.player == null ? Icons.person_add_rounded : Icons.edit_rounded,
       title: widget.player == null ? 'Adicionar jogador' : 'Editar jogador',
+      maxBodyHeight: 460,
       body: SizedBox(
-        width: 460,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppTextInput(
-              controller: _nicknameController,
-              label: 'Nickname',
-            ),
-            const SizedBox(height: 12),
-            AppTextInput(
-              controller: _uuidController,
-              label: 'UUID (opcional)',
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _iconPath == null ? 'Sem ícone selecionado' : _iconPath!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                AppButton(
-                  label: 'Escolher ícone',
-                  icon: Icons.upload_file_rounded,
-                  transparent: true,
-                  onPressed: () async {
-                    final nickname = _nicknameController.text.trim();
-                    if (nickname.isEmpty) {
-                      return;
-                    }
-                    final path = await widget.onPickIcon(nickname);
-                    if (path == null) {
-                      return;
-                    }
-                    setState(() => _iconPath = path);
-                  },
-                ),
-              ],
-            ),
-          ],
+        width: 520,
+        child: WhitelistAddPlayerForm(
+          nicknameController: _nicknameController,
+          uuidController: _uuidController,
+          iconPath: _iconPath,
+          onPickIcon: () async {
+            final nickname = _nicknameController.text.trim();
+            if (nickname.isEmpty) {
+              return;
+            }
+            final path = await widget.onPickIcon(nickname);
+            if (path == null) {
+              return;
+            }
+            setState(() => _iconPath = path);
+          },
         ),
       ),
       actions: [
         AppButton(
           label: 'Cancelar',
           onPressed: () => Navigator.of(context).pop(),
-          icon: Icons.close_rounded,
+          variant: AppVariant.danger,
           transparent: true,
+          icon: Icons.close_rounded,
         ),
         AppButton(
           label: 'Salvar',
@@ -110,6 +87,7 @@ class _AddEditPlayerModalState extends State<AddEditPlayerModal> {
               Navigator.of(context).pop();
             }
           },
+          variant: AppVariant.success,
           icon: Icons.check_rounded,
         ),
       ],

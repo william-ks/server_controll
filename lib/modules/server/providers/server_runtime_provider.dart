@@ -19,6 +19,10 @@ final serverRuntimeProvider = NotifierProvider<ServerRuntimeNotifier, ServerRunt
   ServerRuntimeNotifier.new,
 );
 
+final onlinePlayersProvider = Provider<List<String>>((ref) {
+  return ref.watch(serverRuntimeProvider).onlinePlayers;
+});
+
 class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
   StreamSubscription<String>? _stdoutSub;
   StreamSubscription<String>? _stderrSub;
@@ -54,6 +58,7 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
       readyAt: null,
       uptime: Duration.zero,
       activePlayers: 0,
+      onlinePlayers: const [],
       clearError: true,
     );
 
@@ -82,11 +87,21 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
     }
     state = state.copyWith(lifecycle: ServerLifecycleState.restarting, uptime: Duration.zero);
     await _service.restart();
-    state = state.copyWith(lifecycle: ServerLifecycleState.starting, startedAt: DateTime.now(), readyAt: null);
+    state = state.copyWith(
+      lifecycle: ServerLifecycleState.starting,
+      startedAt: DateTime.now(),
+      readyAt: null,
+      onlinePlayers: const [],
+      activePlayers: 0,
+    );
   }
 
   Future<void> sendCommand(String command) async {
     await _service.sendCommand(command);
+  }
+
+  Future<void> requestOnlinePlayers() async {
+    await sendCommand('list');
   }
 
   void _handleStdout(String line) {
@@ -106,6 +121,29 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
       state = state.copyWith(activePlayers: players);
     }
 
+    final playersList = ServerLogParser.parseOnlinePlayersList(line);
+    if (playersList != null) {
+      state = state.copyWith(
+        onlinePlayers: playersList,
+        activePlayers: playersList.length,
+      );
+    }
+
+    final joined = ServerLogParser.parseJoinedPlayer(line);
+    if (joined != null && joined.isNotEmpty) {
+      final next = List<String>.from(state.onlinePlayers);
+      if (!next.contains(joined)) {
+        next.add(joined);
+      }
+      state = state.copyWith(onlinePlayers: next, activePlayers: next.length);
+    }
+
+    final left = ServerLogParser.parseLeftPlayer(line);
+    if (left != null && left.isNotEmpty) {
+      final next = List<String>.from(state.onlinePlayers)..remove(left);
+      state = state.copyWith(onlinePlayers: next, activePlayers: next.length);
+    }
+
     if (ServerLogParser.isStopping(line)) {
       state = state.copyWith(lifecycle: ServerLifecycleState.stopping);
     }
@@ -123,6 +161,7 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
       lifecycle: code == 0 ? ServerLifecycleState.offline : ServerLifecycleState.error,
       uptime: Duration.zero,
       activePlayers: 0,
+      onlinePlayers: const [],
       startedAt: null,
       readyAt: null,
       lastError: code == 0 ? null : 'Process exited with code $code',
@@ -141,5 +180,3 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
     });
   }
 }
-
-

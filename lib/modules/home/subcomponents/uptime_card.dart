@@ -14,7 +14,7 @@ class UptimeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = lifecycle == ServerLifecycleState.online;
     return _MetricCard(
-      title: 'Uptime',
+      title: 'UPTIME',
       value: _formatDuration(uptime),
       icon: Icons.timer_outlined,
       valueColor: active ? AppColors.primary : AppColors.neutral,
@@ -52,21 +52,26 @@ class _MetricCard extends StatelessWidget {
         color: ext.cardBackground,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: ext.cardBorder.withValues(alpha: 0.65)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primary, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: 6),
-                Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: valueColor)),
-              ],
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(color: valueColor)),
         ],
       ),
     );

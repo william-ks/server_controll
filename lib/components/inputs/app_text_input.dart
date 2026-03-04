@@ -6,6 +6,7 @@ class AppTextInput extends StatelessWidget {
     this.label,
     this.hint,
     this.controller,
+    this.focusNode,
     this.prefixIcon,
     this.suffixIcon,
     this.errorText,
@@ -18,6 +19,7 @@ class AppTextInput extends StatelessWidget {
   final String? label;
   final String? hint;
   final TextEditingController? controller;
+  final FocusNode? focusNode;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
   final String? errorText;
@@ -30,6 +32,7 @@ class AppTextInput extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       enabled: enabled,
       onSubmitted: onSubmitted,
       onChanged: onChanged,

@@ -28,8 +28,8 @@ class AppRoutes {
   static const home = '/home';
   static const console = '/console';
   static const whitelist = '/whitelist';
-  static const config = '/config';
   static const chunky = '/chunky';
+  static const config = '/config';
 
   static final List<RouteDefinition> definitions = [
     RouteDefinition(path: home, label: 'Home', icon: Icons.home_rounded, builder: (_) => const HomePage()),
@@ -46,16 +46,16 @@ class AppRoutes {
       builder: (_) => const WhitelistPage(),
     ),
     RouteDefinition(
-      path: config,
-      label: 'Config',
-      icon: Icons.settings_rounded,
-      builder: (_) => const ConfigPage(),
-    ),
-    RouteDefinition(
       path: chunky,
       label: 'Chunky',
       icon: Icons.grid_view_rounded,
       builder: (_) => const ChunkyPage(),
+    ),
+    RouteDefinition(
+      path: config,
+      label: 'Config',
+      icon: Icons.settings_rounded,
+      builder: (_) => const ConfigPage(),
     ),
   ];
 

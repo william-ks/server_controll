@@ -20,23 +20,31 @@ class ActivePlayersCard extends StatelessWidget {
         color: ext.cardBackground,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: ext.cardBorder.withValues(alpha: 0.65)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.group_rounded, color: AppColors.primary, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Jogadores ativos', style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: 6),
-                Text(
-                  '$activePlayers',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: color),
-                ),
-              ],
-            ),
+          Row(
+            children: [
+              const Icon(Icons.group_rounded, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'JOGADORES ATIVOS',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$activePlayers',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(color: color),
           ),
         ],
       ),

@@ -16,5 +16,8 @@ class HomeActions {
   Future<void> stopServer() => _ref.read(serverRuntimeProvider.notifier).stopServer();
 
   Future<void> restartServer() => _ref.read(serverRuntimeProvider.notifier).restartServer();
-}
 
+  Future<void> requestPlayers() => _ref.read(serverRuntimeProvider.notifier).requestOnlinePlayers();
+
+  Future<void> sendCommand(String command) => _ref.read(serverRuntimeProvider.notifier).sendCommand(command);
+}

@@ -9,12 +9,23 @@ class StatusCard extends StatelessWidget {
 
   final ServerLifecycleState lifecycle;
 
+  String _label(ServerLifecycleState state) {
+    return switch (state) {
+      ServerLifecycleState.offline => 'OFFLINE',
+      ServerLifecycleState.starting => 'STARTING',
+      ServerLifecycleState.online => 'ONLINE',
+      ServerLifecycleState.stopping => 'SHUTTING DOWN',
+      ServerLifecycleState.restarting => 'STARTING',
+      ServerLifecycleState.error => 'OFFLINE',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final isOnline = lifecycle == ServerLifecycleState.online;
     return _MetricCard(
-      title: 'Status',
-      value: isOnline ? 'online' : lifecycle.name,
+      title: 'STATUS',
+      value: _label(lifecycle).toUpperCase(),
       icon: Icons.offline_bolt_rounded,
       valueColor: isOnline ? AppColors.primary : AppColors.neutral,
     );
@@ -44,21 +55,26 @@ class _MetricCard extends StatelessWidget {
         color: ext.cardBackground,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: ext.cardBorder.withValues(alpha: 0.65)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primary, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: 6),
-                Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: valueColor)),
-              ],
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(color: valueColor)),
         ],
       ),
     );

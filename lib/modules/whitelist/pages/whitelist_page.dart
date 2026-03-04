@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_text_input.dart';
+import '../../../components/modal/app_modal.dart';
+import '../../../components/shared/app_variant.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
+import '../../server/providers/server_runtime_provider.dart';
 import '../../../layout/default_layout.dart';
 import '../providers/whitelist_provider.dart';
 import '../subcomponents/add_edit_player_modal.dart';
@@ -32,6 +36,7 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(whitelistProvider);
     final notifier = ref.read(whitelistProvider.notifier);
+    final onlinePlayers = ref.watch(onlinePlayersProvider);
 
     Future<void> openModal({int? id}) async {
       final player = id == null
@@ -49,6 +54,37 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
           onSave: ({required nickname, uuid, iconPath}) {
             return notifier.savePlayer(id: id, nickname: nickname, uuid: uuid, iconPath: iconPath);
           },
+        ),
+      );
+    }
+
+    Future<void> confirmDelete(int id, String nickname) async {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AppModal(
+          icon: Icons.delete_outline_rounded,
+          title: 'Remover jogador',
+          body: Text('Deseja remover $nickname da whitelist?'),
+          actions: [
+            AppButton(
+              label: 'Cancelar',
+              onPressed: () => Navigator.of(context).pop(),
+              variant: AppVariant.danger,
+              transparent: true,
+              icon: Icons.close_rounded,
+            ),
+            AppButton(
+              label: 'Confirmar',
+              onPressed: () async {
+                await notifier.removePlayer(id);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              },
+              variant: AppVariant.success,
+              icon: Icons.check_rounded,
+            ),
+          ],
         ),
       );
     }
@@ -105,8 +141,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                           final player = filtered[index];
                           return WhitelistPlayerCard(
                             player: player,
+                            isOnline: onlinePlayers.contains(player.nickname),
                             onEdit: () => openModal(id: player.id),
-                            onDelete: () => notifier.removePlayer(player.id!),
+                            onDelete: () => confirmDelete(player.id!, player.nickname),
                           );
                         },
                       ),
