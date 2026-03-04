@@ -38,7 +38,15 @@ class ConsoleNotifier extends Notifier<ConsoleState> {
       unawaited(_stderrSub?.cancel());
     });
 
-    return ConsoleState.initial();
+    return ConsoleState(
+      entries: [
+        ConsoleEntry(
+          source: ConsoleEntrySource.system,
+          timestamp: DateTime.now(),
+          message: 'Console iniciado',
+        ),
+      ],
+    );
   }
 
   Future<void> sendCommand(String command) async {

@@ -54,7 +54,7 @@ class WhitelistPlayerCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              WhitelistPlayerAvatar(iconPath: player.iconPath, radius: 30),
+              WhitelistPlayerAvatar(iconPath: player.iconPath, radius: 32),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -128,7 +128,7 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
@@ -138,14 +138,14 @@ class _StatusChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 7,
-            height: 7,
-            margin: const EdgeInsets.only(right: 6),
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(right: 5),
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           Text(
             label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11),
+            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 10.5),
           ),
         ],
       ),
