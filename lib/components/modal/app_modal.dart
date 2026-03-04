@@ -13,6 +13,10 @@ class AppModal extends StatelessWidget {
     this.maxBodyHeight = 420,
     this.onClose,
     this.showDividers = true,
+    this.showHeaderDivider,
+    this.showFooterDivider,
+    this.actionsAlignment = Alignment.centerRight,
+    this.actionsWrapAlignment = WrapAlignment.end,
   });
 
   final IconData icon;
@@ -23,6 +27,10 @@ class AppModal extends StatelessWidget {
   final double maxBodyHeight;
   final VoidCallback? onClose;
   final bool showDividers;
+  final bool? showHeaderDivider;
+  final bool? showFooterDivider;
+  final AlignmentGeometry actionsAlignment;
+  final WrapAlignment actionsWrapAlignment;
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +38,8 @@ class AppModal extends StatelessWidget {
     final dividerColor = Theme.of(context).dividerColor;
     final screenHeight = MediaQuery.sizeOf(context).height;
     final effectiveBodyHeight = (screenHeight * 0.58).clamp(180.0, maxBodyHeight);
+    final showHeader = showHeaderDivider ?? showDividers;
+    final showFooter = showFooterDivider ?? showDividers;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: AppStyles.radiusLg),
@@ -65,7 +75,7 @@ class AppModal extends StatelessWidget {
                   ),
                 ],
               ),
-              if (showDividers)
+              if (showHeader)
                 Divider(
                   height: 16,
                   thickness: 1,
@@ -76,18 +86,18 @@ class AppModal extends StatelessWidget {
                 child: SingleChildScrollView(child: body),
               ),
               if (actions.isNotEmpty) ...[
-                if (showDividers)
+                if (showFooter)
                   Divider(
                     height: 16,
                     thickness: 1,
                     color: dividerColor,
                   ),
                 Align(
-                  alignment: Alignment.centerRight,
+                  alignment: actionsAlignment,
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    alignment: WrapAlignment.end,
+                    alignment: actionsWrapAlignment,
                     children: actions,
                   ),
                 ),

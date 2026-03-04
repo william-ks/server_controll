@@ -67,14 +67,58 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
         builder: (_) => AppModal(
           icon: Icons.delete_outline_rounded,
           title: 'Remover jogador',
-          body: Text('Deseja remover $nickname da whitelist?'),
+          width: 600,
+          showFooterDivider: false,
+          actionsAlignment: Alignment.center,
+          actionsWrapAlignment: WrapAlignment.center,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Você está prestes a remover "$nickname" da whitelist local do MineControl.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Essa ação remove o jogador da listagem e da sincronização automática com o servidor.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Pode ser necessário reiniciar o servidor para ter efeito.',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           actions: [
-            AppButton(
-              label: 'Cancelar',
+            TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              variant: AppVariant.danger,
-              transparent: true,
-              icon: Icons.close_rounded,
+              child: const Text('Cancelar'),
             ),
             AppButton(
               label: 'Confirmar',
