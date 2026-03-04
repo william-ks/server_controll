@@ -9,11 +9,13 @@ class WhitelistActionsBar extends StatelessWidget {
     required this.onAdd,
     required this.onRefresh,
     required this.onSyncPending,
+    this.syncEnabled = true,
   });
 
   final VoidCallback onAdd;
   final VoidCallback onRefresh;
   final VoidCallback onSyncPending;
+  final bool syncEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +39,8 @@ class WhitelistActionsBar extends StatelessWidget {
         AppButton(
           label: 'Sincronizar',
           icon: Icons.sync_rounded,
-          onPressed: onSyncPending,
+          onPressed: syncEnabled ? onSyncPending : null,
+          isDisabled: !syncEnabled,
           variant: AppVariant.warning,
           transparent: true,
         ),

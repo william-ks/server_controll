@@ -28,6 +28,8 @@ class AppModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final dividerColor = Theme.of(context).dividerColor;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final effectiveBodyHeight = (screenHeight * 0.58).clamp(180.0, maxBodyHeight);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: AppStyles.radiusLg),
@@ -70,7 +72,7 @@ class AppModal extends StatelessWidget {
                   color: dividerColor,
                 ),
               ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: maxBodyHeight),
+                constraints: BoxConstraints(maxHeight: effectiveBodyHeight),
                 child: SingleChildScrollView(child: body),
               ),
               if (actions.isNotEmpty) ...[

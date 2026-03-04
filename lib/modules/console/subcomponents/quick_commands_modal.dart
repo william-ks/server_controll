@@ -11,14 +11,12 @@ class QuickCommandItem {
     required this.description,
     required this.displayCommand,
     required this.rawCommand,
-    this.example,
   });
 
   final String title;
   final String description;
   final String displayCommand;
   final String rawCommand;
-  final String? example;
 }
 
 class QuickCommandsModal extends StatelessWidget {
@@ -34,28 +32,24 @@ class QuickCommandsModal extends StatelessWidget {
         description: 'Envia uma mensagem no chat do servidor.',
         displayCommand: '/say <mensagem>',
         rawCommand: 'say <mensagem>',
-        example: 'Ex.: /say <mensagem>',
       ),
       const QuickCommandItem(
         title: 'Listar jogadores',
         description: 'Mostra os jogadores online no momento.',
         displayCommand: '/list',
         rawCommand: 'list',
-        example: 'Ex.: /list',
       ),
       const QuickCommandItem(
         title: 'Desconectar jogador',
         description: 'Remove um jogador online com mensagem personalizada.',
         displayCommand: '/kick <jogador> "<mensagem>"',
         rawCommand: 'kick <jogador> "<mensagem>"',
-        example: 'Ex.: /kick <jogador> "servidor administrado pelo Minecontrol"',
       ),
       const QuickCommandItem(
         title: 'Definir dia',
         description: 'Ajusta o tempo do mundo para período diurno.',
         displayCommand: '/time set day',
         rawCommand: 'time set day',
-        example: 'Ex.: /time set day',
       ),
     ];
 
@@ -63,15 +57,16 @@ class QuickCommandsModal extends StatelessWidget {
       icon: Icons.help_outline_rounded,
       title: 'Comandos rápidos',
       width: 700,
-      maxBodyHeight: 500,
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final item in commands) ...[
-            QuickCommandCard(item: item, onInsert: onInsert),
-            const SizedBox(height: 10),
-          ],
-        ],
+      maxBodyHeight: 430,
+      body: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: commands.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (_, index) {
+          final item = commands[index];
+          return QuickCommandCard(item: item, onInsert: onInsert);
+        },
       ),
       actions: [
         AppButton(
@@ -156,13 +151,6 @@ class QuickCommandCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (item.example != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    item.example!,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ],
               ],
             ),
           ),

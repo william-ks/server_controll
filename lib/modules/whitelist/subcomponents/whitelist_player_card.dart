@@ -21,88 +21,91 @@ class WhitelistPlayerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final noUuid = player.uuid == null || player.uuid!.trim().isEmpty;
-    final statusColor = isOnline ? AppColors.success : AppColors.danger.withValues(alpha: 0.85);
     final scheme = Theme.of(context).colorScheme;
+    final statusColor = isOnline ? AppColors.success : scheme.onSurfaceVariant.withValues(alpha: 0.86);
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: noUuid ? AppColors.secondary.withValues(alpha: 0.45) : Theme.of(context).dividerColor,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: noUuid ? 0.2 : 0.12),
-            blurRadius: noUuid ? 12 : 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          WhitelistPlayerAvatar(iconPath: player.iconPath),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  player.nickname,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                Text(player.uuid?.trim().isNotEmpty == true ? player.uuid! : 'UID vazio',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-                const SizedBox(height: 8),
-                _StatusChip(
-                  label: isOnline ? 'ONLINE' : 'OFFLINE',
-                  color: statusColor,
-                ),
-              ],
+    return Stack(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: scheme.surface.withValues(alpha: 0.98),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: noUuid ? scheme.secondary.withValues(alpha: 0.28) : Theme.of(context).dividerColor,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: noUuid ? 0.18 : 0.1),
+                blurRadius: noUuid ? 12 : 7,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (player.isPending)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
-                  ),
-                  child: Text(
-                    'PENDENTE',
-                    style: TextStyle(
-                      color: AppColors.warning,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
+              WhitelistPlayerAvatar(iconPath: player.iconPath, radius: 30),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      player.nickname,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      player.uuid?.trim().isNotEmpty == true ? player.uuid! : 'UID vazio',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant.withValues(alpha: 0.95),
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    _StatusChip(label: isOnline ? 'ONLINE' : 'OFFLINE', color: statusColor),
+                  ],
                 ),
+              ),
+              const SizedBox(width: 8),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
                     onPressed: onEdit,
-                    icon: Icon(Icons.edit_rounded, color: scheme.secondary),
+                    icon: Icon(Icons.edit_rounded, color: scheme.secondary.withValues(alpha: 0.92)),
                   ),
                   IconButton(
                     onPressed: onDelete,
-                    icon: Icon(Icons.delete_outline_rounded, color: AppColors.danger.withValues(alpha: 0.8)),
+                    icon: Icon(Icons.delete_outline_rounded, color: AppColors.danger.withValues(alpha: 0.72)),
                   ),
                 ],
               ),
             ],
           ),
-        ],
-      ),
+        ),
+        if (player.isPending)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.28)),
+              ),
+              child: Text(
+                'PENDENTE',
+                style: TextStyle(
+                  color: AppColors.warning.withValues(alpha: 0.92),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10.5,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -118,9 +121,9 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

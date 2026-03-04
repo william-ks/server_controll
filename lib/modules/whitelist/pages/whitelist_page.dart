@@ -5,6 +5,7 @@ import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../../models/server_lifecycle_state.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
 import '../../server/providers/server_runtime_provider.dart';
@@ -37,6 +38,8 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
     final state = ref.watch(whitelistProvider);
     final notifier = ref.read(whitelistProvider.notifier);
     final onlinePlayers = ref.watch(onlinePlayersProvider);
+    final runtime = ref.watch(serverRuntimeProvider);
+    final canSync = runtime.lifecycle == ServerLifecycleState.online;
 
     Future<void> openModal({int? id}) async {
       final player = id == null
@@ -122,6 +125,7 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                 onAdd: () => openModal(),
                 onRefresh: notifier.refreshAndSyncFromFile,
                 onSyncPending: notifier.syncPending,
+                syncEnabled: canSync,
               ),
               const SizedBox(height: 12),
               if (state.loading) const LinearProgressIndicator(),

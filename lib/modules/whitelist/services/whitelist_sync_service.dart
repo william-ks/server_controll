@@ -33,6 +33,8 @@ class WhitelistSyncService {
     final localByNickname = {
       for (final player in localPlayers) player.nickname.toLowerCase(): player,
     };
+    final serverUuids = <String>{};
+    final serverNames = <String>{};
 
     for (final item in parsed.whereType<Map>()) {
       final nickname = (item['name'] as String?)?.trim();
@@ -40,6 +42,10 @@ class WhitelistSyncService {
         continue;
       }
       final uuid = item['uuid'] as String?;
+      if (uuid != null && uuid.trim().isNotEmpty) {
+        serverUuids.add(uuid.trim().toLowerCase());
+      }
+      serverNames.add(nickname.toLowerCase());
       final existing = localByNickname[nickname.toLowerCase()];
       final now = DateTime.now();
       final player = (existing ??
@@ -60,6 +66,24 @@ class WhitelistSyncService {
           );
 
       await _repository.upsertByNickname(player);
+    }
+
+    final refreshed = await _repository.getAll();
+    for (final player in refreshed) {
+      final uuid = player.uuid?.trim();
+      final hasUuidInServerFile = uuid != null && uuid.isNotEmpty && serverUuids.contains(uuid.toLowerCase());
+      final hasNameInServerFile = serverNames.contains(player.nickname.toLowerCase());
+
+      final shouldBePending = !hasUuidInServerFile || !hasNameInServerFile;
+      if (player.isPending != shouldBePending || player.isAdded == shouldBePending) {
+        await _repository.upsertByNickname(
+          player.copyWith(
+            isPending: shouldBePending,
+            isAdded: !shouldBePending,
+            updatedAt: DateTime.now(),
+          ),
+        );
+      }
     }
 
     return _repository.getAll();
