@@ -93,13 +93,13 @@ class _SidebarTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Icon(icon, color: active ? scheme.primary : scheme.onSurfaceVariant),
+              Icon(icon, color: active ? scheme.primary : ext.sidebarMutedText),
               const SizedBox(width: 12),
               Text(
                 label,
                 style: TextStyle(
                   fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                  color: scheme.onSurface,
+                  color: active ? ext.sidebarText : ext.sidebarMutedText,
                 ),
               ),
             ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../config/theme/app_colors.dart';
+import '../../../config/theme/app_theme_extension.dart';
 import '../models/whitelist_player.dart';
 import 'whitelist_player_avatar.dart';
 
@@ -22,6 +23,7 @@ class WhitelistPlayerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final noUuid = player.uuid == null || player.uuid!.trim().isEmpty;
     final scheme = Theme.of(context).colorScheme;
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final statusColor = isOnline ? AppColors.success : scheme.onSurfaceVariant.withValues(alpha: 0.86);
 
     return Stack(
@@ -31,9 +33,7 @@ class WhitelistPlayerCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: scheme.surface.withValues(alpha: 0.98),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: noUuid ? scheme.secondary.withValues(alpha: 0.28) : Theme.of(context).dividerColor,
-            ),
+            border: Border.all(color: Theme.of(context).dividerColor),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: noUuid ? 0.18 : 0.1),
@@ -45,6 +45,15 @@ class WhitelistPlayerCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              Container(
+                width: 4,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(width: 10),
               WhitelistPlayerAvatar(iconPath: player.iconPath, radius: 30),
               const SizedBox(width: 14),
               Expanded(
@@ -57,9 +66,9 @@ class WhitelistPlayerCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      player.uuid?.trim().isNotEmpty == true ? player.uuid! : 'UID vazio',
+                      'UID: ${player.uuid?.trim().isNotEmpty == true ? player.uuid! : 'vazio'}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant.withValues(alpha: 0.95),
+                            color: ext.mutedText,
                           ),
                     ),
                     const SizedBox(height: 8),
@@ -73,7 +82,7 @@ class WhitelistPlayerCard extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: onEdit,
-                    icon: Icon(Icons.edit_rounded, color: scheme.secondary.withValues(alpha: 0.92)),
+                    icon: Icon(Icons.edit_rounded, color: AppColors.info.withValues(alpha: 0.9)),
                   ),
                   IconButton(
                     onPressed: onDelete,

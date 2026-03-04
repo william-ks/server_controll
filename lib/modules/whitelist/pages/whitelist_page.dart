@@ -139,8 +139,10 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                 child: filtered.isEmpty
                     ? const WhitelistEmptyState()
                     : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                        clipBehavior: Clip.none,
                         itemCount: filtered.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 14),
                         itemBuilder: (_, index) {
                           final player = filtered[index];
                           return WhitelistPlayerCard(

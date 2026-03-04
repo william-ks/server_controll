@@ -20,6 +20,12 @@ Status da base implementada:
   - validações de existência de path/arquivo com badges;
   - validações de RAM (`min <= max`) e tempo de restart;
   - `Salvar` habilitado apenas com alterações válidas (dirty state) e `Cancelar` exibido apenas quando houver edição.
+- padronização global de input/select:
+  - background ativo unificado para `focus/hover/preenchido` via tokens no tema (`inputFillNormal`/`inputFillActive`);
+  - aplicado em campos padrão e selects para consistência visual em páginas e modais.
+- whitelist refinada:
+  - card único padronizado com avatar maior, UID em texto muted, badges consistentes e ações centralizadas;
+  - regra de pendência normalizada a partir dos dados persistidos (UUID/estado adicionado) durante carregamento.
 
 Regra:
 - qualquer mudança relevante de arquitetura, fluxo ou comportamento deve manter este arquivo e `docs/minecontrol_documentacao_v2.md` sincronizados.

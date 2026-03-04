@@ -72,7 +72,23 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
 
     try {
       final players = await _repository.getAll();
-      state = state.copyWith(players: players, loading: false);
+      final normalized = <WhitelistPlayer>[];
+      for (final player in players) {
+        final hasUuid = player.uuid != null && player.uuid!.trim().isNotEmpty;
+        final shouldBePending = !hasUuid || !player.isAdded;
+        if (player.isPending != shouldBePending) {
+          final patched = player.copyWith(
+            isPending: shouldBePending,
+            isAdded: !shouldBePending,
+            updatedAt: DateTime.now(),
+          );
+          await _repository.upsertByNickname(patched);
+          normalized.add(patched);
+        } else {
+          normalized.add(player);
+        }
+      }
+      state = state.copyWith(players: normalized, loading: false);
     } catch (error) {
       state = state.copyWith(loading: false, error: error.toString());
     }

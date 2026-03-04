@@ -58,6 +58,11 @@ class AppTheme {
         subtleDivider: AppColors.textPrimaryLight.withValues(alpha: 0.1),
         selectedIndicator: AppColors.primary,
         hoverOverlay: AppColors.primary.withValues(alpha: 0.16),
+        mutedText: const Color(0xFF64748B),
+        sidebarText: const Color(0xFF282828),
+        sidebarMutedText: const Color(0xFF3A3A3A),
+        inputFillNormal: const Color(0xFFF8FAFC),
+        inputFillActive: const Color(0xFFEFF6FF),
       ),
     ],
   );
@@ -112,6 +117,11 @@ class AppTheme {
         subtleDivider: Colors.white.withValues(alpha: 0.1),
         selectedIndicator: AppColors.primary,
         hoverOverlay: AppColors.primary.withValues(alpha: 0.16),
+        mutedText: Colors.white.withValues(alpha: 0.64),
+        sidebarText: Colors.white.withValues(alpha: 0.92),
+        sidebarMutedText: Colors.white.withValues(alpha: 0.76),
+        inputFillNormal: const Color(0xFF222222),
+        inputFillActive: const Color(0xFF26303A),
       ),
     ],
   );

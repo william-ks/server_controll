@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-class AppTextInput extends StatelessWidget {
+import '../../config/theme/app_theme_extension.dart';
+
+class AppTextInput extends StatefulWidget {
   const AppTextInput({
     super.key,
     this.label,
@@ -33,22 +35,83 @@ class AppTextInput extends StatelessWidget {
   final TextInputType? keyboardType;
 
   @override
+  State<AppTextInput> createState() => _AppTextInputState();
+}
+
+class _AppTextInputState extends State<AppTextInput> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool get _hasValue => widget.controller?.text.trim().isNotEmpty == true;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller?.addListener(_onControllerChanged);
+    widget.focusNode?.addListener(_onFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppTextInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?.removeListener(_onControllerChanged);
+      widget.controller?.addListener(_onControllerChanged);
+    }
+    if (oldWidget.focusNode != widget.focusNode) {
+      oldWidget.focusNode?.removeListener(_onFocusChanged);
+      widget.focusNode?.addListener(_onFocusChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller?.removeListener(_onControllerChanged);
+    widget.focusNode?.removeListener(_onFocusChanged);
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onFocusChanged() {
+    if (mounted) {
+      setState(() => _focused = widget.focusNode?.hasFocus ?? false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      focusNode: focusNode,
-      enabled: enabled,
-      readOnly: readOnly,
-      onTap: onTap,
-      onSubmitted: onSubmitted,
-      onChanged: onChanged,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: prefixIcon,
-        suffixIcon: suffixIcon,
-        errorText: errorText,
+    final ext = Theme.of(context).extension<AppThemeExtension>();
+    final bool activeBackground = _hovered || _focused || _hasValue;
+    final fillColor = activeBackground ? ext?.inputFillActive : ext?.inputFillNormal;
+
+    return Focus(
+      onFocusChange: (hasFocus) => setState(() => _focused = hasFocus),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: TextField(
+          controller: widget.controller,
+          focusNode: widget.focusNode,
+          enabled: widget.enabled,
+          readOnly: widget.readOnly,
+          onTap: widget.onTap,
+          onSubmitted: widget.onSubmitted,
+          onChanged: widget.onChanged,
+          keyboardType: widget.keyboardType,
+          decoration: InputDecoration(
+            labelText: widget.label,
+            hintText: widget.hint,
+            prefixIcon: widget.prefixIcon,
+            suffixIcon: widget.suffixIcon,
+            errorText: widget.errorText,
+            fillColor: fillColor,
+          ),
+        ),
       ),
     );
   }

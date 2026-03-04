@@ -9,6 +9,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color subtleDivider;
   final Color selectedIndicator;
   final Color hoverOverlay;
+  final Color mutedText;
+  final Color sidebarText;
+  final Color sidebarMutedText;
+  final Color inputFillNormal;
+  final Color inputFillActive;
 
   const AppThemeExtension({
     required this.cardBackground,
@@ -18,6 +23,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.subtleDivider,
     required this.selectedIndicator,
     required this.hoverOverlay,
+    required this.mutedText,
+    required this.sidebarText,
+    required this.sidebarMutedText,
+    required this.inputFillNormal,
+    required this.inputFillActive,
   });
 
   @override
@@ -29,6 +39,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? subtleDivider,
     Color? selectedIndicator,
     Color? hoverOverlay,
+    Color? mutedText,
+    Color? sidebarText,
+    Color? sidebarMutedText,
+    Color? inputFillNormal,
+    Color? inputFillActive,
   }) {
     return AppThemeExtension(
       cardBackground: cardBackground ?? this.cardBackground,
@@ -38,6 +53,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       subtleDivider: subtleDivider ?? this.subtleDivider,
       selectedIndicator: selectedIndicator ?? this.selectedIndicator,
       hoverOverlay: hoverOverlay ?? this.hoverOverlay,
+      mutedText: mutedText ?? this.mutedText,
+      sidebarText: sidebarText ?? this.sidebarText,
+      sidebarMutedText: sidebarMutedText ?? this.sidebarMutedText,
+      inputFillNormal: inputFillNormal ?? this.inputFillNormal,
+      inputFillActive: inputFillActive ?? this.inputFillActive,
     );
   }
 
@@ -55,6 +75,11 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       subtleDivider: Color.lerp(subtleDivider, other.subtleDivider, t) ?? subtleDivider,
       selectedIndicator: Color.lerp(selectedIndicator, other.selectedIndicator, t) ?? selectedIndicator,
       hoverOverlay: Color.lerp(hoverOverlay, other.hoverOverlay, t) ?? hoverOverlay,
+      mutedText: Color.lerp(mutedText, other.mutedText, t) ?? mutedText,
+      sidebarText: Color.lerp(sidebarText, other.sidebarText, t) ?? sidebarText,
+      sidebarMutedText: Color.lerp(sidebarMutedText, other.sidebarMutedText, t) ?? sidebarMutedText,
+      inputFillNormal: Color.lerp(inputFillNormal, other.inputFillNormal, t) ?? inputFillNormal,
+      inputFillActive: Color.lerp(inputFillActive, other.inputFillActive, t) ?? inputFillActive,
     );
   }
 }
