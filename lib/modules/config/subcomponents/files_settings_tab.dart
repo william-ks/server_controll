@@ -66,8 +66,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     _javaCommandController.dispose();
     _jvmArgsController.dispose();
     _restartWaitController.dispose();
-
-    unawaited(ref.read(configFilesProvider.notifier).refresh());
     super.dispose();
   }
 
