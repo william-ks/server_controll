@@ -50,6 +50,15 @@ A aplicação centraliza:
 - automações por agendamento;
 - pré-geração de chunks com Chunky.
 
+### Status implementado nesta fase
+
+- Módulo `Config` com aba `Arquivos` funcional:
+  - formulário completo com seções `Arquivos`, `Comportamento` e `Ações`;
+  - validação de path e arquivo `jar` com badges de status;
+  - memória `xms/xmx` em GB com validação de limites;
+  - persistência/recuperação de configurações no SQLite (`app_settings`);
+  - estado de edição (`dirty state`) para habilitação de `Salvar` e exibição de `Cancelar`.
+
 ---
 
 ## 4. Layout geral da aplicação

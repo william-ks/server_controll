@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
 import '../../../layout/default_layout.dart';
+import '../subcomponents/files_settings_tab.dart';
 
 enum ConfigTab { arquivos, backup, propriedades }
 
@@ -113,20 +114,23 @@ class _TabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = switch (tab) {
-      ConfigTab.arquivos => 'Configurações de Arquivos em construção.',
-      ConfigTab.backup => 'Configurações de Backup em construção.',
-      ConfigTab.propriedades => 'Configurações de Propriedades em construção.',
+    return switch (tab) {
+      ConfigTab.arquivos => const FilesSettingsTab(),
+      ConfigTab.backup => _PlaceholderContent(text: 'Configurações de Backup em construção.'),
+      ConfigTab.propriedades => _PlaceholderContent(text: 'Configurações de Propriedades em construção.'),
     };
+  }
+}
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.65),
-        borderRadius: AppStyles.radiusMd,
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      padding: const EdgeInsets.all(14),
+class _PlaceholderContent extends StatelessWidget {
+  const _PlaceholderContent({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topLeft,
       child: Text(text),
     );
   }
