@@ -60,10 +60,15 @@ A aplicação centraliza:
   - estado de edição (`dirty state`) para habilitação de `Salvar` e exibição de `Cancelar`.
 - Design System refinado:
   - inputs/selects com estado visual ativo consistente quando focado, em hover ou preenchido;
+  - placeholders com token dedicado no `ThemeExtension` para melhor distinção de campos vazios;
   - novos tokens de texto auxiliar e sidebar no `ThemeExtension` para melhor legibilidade no tema claro.
 - Whitelist revisada:
-  - cards padronizados por subcomponente único com avatar maior, UID em estilo muted e badges consistentes;
+  - cards padronizados por subcomponente único com avatar maior, UUID em estilo muted e badges consistentes;
   - pendência normalizada com base no estado persistido no banco local.
+- Configurações > Arquivos:
+  - agrupamento por seções `Core` e `Memoria RAM`;
+  - switch de comportamento padronizado por componente global de card (`AppSwitchCard`);
+  - ações finais sem seção explícita e alinhadas à direita.
 
 ---
 

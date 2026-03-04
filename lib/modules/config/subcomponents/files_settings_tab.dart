@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../components/buttons/app_button.dart';
+import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../config/theme/app_colors.dart';
@@ -247,12 +248,15 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
     await _load();
   }
 
-  Widget _sectionTitle(String text) {
+  Widget _sectionTitle(String text, {Color? color}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
       ),
     );
   }
@@ -262,7 +266,7 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w400),
       ),
     );
   }
@@ -308,7 +312,7 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Arquivos'),
+          _sectionTitle('Core', color: Theme.of(context).colorScheme.secondary),
           _fieldLabel('Path do servidor:'),
           AppTextInput(
             controller: _serverPathController,
@@ -327,48 +331,6 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
               text: 'INFORME O PATH',
               variant: AppVariant.info,
               icon: Icons.info_outline_rounded,
-            ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _fieldLabel('Minimo (GB):'),
-                    AppTextInput(
-                      controller: _ramMinController,
-                      hint: 'Ex.: 2',
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _fieldLabel('Maximo (GB):'),
-                    AppTextInput(
-                      controller: _ramMaxController,
-                      hint: 'Ex.: 8',
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (_ramError != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                _ramError!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
             ),
           const SizedBox(height: 14),
           _fieldLabel('Nome do file server:'),
@@ -411,14 +373,56 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
             icon: Icons.warning_amber_rounded,
           ),
           const SizedBox(height: 22),
+          _sectionTitle('Memoria RAM'),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _fieldLabel('Minimo (GB):'),
+                    AppTextInput(
+                      controller: _ramMinController,
+                      hint: 'Ex.: 2',
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _fieldLabel('Maximo (GB):'),
+                    AppTextInput(
+                      controller: _ramMaxController,
+                      hint: 'Ex.: 8',
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (_ramError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                _ramError!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          const SizedBox(height: 22),
           _sectionTitle('Comportamento'),
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
+          AppSwitchCard(
+            label: 'Auto restart em caso de crash:',
             value: _autoRestartOnCrash,
             onChanged: (value) => setState(() => _autoRestartOnCrash = value),
-            title: const Text('Auto restart em caso de crash:'),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 10),
           _fieldLabel('Tempo de espera para restart (segundos):'),
           AppTextInput(
             controller: _restartWaitController,
@@ -436,8 +440,8 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
               ),
             ),
           const SizedBox(height: 22),
-          _sectionTitle('Acoes'),
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
               if (_isDirty)
                 AppButton(
@@ -460,9 +464,12 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
           ),
           const SizedBox(height: 12),
           if (!_isValidForSave && _isDirty)
-            Text(
-              'Revise os campos obrigatorios e validacoes antes de salvar.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.warning),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'Revise os campos obrigatorios e validacoes antes de salvar.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.warning),
+              ),
             ),
         ],
       ),

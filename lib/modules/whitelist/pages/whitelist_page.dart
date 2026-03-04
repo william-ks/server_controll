@@ -116,7 +116,7 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
             children: [
               AppTextInput(
                 controller: _searchController,
-                hint: 'Pesquisar por nickname ou UID',
+                hint: 'Pesquisar por nickname ou UUID',
                 prefixIcon: const Icon(Icons.search_rounded),
                 onChanged: (value) => setState(() => _query = value),
               ),

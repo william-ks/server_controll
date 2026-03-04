@@ -55,6 +55,7 @@ class _AppSelectState<T> extends State<AppSelect<T>> {
             hintText: widget.hint,
             errorText: widget.errorText,
             fillColor: activeBackground ? ext?.inputFillActive : ext?.inputFillNormal,
+            hintStyle: TextStyle(color: ext?.placeholderText),
           ),
           items: widget.items
               .map(

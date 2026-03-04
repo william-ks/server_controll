@@ -80,7 +80,7 @@ class _WhitelistAddPlayerFormState extends State<WhitelistAddPlayerForm> {
           prefixIcon: const Icon(Icons.person_outline_rounded),
         ),
         const SizedBox(height: 12),
-        _fieldLabel(context, 'UID'),
+        _fieldLabel(context, 'UUID'),
         AppTextInput(
           controller: widget.uuidController,
           hint: 'Ex.: 123e4567-e89b-12d3-a456-426614174000',

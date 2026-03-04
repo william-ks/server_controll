@@ -110,6 +110,7 @@ class _AppTextInputState extends State<AppTextInput> {
             suffixIcon: widget.suffixIcon,
             errorText: widget.errorText,
             fillColor: fillColor,
+            hintStyle: TextStyle(color: ext?.placeholderText),
           ),
         ),
       ),

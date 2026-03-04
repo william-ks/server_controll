@@ -14,6 +14,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color sidebarMutedText;
   final Color inputFillNormal;
   final Color inputFillActive;
+  final Color placeholderText;
 
   const AppThemeExtension({
     required this.cardBackground,
@@ -28,6 +29,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.sidebarMutedText,
     required this.inputFillNormal,
     required this.inputFillActive,
+    required this.placeholderText,
   });
 
   @override
@@ -44,6 +46,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? sidebarMutedText,
     Color? inputFillNormal,
     Color? inputFillActive,
+    Color? placeholderText,
   }) {
     return AppThemeExtension(
       cardBackground: cardBackground ?? this.cardBackground,
@@ -58,6 +61,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       sidebarMutedText: sidebarMutedText ?? this.sidebarMutedText,
       inputFillNormal: inputFillNormal ?? this.inputFillNormal,
       inputFillActive: inputFillActive ?? this.inputFillActive,
+      placeholderText: placeholderText ?? this.placeholderText,
     );
   }
 
@@ -80,6 +84,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       sidebarMutedText: Color.lerp(sidebarMutedText, other.sidebarMutedText, t) ?? sidebarMutedText,
       inputFillNormal: Color.lerp(inputFillNormal, other.inputFillNormal, t) ?? inputFillNormal,
       inputFillActive: Color.lerp(inputFillActive, other.inputFillActive, t) ?? inputFillActive,
+      placeholderText: Color.lerp(placeholderText, other.placeholderText, t) ?? placeholderText,
     );
   }
 }

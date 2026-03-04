@@ -34,6 +34,7 @@ class AppTheme {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
+      hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       border: OutlineInputBorder(
@@ -63,6 +64,7 @@ class AppTheme {
         sidebarMutedText: const Color(0xFF3A3A3A),
         inputFillNormal: const Color(0xFFF8FAFC),
         inputFillActive: const Color(0xFFEFF6FF),
+        placeholderText: const Color(0xFF94A3B8),
       ),
     ],
   );
@@ -93,6 +95,7 @@ class AppTheme {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: const Color(0xFF222222),
+      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.42)),
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       border: OutlineInputBorder(
@@ -122,6 +125,7 @@ class AppTheme {
         sidebarMutedText: Colors.white.withValues(alpha: 0.76),
         inputFillNormal: const Color(0xFF222222),
         inputFillActive: const Color(0xFF26303A),
+        placeholderText: Colors.white.withValues(alpha: 0.42),
       ),
     ],
   );

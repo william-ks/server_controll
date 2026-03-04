@@ -66,7 +66,7 @@ class WhitelistPlayerCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'UID: ${player.uuid?.trim().isNotEmpty == true ? player.uuid! : 'vazio'}',
+                      'UUID: ${player.uuid?.trim().isNotEmpty == true ? player.uuid! : 'vazio'}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: ext.mutedText,
                           ),

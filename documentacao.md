@@ -22,10 +22,15 @@ Status da base implementada:
   - `Salvar` habilitado apenas com alterações válidas (dirty state) e `Cancelar` exibido apenas quando houver edição.
 - padronização global de input/select:
   - background ativo unificado para `focus/hover/preenchido` via tokens no tema (`inputFillNormal`/`inputFillActive`);
+  - placeholders globais com token dedicado (`placeholderText`) para contraste claro entre dica e texto digitado;
   - aplicado em campos padrão e selects para consistência visual em páginas e modais.
 - whitelist refinada:
-  - card único padronizado com avatar maior, UID em texto muted, badges consistentes e ações centralizadas;
+  - card único padronizado com avatar maior, UUID em texto muted, badges consistentes e ações centralizadas;
   - regra de pendência normalizada a partir dos dados persistidos (UUID/estado adicionado) durante carregamento.
+- `Config > Arquivos` reorganizado:
+  - seções `Core` (secondary) e `Memoria RAM` com labels em peso regular;
+  - componente global `AppSwitchCard` aplicado em `Auto restart em caso de crash`;
+  - área de ações sem título, alinhada à direita.
 
 Regra:
 - qualquer mudança relevante de arquitetura, fluxo ou comportamento deve manter este arquivo e `docs/minecontrol_documentacao_v2.md` sincronizados.
