@@ -1,5 +1,5 @@
 name: server_controll
-description: "A new Flutter project."
+description: "MineControl - local Minecraft server controller"
 publish_to: 'none'
 version: 0.1.0
 
@@ -9,6 +9,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_riverpod: ^3.0.3
+  sqflite_common_ffi: ^2.3.6
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  intl: ^0.20.2
+  file_picker: ^10.3.2
 
 dev_dependencies:
   flutter_test:
