@@ -8,6 +8,7 @@ class ServerActionsBar extends StatelessWidget {
   const ServerActionsBar({
     super.key,
     required this.lifecycle,
+    required this.canStartServer,
     required this.onStart,
     required this.onStop,
     required this.onRestart,
@@ -16,6 +17,7 @@ class ServerActionsBar extends StatelessWidget {
   });
 
   final ServerLifecycleState lifecycle;
+  final bool canStartServer;
   final VoidCallback onStart;
   final VoidCallback onStop;
   final VoidCallback onRestart;
@@ -35,7 +37,8 @@ class ServerActionsBar extends StatelessWidget {
         if (!isOnline && !isStarting)
           AppButton(
             label: 'Iniciar servidor',
-            onPressed: onStart,
+            onPressed: canStartServer ? onStart : null,
+            isDisabled: !canStartServer,
             variant: AppVariant.primary,
             icon: Icons.play_arrow_rounded,
           ),

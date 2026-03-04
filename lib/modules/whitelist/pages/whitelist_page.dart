@@ -39,7 +39,7 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
     final notifier = ref.read(whitelistProvider.notifier);
     final onlinePlayers = ref.watch(onlinePlayersProvider);
     final runtime = ref.watch(serverRuntimeProvider);
-    final canSync = runtime.lifecycle == ServerLifecycleState.online;
+    final requirements = ref.watch(whitelistRequirementsProvider);
 
     Future<void> openModal({int? id}) async {
       final player = id == null
@@ -125,7 +125,36 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                 onAdd: () => openModal(),
                 onRefresh: notifier.refreshAndSyncFromFile,
                 onSyncPending: notifier.syncPending,
-                syncEnabled: canSync,
+                addEnabled: requirements.maybeWhen(data: (data) => data.canManagePlayers, orElse: () => false),
+                syncEnabled: requirements.maybeWhen(
+                  data: (data) => data.canManagePlayers && runtime.lifecycle == ServerLifecycleState.online,
+                  orElse: () => false,
+                ),
+              ),
+              requirements.when(
+                data: (data) {
+                  if (!data.hasEssentialConfig) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        'Defina Path do servidor, Comando do Java e Nome do file server em Config > Arquivos antes de gerenciar a whitelist.',
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
+                    );
+                  }
+                  if (!data.hasWhitelistFile) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Text(
+                        'Arquivo whitelist.json não encontrado em ${data.whitelistFilePath}.',
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
               ),
               const SizedBox(height: 12),
               if (state.loading) const LinearProgressIndicator(),

@@ -47,7 +47,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: AppStyles.radiusSm,
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+        borderSide: const BorderSide(color: Color(0xFF8A94A6), width: 1.4),
       ),
     ),
     extensions: <ThemeExtension<dynamic>>[
@@ -63,8 +63,8 @@ class AppTheme {
         sidebarText: const Color(0xFF282828),
         sidebarMutedText: const Color(0xFF3A3A3A),
         inputFillNormal: const Color(0xFFF8FAFC),
-        inputHoverBackground: const Color(0xFFF3F4F6),
-        inputActiveBackground: const Color(0xFFF1F3F5),
+        inputHoverBackground: const Color(0xFFF1F2F4),
+        inputActiveBackground: const Color(0xFFEDEFF2),
         placeholderText: const Color(0xFF94A3B8),
       ),
     ],
@@ -109,7 +109,7 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: AppStyles.radiusSm,
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+        borderSide: const BorderSide(color: Color(0xFF5E6673), width: 1.4),
       ),
     ),
     extensions: <ThemeExtension<dynamic>>[
@@ -125,8 +125,8 @@ class AppTheme {
         sidebarText: Colors.white.withValues(alpha: 0.92),
         sidebarMutedText: Colors.white.withValues(alpha: 0.76),
         inputFillNormal: const Color(0xFF222222),
-        inputHoverBackground: const Color(0xFF27292C),
-        inputActiveBackground: const Color(0xFF2A2D31),
+        inputHoverBackground: const Color(0xFF282A2D),
+        inputActiveBackground: const Color(0xFF2D3034),
         placeholderText: Colors.white.withValues(alpha: 0.42),
       ),
     ],

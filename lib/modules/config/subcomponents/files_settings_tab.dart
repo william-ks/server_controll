@@ -238,11 +238,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
       final settings = _toSettings();
       await ref.read(configFilesProvider.notifier).saveToDb(settings);
       _initialSnapshot = _snapshot();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Configuracoes salvas com sucesso.')),
-        );
-      }
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);

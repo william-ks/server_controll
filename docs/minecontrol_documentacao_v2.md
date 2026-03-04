@@ -71,6 +71,12 @@ A aplicação centraliza:
   - ações finais sem seção explícita e alinhadas à direita.
   - provider dedicado para persistência total das configurações de arquivos e refresh de estado ao navegar nas abas.
   - sem obrigatoriedade de campos para salvar (badges de validação permanecem apenas informativos).
+  - salvamento silencioso (sem snackbar de sucesso).
+- Home:
+  - inicialização do servidor bloqueada quando configurações essenciais não estiverem definidas.
+- Whitelist:
+  - depende de configurações essenciais e da existência de `whitelist.json` no diretório do servidor para habilitar adicionar/sincronizar;
+  - exibe alerta visual quando o arquivo não é encontrado.
 
 ---
 

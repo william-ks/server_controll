@@ -40,6 +40,14 @@ Status da base implementada:
   - estados de badge informativos não bloqueiam salvamento.
 - inputs com estados ativos menos saturados:
   - tokens `inputHoverBackground` e `inputActiveBackground` substituem o destaque azulado intenso.
+- Home:
+  - botão `Iniciar servidor` desabilitado quando faltar qualquer configuração essencial (`serverPath`, `javaCommand`, `fileServerName`).
+- Whitelist:
+  - ações de adicionar/sincronizar bloqueadas sem configurações essenciais;
+  - validação explícita da presença de `whitelist.json` em `serverPath/whitelist.json`, com alerta visual quando ausente;
+  - ordem dos botões ajustada (`Sincronizar`, `Refresh`, `Adicionar jogador`).
+- Config > Arquivos:
+  - removida mensagem de sucesso por snackbar após salvar.
 
 Regra:
 - qualquer mudança relevante de arquitetura, fluxo ou comportamento deve manter este arquivo e `docs/minecontrol_documentacao_v2.md` sincronizados.

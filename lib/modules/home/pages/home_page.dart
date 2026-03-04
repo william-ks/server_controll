@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_theme_extension.dart';
 import '../../../layout/default_layout.dart';
+import '../../config/providers/config_files_provider.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../providers/home_provider.dart';
 import '../subcomponents/active_players_card.dart';
@@ -21,6 +22,10 @@ class HomePage extends ConsumerWidget {
     final runtime = ref.watch(serverRuntimeProvider);
     final actions = ref.read(homeActionsProvider);
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final config = ref.watch(configFilesProvider);
+    final hasEssentials = config.serverPath.trim().isNotEmpty &&
+        config.javaCommand.trim().isNotEmpty &&
+        config.fileServerName.trim().isNotEmpty;
 
     return DefaultLayout(
       title: 'MineControl',
@@ -63,6 +68,7 @@ class HomePage extends ConsumerWidget {
               const SizedBox(height: 16),
               ServerActionsBar(
                 lifecycle: runtime.lifecycle,
+                canStartServer: hasEssentials,
                 onStart: actions.startServer,
                 onStop: actions.stopServer,
                 onRestart: actions.restartServer,
@@ -78,6 +84,15 @@ class HomePage extends ConsumerWidget {
                   );
                 },
               ),
+              if (!hasEssentials) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Defina Path do servidor, Comando do Java e Nome do file server em Config > Arquivos para iniciar.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                ),
+              ],
               if (runtime.lastError != null) ...[
                 const SizedBox(height: 12),
                 Text(

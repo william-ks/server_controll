@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
+import '../../../database/app_database.dart';
+import '../../config/providers/config_files_provider.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../../models/server_runtime_state.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
@@ -44,6 +48,37 @@ final whitelistSyncServiceProvider = Provider<WhitelistSyncService>((ref) {
 });
 
 final whitelistProvider = NotifierProvider<WhitelistNotifier, WhitelistState>(WhitelistNotifier.new);
+
+class WhitelistRequirements {
+  const WhitelistRequirements({
+    required this.hasEssentialConfig,
+    required this.hasWhitelistFile,
+    required this.whitelistFilePath,
+  });
+
+  final bool hasEssentialConfig;
+  final bool hasWhitelistFile;
+  final String whitelistFilePath;
+
+  bool get canManagePlayers => hasEssentialConfig && hasWhitelistFile;
+}
+
+final whitelistRequirementsProvider = FutureProvider<WhitelistRequirements>((ref) async {
+  final config = ref.watch(configFilesProvider);
+  final hasEssentialConfig = config.serverPath.trim().isNotEmpty &&
+      config.javaCommand.trim().isNotEmpty &&
+      config.fileServerName.trim().isNotEmpty;
+
+  final whitelistPath = await AppDatabase.instance.getSetting('whitelist_path') ?? 'whitelist.json';
+  final fullPath = config.serverPath.trim().isEmpty ? whitelistPath : p.join(config.serverPath.trim(), whitelistPath);
+  final hasWhitelistFile = config.serverPath.trim().isNotEmpty && File(fullPath).existsSync();
+
+  return WhitelistRequirements(
+    hasEssentialConfig: hasEssentialConfig,
+    hasWhitelistFile: hasWhitelistFile,
+    whitelistFilePath: fullPath,
+  );
+});
 
 class WhitelistNotifier extends Notifier<WhitelistState> {
   WhitelistRepository get _repository => ref.read(whitelistRepositoryProvider);
