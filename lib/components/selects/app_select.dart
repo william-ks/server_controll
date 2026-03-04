@@ -41,7 +41,7 @@ class _AppSelectState<T> extends State<AppSelect<T>> {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>();
     final hasValue = widget.value != null;
-    final activeBackground = _hovered || _focused || hasValue;
+    final hasActiveState = _focused || hasValue;
 
     return Focus(
       onFocusChange: (hasFocus) => setState(() => _focused = hasFocus),
@@ -54,7 +54,9 @@ class _AppSelectState<T> extends State<AppSelect<T>> {
             labelText: widget.label,
             hintText: widget.hint,
             errorText: widget.errorText,
-            fillColor: activeBackground ? ext?.inputFillActive : ext?.inputFillNormal,
+            fillColor: hasActiveState
+                ? ext?.inputActiveBackground
+                : (_hovered ? ext?.inputHoverBackground : ext?.inputFillNormal),
             hintStyle: TextStyle(color: ext?.placeholderText),
           ),
           items: widget.items

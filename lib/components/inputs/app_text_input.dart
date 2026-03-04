@@ -86,8 +86,10 @@ class _AppTextInputState extends State<AppTextInput> {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>();
-    final bool activeBackground = _hovered || _focused || _hasValue;
-    final fillColor = activeBackground ? ext?.inputFillActive : ext?.inputFillNormal;
+    final bool hasActiveState = _focused || _hasValue;
+    final fillColor = hasActiveState
+        ? ext?.inputActiveBackground
+        : (_hovered ? ext?.inputHoverBackground : ext?.inputFillNormal);
 
     return Focus(
       onFocusChange: (hasFocus) => setState(() => _focused = hasFocus),

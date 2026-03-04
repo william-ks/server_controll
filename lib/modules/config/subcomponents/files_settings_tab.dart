@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../components/buttons/app_button.dart';
@@ -9,16 +10,17 @@ import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../config/theme/app_colors.dart';
-import '../../../database/app_database.dart';
+import '../models/config_files_settings.dart';
+import '../providers/config_files_provider.dart';
 
-class FilesSettingsTab extends StatefulWidget {
+class FilesSettingsTab extends ConsumerStatefulWidget {
   const FilesSettingsTab({super.key});
 
   @override
-  State<FilesSettingsTab> createState() => _FilesSettingsTabState();
+  ConsumerState<FilesSettingsTab> createState() => _FilesSettingsTabState();
 }
 
-class _FilesSettingsTabState extends State<FilesSettingsTab> {
+class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
   final TextEditingController _serverPathController = TextEditingController();
   final TextEditingController _ramMinController = TextEditingController();
   final TextEditingController _ramMaxController = TextEditingController();
@@ -47,7 +49,10 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
     _ramMinController.addListener(_onRamChanged);
     _ramMaxController.addListener(_onRamChanged);
     _restartWaitController.addListener(_onRestartWaitChanged);
-    _load();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadFromProvider(refresh: true);
+    });
   }
 
   @override
@@ -61,49 +66,48 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
     _javaCommandController.dispose();
     _jvmArgsController.dispose();
     _restartWaitController.dispose();
+
+    unawaited(ref.read(configFilesProvider.notifier).refresh());
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _loadFromProvider({required bool refresh}) async {
     setState(() => _isLoading = true);
-    final db = AppDatabase.instance;
-
-    final serverPath = await db.getSetting('server_dir') ?? '';
-    final jarFile = await db.getSetting('jar_file') ?? 'server.jar';
-    final javaCommand = await db.getSetting('java_command') ?? 'java';
-    final jvmArgs = await db.getSetting('jvm_args') ?? '';
-    final xms = await db.getSetting('xms') ?? '2G';
-    final xmx = await db.getSetting('xmx') ?? '8G';
-    final autoRestartRaw = await db.getSetting('auto_restart_on_crash') ?? '1';
-    final restartWaitRaw = await db.getSetting('restart_wait_seconds') ?? '10';
-
-    _serverPathController.text = serverPath;
-    _jarFileController.text = jarFile;
-    _javaCommandController.text = javaCommand;
-    _jvmArgsController.text = jvmArgs;
-    _ramMinController.text = _extractGb(xms, fallback: '2');
-    _ramMaxController.text = _extractGb(xmx, fallback: '8');
-    _autoRestartOnCrash = autoRestartRaw != '0';
-    _restartWaitController.text = restartWaitRaw;
-
+    final notifier = ref.read(configFilesProvider.notifier);
+    if (refresh) {
+      await notifier.refresh();
+    }
+    final settings = ref.read(configFilesProvider);
+    _applySettings(settings);
     await _validatePath();
     await _validateFile();
     _validateRam();
     _validateRestartWait();
-
     _initialSnapshot = _snapshot();
+
     if (mounted) {
       setState(() => _isLoading = false);
     }
   }
 
+  void _applySettings(ConfigFilesSettings settings) {
+    _serverPathController.text = settings.serverPath;
+    _jarFileController.text = settings.fileServerName;
+    _javaCommandController.text = settings.javaCommand;
+    _jvmArgsController.text = settings.jvmArgs;
+    _ramMinController.text = settings.ramMinGb;
+    _ramMaxController.text = settings.ramMaxGb;
+    _autoRestartOnCrash = settings.autoRestartOnCrash;
+    _restartWaitController.text = settings.restartWaitSeconds;
+  }
+
   Future<void> _validatePath() async {
-    final path = _serverPathController.text.trim();
-    if (path.isEmpty) {
+    final serverPath = _serverPathController.text.trim();
+    if (serverPath.isEmpty) {
       setState(() => _pathExists = false);
       return;
     }
-    final exists = await Directory(path).exists();
+    final exists = await Directory(serverPath).exists();
     if (mounted) {
       setState(() => _pathExists = exists);
     }
@@ -116,7 +120,9 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
       setState(() => _fileExists = false);
       return;
     }
-    final exists = await File(p.join(serverPath, fileName)).exists();
+
+    final filePath = p.join(serverPath, fileName);
+    final exists = await File(filePath).exists();
     if (mounted) {
       setState(() => _fileExists = exists);
     }
@@ -127,7 +133,9 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
     _pathDebounce = Timer(const Duration(milliseconds: 320), () async {
       await _validatePath();
       await _validateFile();
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     });
   }
 
@@ -135,7 +143,9 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
     _fileDebounce?.cancel();
     _fileDebounce = Timer(const Duration(milliseconds: 320), () async {
       await _validateFile();
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     });
   }
 
@@ -152,6 +162,10 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
   void _validateRam() {
     final min = int.tryParse(_ramMinController.text.trim());
     final max = int.tryParse(_ramMaxController.text.trim());
+    if (_ramMinController.text.trim().isEmpty || _ramMaxController.text.trim().isEmpty) {
+      _ramError = null;
+      return;
+    }
     if (min == null || max == null) {
       _ramError = 'Informe valores numericos.';
       return;
@@ -168,7 +182,12 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
   }
 
   void _validateRestartWait() {
-    final wait = int.tryParse(_restartWaitController.text.trim());
+    final waitRaw = _restartWaitController.text.trim();
+    if (!_autoRestartOnCrash || waitRaw.isEmpty) {
+      _restartError = null;
+      return;
+    }
+    final wait = int.tryParse(waitRaw);
     if (wait == null) {
       _restartError = 'Informe um valor numerico.';
       return;
@@ -178,14 +197,6 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
       return;
     }
     _restartError = null;
-  }
-
-  String _extractGb(String value, {required String fallback}) {
-    final normalized = value.trim().toUpperCase();
-    if (normalized.endsWith('G')) {
-      return normalized.substring(0, normalized.length - 1);
-    }
-    return normalized.isEmpty ? fallback : normalized;
   }
 
   String _snapshot() {
@@ -203,34 +214,29 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
 
   bool get _isDirty => _initialSnapshot != null && _snapshot() != _initialSnapshot;
 
-  bool get _isValidForSave {
-    final hasPath = _serverPathController.text.trim().isNotEmpty;
-    final hasFileName = _jarFileController.text.trim().isNotEmpty;
-    final hasJavaCommand = _javaCommandController.text.trim().isNotEmpty;
-    return hasPath &&
-        hasFileName &&
-        hasJavaCommand &&
-        _pathExists &&
-        _fileExists &&
-        _ramError == null &&
-        (_autoRestartOnCrash ? _restartError == null : true);
+  ConfigFilesSettings _toSettings() {
+    final ramMin = _ramMinController.text.trim().isEmpty ? '2' : _ramMinController.text.trim();
+    final ramMax = _ramMaxController.text.trim().isEmpty ? '8' : _ramMaxController.text.trim();
+    final restartWait = _restartWaitController.text.trim().isEmpty ? '10' : _restartWaitController.text.trim();
+
+    return ConfigFilesSettings(
+      serverPath: _serverPathController.text.trim(),
+      ramMinGb: ramMin,
+      ramMaxGb: ramMax,
+      fileServerName: _jarFileController.text.trim(),
+      javaCommand: _javaCommandController.text.trim(),
+      jvmArgs: _jvmArgsController.text.trim(),
+      autoRestartOnCrash: _autoRestartOnCrash,
+      restartWaitSeconds: restartWait,
+    );
   }
 
   Future<void> _save() async {
-    if (!_isValidForSave) {
-      return;
-    }
+    if (!_isDirty) return;
     setState(() => _isSaving = true);
     try {
-      final db = AppDatabase.instance;
-      await db.setSetting('server_dir', _serverPathController.text.trim());
-      await db.setSetting('jar_file', _jarFileController.text.trim());
-      await db.setSetting('java_command', _javaCommandController.text.trim());
-      await db.setSetting('jvm_args', _jvmArgsController.text.trim());
-      await db.setSetting('xms', '${_ramMinController.text.trim()}G');
-      await db.setSetting('xmx', '${_ramMaxController.text.trim()}G');
-      await db.setSetting('auto_restart_on_crash', _autoRestartOnCrash ? '1' : '0');
-      await db.setSetting('restart_wait_seconds', _restartWaitController.text.trim());
+      final settings = _toSettings();
+      await ref.read(configFilesProvider.notifier).saveToDb(settings);
       _initialSnapshot = _snapshot();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -245,17 +251,17 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
   }
 
   Future<void> _cancelChanges() async {
-    await _load();
+    await _loadFromProvider(refresh: true);
   }
 
-  Widget _sectionTitle(String text, {Color? color}) {
+  Widget _sectionTitle(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Text(
         text,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
-              color: color,
+              color: Theme.of(context).colorScheme.secondary,
             ),
       ),
     );
@@ -312,7 +318,7 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Core', color: Theme.of(context).colorScheme.secondary),
+          _sectionTitle('Core'),
           _fieldLabel('Path do servidor:'),
           AppTextInput(
             controller: _serverPathController,
@@ -373,7 +379,7 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
             icon: Icons.warning_amber_rounded,
           ),
           const SizedBox(height: 22),
-          _sectionTitle('Memoria RAM'),
+          _sectionTitle('Memória RAM'),
           Row(
             children: [
               Expanded(
@@ -456,18 +462,18 @@ class _FilesSettingsTabState extends State<FilesSettingsTab> {
                 label: 'Salvar',
                 onPressed: _save,
                 isLoading: _isSaving,
-                isDisabled: !_isDirty || !_isValidForSave || _isSaving,
+                isDisabled: !_isDirty || _isSaving,
                 variant: AppVariant.success,
                 icon: Icons.save_rounded,
               ),
             ],
           ),
           const SizedBox(height: 12),
-          if (!_isValidForSave && _isDirty)
+          if ((_ramError != null || _restartError != null) && _isDirty)
             Align(
               alignment: Alignment.centerRight,
               child: Text(
-                'Revise os campos obrigatorios e validacoes antes de salvar.',
+                'Existem avisos de validacao, mas o salvamento continua permitido.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.warning),
               ),
             ),

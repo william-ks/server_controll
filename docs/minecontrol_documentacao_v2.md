@@ -69,6 +69,8 @@ A aplicação centraliza:
   - agrupamento por seções `Core` e `Memoria RAM`;
   - switch de comportamento padronizado por componente global de card (`AppSwitchCard`);
   - ações finais sem seção explícita e alinhadas à direita.
+  - provider dedicado para persistência total das configurações de arquivos e refresh de estado ao navegar nas abas.
+  - sem obrigatoriedade de campos para salvar (badges de validação permanecem apenas informativos).
 
 ---
 

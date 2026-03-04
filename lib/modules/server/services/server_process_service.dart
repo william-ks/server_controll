@@ -42,13 +42,20 @@ class LocalServerProcessService implements ServerProcessService {
       return;
     }
 
-    final serverDir = await AppDatabase.instance.getSetting('server_dir') ??
-        '${Directory.current.parent.path}${Platform.pathSeparator}server_copy';
-    final javaCommand = await AppDatabase.instance.getSetting('java_command') ?? 'java';
-    final jarFile = await AppDatabase.instance.getSetting('jar_file') ??
-        'fabric-server-mc.1.21.1-loader.0.18.4-launcher.1.1.1.jar';
-    final xms = await AppDatabase.instance.getSetting('xms') ?? '2G';
-    final xmx = await AppDatabase.instance.getSetting('xmx') ?? '4G';
+    final serverDirRaw = await AppDatabase.instance.getSetting('server_dir');
+    final serverDir = (serverDirRaw == null || serverDirRaw.trim().isEmpty)
+        ? '${Directory.current.parent.path}${Platform.pathSeparator}server_copy'
+        : serverDirRaw;
+    final javaCommandRaw = await AppDatabase.instance.getSetting('java_command');
+    final javaCommand = (javaCommandRaw == null || javaCommandRaw.trim().isEmpty) ? 'java' : javaCommandRaw;
+    final jarFileRaw = await AppDatabase.instance.getSetting('jar_file');
+    final jarFile = (jarFileRaw == null || jarFileRaw.trim().isEmpty)
+        ? 'fabric-server-mc.1.21.1-loader.0.18.4-launcher.1.1.1.jar'
+        : jarFileRaw;
+    final xmsRaw = await AppDatabase.instance.getSetting('xms');
+    final xms = (xmsRaw == null || xmsRaw.trim().isEmpty) ? '2G' : xmsRaw;
+    final xmxRaw = await AppDatabase.instance.getSetting('xmx');
+    final xmx = (xmxRaw == null || xmxRaw.trim().isEmpty) ? '4G' : xmxRaw;
     final jvmArgs = await AppDatabase.instance.getSetting('jvm_args') ?? '';
 
     final args = <String>['-Xms$xms', '-Xmx$xmx'];

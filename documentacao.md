@@ -31,6 +31,15 @@ Status da base implementada:
   - seções `Core` (secondary) e `Memoria RAM` com labels em peso regular;
   - componente global `AppSwitchCard` aplicado em `Auto restart em caso de crash`;
   - área de ações sem título, alinhada à direita.
+- persistência de `Config > Arquivos` centralizada em provider:
+  - `configFilesProvider` com `loadFromDb()`, `refresh()` e `saveToDb()`;
+  - carregamento inicial no bootstrap (`main.dart`) com override de estado inicial;
+  - refresh ao entrar/sair da aba Arquivos (troca de aba + dispose).
+- validadores de caminho baseados em `serverPath`:
+  - validação de `fileServerName` sempre usa `join(serverPath, fileServerName)`;
+  - estados de badge informativos não bloqueiam salvamento.
+- inputs com estados ativos menos saturados:
+  - tokens `inputHoverBackground` e `inputActiveBackground` substituem o destaque azulado intenso.
 
 Regra:
 - qualquer mudança relevante de arquitetura, fluxo ou comportamento deve manter este arquivo e `docs/minecontrol_documentacao_v2.md` sincronizados.

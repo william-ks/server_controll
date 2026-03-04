@@ -13,7 +13,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color sidebarText;
   final Color sidebarMutedText;
   final Color inputFillNormal;
-  final Color inputFillActive;
+  final Color inputHoverBackground;
+  final Color inputActiveBackground;
   final Color placeholderText;
 
   const AppThemeExtension({
@@ -28,7 +29,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.sidebarText,
     required this.sidebarMutedText,
     required this.inputFillNormal,
-    required this.inputFillActive,
+    required this.inputHoverBackground,
+    required this.inputActiveBackground,
     required this.placeholderText,
   });
 
@@ -45,7 +47,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     Color? sidebarText,
     Color? sidebarMutedText,
     Color? inputFillNormal,
-    Color? inputFillActive,
+    Color? inputHoverBackground,
+    Color? inputActiveBackground,
     Color? placeholderText,
   }) {
     return AppThemeExtension(
@@ -60,7 +63,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       sidebarText: sidebarText ?? this.sidebarText,
       sidebarMutedText: sidebarMutedText ?? this.sidebarMutedText,
       inputFillNormal: inputFillNormal ?? this.inputFillNormal,
-      inputFillActive: inputFillActive ?? this.inputFillActive,
+      inputHoverBackground: inputHoverBackground ?? this.inputHoverBackground,
+      inputActiveBackground: inputActiveBackground ?? this.inputActiveBackground,
       placeholderText: placeholderText ?? this.placeholderText,
     );
   }
@@ -83,7 +87,10 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       sidebarText: Color.lerp(sidebarText, other.sidebarText, t) ?? sidebarText,
       sidebarMutedText: Color.lerp(sidebarMutedText, other.sidebarMutedText, t) ?? sidebarMutedText,
       inputFillNormal: Color.lerp(inputFillNormal, other.inputFillNormal, t) ?? inputFillNormal,
-      inputFillActive: Color.lerp(inputFillActive, other.inputFillActive, t) ?? inputFillActive,
+      inputHoverBackground:
+          Color.lerp(inputHoverBackground, other.inputHoverBackground, t) ?? inputHoverBackground,
+      inputActiveBackground:
+          Color.lerp(inputActiveBackground, other.inputActiveBackground, t) ?? inputActiveBackground,
       placeholderText: Color.lerp(placeholderText, other.placeholderText, t) ?? placeholderText,
     );
   }

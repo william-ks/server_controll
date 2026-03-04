@@ -16,6 +16,14 @@ class ConfigPage extends StatefulWidget {
 
 class _ConfigPageState extends State<ConfigPage> {
   ConfigTab _active = ConfigTab.arquivos;
+  int _filesReloadToken = 0;
+
+  void _setTab(ConfigTab tab) {
+    if (_active != tab && tab == ConfigTab.arquivos) {
+      _filesReloadToken++;
+    }
+    setState(() => _active = tab);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,23 +53,23 @@ class _ConfigPageState extends State<ConfigPage> {
                     _TabChip(
                       label: 'Arquivos',
                       active: _active == ConfigTab.arquivos,
-                      onTap: () => setState(() => _active = ConfigTab.arquivos),
+                      onTap: () => _setTab(ConfigTab.arquivos),
                     ),
                     _TabChip(
                       label: 'Backup',
                       active: _active == ConfigTab.backup,
-                      onTap: () => setState(() => _active = ConfigTab.backup),
+                      onTap: () => _setTab(ConfigTab.backup),
                     ),
                     _TabChip(
                       label: 'Propriedades',
                       active: _active == ConfigTab.propriedades,
-                      onTap: () => setState(() => _active = ConfigTab.propriedades),
+                      onTap: () => _setTab(ConfigTab.propriedades),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
-              Expanded(child: _TabContent(tab: _active)),
+              Expanded(child: _TabContent(tab: _active, filesReloadToken: _filesReloadToken)),
             ],
           ),
         ),
@@ -108,14 +116,15 @@ class _TabChip extends StatelessWidget {
 }
 
 class _TabContent extends StatelessWidget {
-  const _TabContent({required this.tab});
+  const _TabContent({required this.tab, required this.filesReloadToken});
 
   final ConfigTab tab;
+  final int filesReloadToken;
 
   @override
   Widget build(BuildContext context) {
     return switch (tab) {
-      ConfigTab.arquivos => const FilesSettingsTab(),
+      ConfigTab.arquivos => FilesSettingsTab(key: ValueKey('files-$filesReloadToken')),
       ConfigTab.backup => _PlaceholderContent(text: 'Configurações de Backup em construção.'),
       ConfigTab.propriedades => _PlaceholderContent(text: 'Configurações de Propriedades em construção.'),
     };
