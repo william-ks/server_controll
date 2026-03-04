@@ -11,6 +11,8 @@ class AppTextInput extends StatelessWidget {
     this.suffixIcon,
     this.errorText,
     this.enabled = true,
+    this.readOnly = false,
+    this.onTap,
     this.onSubmitted,
     this.onChanged,
     this.keyboardType,
@@ -24,6 +26,8 @@ class AppTextInput extends StatelessWidget {
   final Widget? suffixIcon;
   final String? errorText;
   final bool enabled;
+  final bool readOnly;
+  final VoidCallback? onTap;
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
   final TextInputType? keyboardType;
@@ -34,6 +38,8 @@ class AppTextInput extends StatelessWidget {
       controller: controller,
       focusNode: focusNode,
       enabled: enabled,
+      readOnly: readOnly,
+      onTap: onTap,
       onSubmitted: onSubmitted,
       onChanged: onChanged,
       keyboardType: keyboardType,

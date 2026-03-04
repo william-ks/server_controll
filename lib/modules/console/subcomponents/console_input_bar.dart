@@ -50,7 +50,7 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
     return Row(
       children: [
         AppIconButton(
-          icon: Icons.menu_book_rounded,
+          icon: Icons.help_outline_rounded,
           onPressed: () {
             showDialog<void>(
               context: context,
@@ -58,7 +58,6 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
             );
           },
           tooltip: 'Comandos rápidos',
-          transparent: true,
         ),
         const SizedBox(width: 8),
         Expanded(

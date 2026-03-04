@@ -60,7 +60,7 @@ class QuickCommandsModal extends StatelessWidget {
     ];
 
     return AppModal(
-      icon: Icons.menu_book_rounded,
+      icon: Icons.help_outline_rounded,
       title: 'Comandos rápidos',
       width: 700,
       maxBodyHeight: 500,

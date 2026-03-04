@@ -113,7 +113,7 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
             children: [
               AppTextInput(
                 controller: _searchController,
-                hint: 'Pesquisar por nickname ou UUID',
+                hint: 'Pesquisar por nickname ou UID',
                 prefixIcon: const Icon(Icons.search_rounded),
                 onChanged: (value) => setState(() => _query = value),
               ),
@@ -136,7 +136,7 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                     ? const WhitelistEmptyState()
                     : ListView.separated(
                         itemCount: filtered.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (_, index) {
                           final player = filtered[index];
                           return WhitelistPlayerCard(

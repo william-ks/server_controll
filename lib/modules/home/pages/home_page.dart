@@ -8,6 +8,7 @@ import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../providers/home_provider.dart';
 import '../subcomponents/active_players_card.dart';
 import '../subcomponents/kick_players_modal.dart';
+import '../subcomponents/online_players_strip_card.dart';
 import '../subcomponents/server_actions_bar.dart';
 import '../subcomponents/status_card.dart';
 import '../subcomponents/uptime_card.dart';
@@ -57,6 +58,8 @@ class HomePage extends ConsumerWidget {
                   ActivePlayersCard(activePlayers: runtime.activePlayers),
                 ],
               ),
+              const SizedBox(height: 12),
+              OnlinePlayersStripCard(players: runtime.onlinePlayers),
               const SizedBox(height: 16),
               ServerActionsBar(
                 lifecycle: runtime.lifecycle,
