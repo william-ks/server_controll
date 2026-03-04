@@ -27,16 +27,22 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
   void _send() {
     final value = _controller.text.trim();
     if (value.isEmpty) {
+      _focusNode.requestFocus();
       return;
     }
     widget.onSend(value);
     _controller.clear();
+    _focusNode.requestFocus();
   }
 
   void _insertCommand(String command) {
     _controller.text = command;
     _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
-    _focusNode.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
+    });
   }
 
   @override

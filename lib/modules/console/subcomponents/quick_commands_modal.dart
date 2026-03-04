@@ -1,5 +1,5 @@
-import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../components/buttons/app_button.dart';
 import '../../../components/modal/app_modal.dart';
@@ -7,14 +7,18 @@ import '../../../components/shared/app_variant.dart';
 
 class QuickCommandItem {
   const QuickCommandItem({
-    required this.command,
     required this.title,
     required this.description,
+    required this.displayCommand,
+    required this.rawCommand,
+    this.example,
   });
 
-  final String command;
   final String title;
   final String description;
+  final String displayCommand;
+  final String rawCommand;
+  final String? example;
 }
 
 class QuickCommandsModal extends StatelessWidget {
@@ -26,27 +30,40 @@ class QuickCommandsModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final commands = <QuickCommandItem>[
       const QuickCommandItem(
-        command: 'say Servidor administrado pelo MineControl',
-        title: 'Anunciar mensagem',
-        description: 'Envia uma mensagem global no chat para todos os jogadores.',
+        title: 'Enviar mensagem',
+        description: 'Envia uma mensagem no chat do servidor.',
+        displayCommand: '/say <mensagem>',
+        rawCommand: 'say <mensagem>',
+        example: 'Ex.: /say <mensagem>',
       ),
       const QuickCommandItem(
-        command: 'list',
         title: 'Listar jogadores',
-        description: 'Mostra jogadores online e total de conectados.',
+        description: 'Mostra os jogadores online no momento.',
+        displayCommand: '/list',
+        rawCommand: 'list',
+        example: 'Ex.: /list',
       ),
       const QuickCommandItem(
-        command: 'time set day',
+        title: 'Desconectar jogador',
+        description: 'Remove um jogador online com mensagem personalizada.',
+        displayCommand: '/kick <jogador> "<mensagem>"',
+        rawCommand: 'kick <jogador> "<mensagem>"',
+        example: 'Ex.: /kick <jogador> "servidor administrado pelo Minecontrol"',
+      ),
+      const QuickCommandItem(
         title: 'Definir dia',
         description: 'Ajusta o tempo do mundo para período diurno.',
+        displayCommand: '/time set day',
+        rawCommand: 'time set day',
+        example: 'Ex.: /time set day',
       ),
     ];
 
     return AppModal(
       icon: Icons.menu_book_rounded,
       title: 'Comandos rápidos',
-      width: 640,
-      maxBodyHeight: 460,
+      width: 700,
+      maxBodyHeight: 500,
       body: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -81,38 +98,85 @@ class QuickCommandCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(item.title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(item.description, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 8),
-          SelectableText(item.command, style: const TextStyle(fontFamily: 'Consolas')),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.description,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: theme.inputDecorationTheme.fillColor ?? theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: theme.dividerColor),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.displayCommand,
+                          style: const TextStyle(fontFamily: 'Consolas'),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Copiar comando',
+                        onPressed: () => Clipboard.setData(ClipboardData(text: item.rawCommand)),
+                        icon: const Icon(Icons.copy_rounded, size: 18),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  ),
+                ),
+                if (item.example != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    item.example!,
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              AppButton(
-                label: 'Copiar',
-                icon: Icons.copy_rounded,
-                onPressed: () => Clipboard.setData(ClipboardData(text: item.command)),
-                transparent: true,
-              ),
-              AppButton(
-                label: 'Inserir no input',
-                icon: Icons.east_rounded,
-                onPressed: () => onInsert(item.command),
-                variant: AppVariant.info,
-                transparent: true,
+              IconButton(
+                tooltip: 'Inserir no input',
+                icon: const Icon(Icons.east_rounded),
+                onPressed: () {
+                  onInsert(item.rawCommand);
+                  Navigator.of(context).pop();
+                },
               ),
             ],
           ),
