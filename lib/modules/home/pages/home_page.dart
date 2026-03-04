@@ -5,6 +5,8 @@ import '../../../components/buttons/app_icon_button.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../../layout/default_layout.dart';
+import '../../../routes/routes_config.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,9 +21,10 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Componentes Globais')),
-      body: ListView(
+    return DefaultLayout(
+      title: 'MineControl',
+      currentRoute: AppRoutes.home,
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text('Buttons'),
