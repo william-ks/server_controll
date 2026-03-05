@@ -94,6 +94,10 @@ A aplicação centraliza:
   - botão `Backup` integrado ao fluxo real de backup manual;
   - execução permitida apenas com servidor offline e backups ativos/configurados.
   - fluxo de backup manual com confirmação + modal de progresso e cancelamento.
+  - card de PVP com switch ativo apenas quando servidor está online.
+  - troca de estado envia gamerule explícito (`/gamerule pvp true|false`) sem lógica de inversão.
+  - estado de PVP persistido em banco (`pvp_enabled`) e espelhado no arquivo `server.properties` (`pvp=true/false`).
+  - ao servidor ficar pronto (online), o PVP desejado é reaplicado automaticamente uma vez por ciclo.
 - Configurações > Propriedades:
   - aba funcional ligada ao arquivo físico `server.properties` no diretório do servidor;
   - leitura automática dos campos gerenciados e escrita de volta no arquivo ao salvar;

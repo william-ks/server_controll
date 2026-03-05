@@ -63,7 +63,7 @@ class PvpControlNotifier extends Notifier<PvpControlState> {
       Future<void>(() => _applyRuntimeDesiredState());
     });
 
-    Future<void>(() => _loadFromDb());
+    Future<void>(() => _bootstrapConsistency());
     return PvpControlState.initial();
   }
 
@@ -104,6 +104,20 @@ class PvpControlNotifier extends Notifier<PvpControlState> {
       state = state.copyWith(updating: false);
       return true;
     } catch (error) {
+      await AppDatabase.instance.setSetting(
+        'pvp_enabled',
+        previous ? '1' : '0',
+      );
+      await AppDatabase.instance.setSetting('prop_pvp', previous ? '1' : '0');
+      final runtimeNow = ref.read(serverRuntimeProvider);
+      if (runtimeNow.lifecycle == ServerLifecycleState.online) {
+        final revertCommand = previous
+            ? '/gamerule pvp true'
+            : '/gamerule pvp false';
+        await ref
+            .read(serverRuntimeProvider.notifier)
+            .sendCommand(revertCommand);
+      }
       state = state.copyWith(
         enabled: previous,
         updating: false,
@@ -113,12 +127,31 @@ class PvpControlNotifier extends Notifier<PvpControlState> {
     }
   }
 
-  Future<void> _loadFromDb() async {
-    final raw = await AppDatabase.instance.getSetting('pvp_enabled');
-    if (raw == null) {
-      return;
+  Future<void> _bootstrapConsistency() async {
+    final serverPath = ref.read(configFilesProvider).serverPath.trim();
+    final dbRaw = await AppDatabase.instance.getSetting('pvp_enabled');
+    final propRaw = await AppDatabase.instance.getSetting('prop_pvp');
+    bool? filePvp;
+    if (serverPath.isNotEmpty) {
+      final fromFile = await _propertiesService.loadFromFile(serverPath);
+      filePvp = fromFile?.pvp;
     }
-    state = state.copyWith(enabled: raw == '1');
+
+    final desired = dbRaw != null
+        ? dbRaw == '1'
+        : (propRaw != null ? propRaw == '1' : (filePvp ?? true));
+
+    await AppDatabase.instance.setSetting('pvp_enabled', desired ? '1' : '0');
+    await AppDatabase.instance.setSetting('prop_pvp', desired ? '1' : '0');
+
+    if (serverPath.isNotEmpty && filePvp != null && filePvp != desired) {
+      await _propertiesService.setPvpValue(
+        serverPath: serverPath,
+        enabled: desired,
+      );
+    }
+
+    state = state.copyWith(enabled: desired);
   }
 
   Future<void> _applyRuntimeDesiredState() async {

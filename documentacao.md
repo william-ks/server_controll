@@ -47,6 +47,18 @@ Status da base implementada:
   - tokens `inputHoverBackground` e `inputActiveBackground` substituem o destaque azulado intenso.
 - Home:
   - botão `Iniciar servidor` desabilitado quando faltar qualquer configuração essencial (`serverPath`, `javaCommand`, `fileServerName`).
+  - card de controle `PVP` com switch:
+    - interativo apenas quando servidor está `online`;
+    - desabilitado em `offline`, `starting`, `stopping` e `restarting`.
+  - alternância do PVP usa comando explícito:
+    - `/gamerule pvp true`
+    - `/gamerule pvp false`
+  - fluxo de sincronização de PVP:
+    - runtime (gamerule)
+    - persistência local (`pvp_enabled`)
+    - espelho em `prop_pvp`
+    - atualização de `server.properties` (`pvp=true/false`)
+  - reaplicação automática de PVP ao servidor entrar em `online`, uma vez por ciclo de start.
 - Whitelist:
   - ações de adicionar/sincronizar bloqueadas sem configurações essenciais;
   - validação explícita da presença de `whitelist.json` em `serverPath/whitelist.json`, com alerta visual quando ausente;
