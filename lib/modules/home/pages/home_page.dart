@@ -82,8 +82,19 @@ class HomePage extends ConsumerWidget {
               const SizedBox(height: 12),
               PvpControlCard(
                 enabled: pvpState.enabled,
-                interactive: runtime.lifecycle == ServerLifecycleState.online,
-                onChanged: (value) => pvpNotifier.setDesired(value),
+                interactive:
+                    runtime.lifecycle == ServerLifecycleState.online &&
+                    !pvpState.updating,
+                onChanged: (value) async {
+                  final ok = await pvpNotifier.setDesiredWithRuntime(value);
+                  if (!ok && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Falha ao aplicar PVP no servidor.'),
+                      ),
+                    );
+                  }
+                },
               ),
               const SizedBox(height: 16),
               ServerActionsBar(
