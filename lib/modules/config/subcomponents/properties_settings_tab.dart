@@ -208,19 +208,21 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppBadge(
-            icon: _serverPropertiesFound
-                ? Icons.check_circle_outline_rounded
-                : Icons.error_outline_rounded,
-            variant: _serverPropertiesFound
-                ? AppVariant.success
-                : AppVariant.danger,
-            title: _serverPropertiesFound
-                ? 'server.properties encontrado'
-                : 'server.properties nao encontrado',
-            description: _serverPath.isEmpty
-                ? 'Defina o path do servidor em Config > Arquivos.'
-                : 'Caminho esperado: ${p.join(_serverPath, 'server.properties')}',
+          if (!_serverPropertiesFound)
+            AppBadge(
+              icon: Icons.error_outline_rounded,
+              variant: AppVariant.danger,
+              title: 'server.properties nao encontrado',
+              description: _serverPath.isEmpty
+                  ? 'Defina o path do servidor em Config > Arquivos.'
+                  : 'Caminho esperado: ${p.join(_serverPath, 'server.properties')}',
+            ),
+          if (!_serverPropertiesFound) const SizedBox(height: 12),
+          const AppBadge(
+            icon: Icons.info_outline_rounded,
+            variant: AppVariant.info,
+            title:
+                'As propriedades exigem reinicio do servidor para ter efeito.',
           ),
           const SizedBox(height: 14),
           _sectionTitle('Servidor'),
