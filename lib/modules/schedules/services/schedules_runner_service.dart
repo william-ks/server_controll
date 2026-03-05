@@ -12,6 +12,7 @@ import '../../config/providers/config_files_provider.dart';
 import '../../chunky/models/chunky_execution_status.dart';
 import '../../chunky/providers/chunky_execution_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
+import '../../server/services/minecraft_command_provider.dart';
 import '../models/schedule_action.dart';
 import '../models/schedule_item.dart';
 import '../providers/schedules_provider.dart';
@@ -27,6 +28,7 @@ final schedulesRunnerProvider = Provider<SchedulesRunnerService>((ref) {
 class SchedulesRunnerService {
   SchedulesRunnerService(this._ref);
 
+  static const _commands = MinecraftCommandProvider.vanilla;
   final Ref _ref;
 
   Timer? _tickTimer;
@@ -211,7 +213,9 @@ class SchedulesRunnerService {
 
   Future<void> _sendServerMessage(String message) async {
     final runtimeNotifier = _ref.read(serverRuntimeProvider.notifier);
-    await runtimeNotifier.sendCommand('say [Server] $message');
+    await runtimeNotifier.sendCommand(
+      _commands.say(message, prefix: '[Server]'),
+    );
   }
 
   String _minuteKey(DateTime dt) {

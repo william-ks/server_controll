@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/server_lifecycle_state.dart';
 import '../../../models/server_runtime_state.dart';
+import '../services/minecraft_command_provider.dart';
 import '../services/server_log_parser.dart';
 import '../services/server_process_service.dart';
 
@@ -25,6 +26,7 @@ final onlinePlayersProvider = Provider<List<String>>((ref) {
 });
 
 class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
+  static const _commands = MinecraftCommandProvider.vanilla;
   StreamSubscription<String>? _stdoutSub;
   StreamSubscription<String>? _stderrSub;
   StreamSubscription<int>? _exitSub;
@@ -123,7 +125,7 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
   }
 
   Future<void> requestOnlinePlayers() async {
-    await sendCommand('list');
+    await sendCommand(_commands.listPlayers());
   }
 
   void _handleStdout(String line) {

@@ -12,6 +12,7 @@ import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../config/services/server_properties_service.dart';
 import '../../server/providers/server_runtime_provider.dart';
+import '../../server/services/minecraft_command_provider.dart';
 import '../../server/services/server_health_monitor.dart';
 import '../../server/services/server_process_service.dart';
 import '../models/chunky_config_settings.dart';
@@ -160,6 +161,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   static const int _memoryObserveSeconds = 60;
   static const int _memoryObserveStepSeconds = 5;
   static const int _memoryStableThresholdMb = 5 * 1024;
+  static const _commands = MinecraftCommandProvider.vanilla;
 
   final ServerPropertiesService _propertiesService = ServerPropertiesService();
   StreamSubscription<String>? _stdoutSub;
@@ -537,7 +539,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     if (lifecycle != ServerLifecycleState.online) return;
     await ref
         .read(serverRuntimeProvider.notifier)
-        .sendCommand('chunky progress');
+        .sendCommand(_commands.chunkyProgress());
     await _appendLog('Solicitado chunky progress no servidor.');
   }
 
@@ -551,7 +553,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     try {
       if (ref.read(serverRuntimeProvider).lifecycle ==
           ServerLifecycleState.online) {
-        await runtimeNotifier.sendCommand('chunky cancel');
+        await runtimeNotifier.sendCommand(_commands.chunkyCancel());
       }
     } catch (_) {}
     await _clearTasksDirs(serverPath);
@@ -591,7 +593,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
   Future<void> pause() async {
     if (state.status != ChunkyExecutionStatus.running) return;
-    await ref.read(serverRuntimeProvider.notifier).sendCommand('chunky pause');
+    await ref
+        .read(serverRuntimeProvider.notifier)
+        .sendCommand(_commands.chunkyPause());
     _paused = true;
     state = state.copyWith(status: ChunkyExecutionStatus.paused);
     final running = ref.read(chunkyTasksProvider).runningTask;
@@ -606,7 +610,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     if (state.status != ChunkyExecutionStatus.paused) return;
     await ref
         .read(serverRuntimeProvider.notifier)
-        .sendCommand('chunky continue');
+        .sendCommand(_commands.chunkyContinue());
     _paused = false;
     state = state.copyWith(status: ChunkyExecutionStatus.running);
     final selected = ref.read(chunkyTasksProvider).selectedTask;
@@ -627,7 +631,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     _pauseAfterCurrentCycleRequested = false;
     _resumeOnNextOnline = false;
     state = state.copyWith(status: ChunkyExecutionStatus.cancelling);
-    await ref.read(serverRuntimeProvider.notifier).sendCommand('chunky cancel');
+    await ref
+        .read(serverRuntimeProvider.notifier)
+        .sendCommand(_commands.chunkyCancel());
     final selected = ref.read(chunkyTasksProvider).selectedTask;
     if (selected?.id != null) {
       await ref.read(chunkyTasksProvider.notifier).markCancelled(selected!.id!);
@@ -767,7 +773,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
         _runCompleter = Completer<void>();
         if (continueCurrentRun) {
-          await runtimeNotifier.sendCommand('chunky continue');
+          await runtimeNotifier.sendCommand(_commands.chunkyContinue());
         } else {
           await _sendChunkCommands(config: config, runRadius: runRadius);
         }
@@ -990,7 +996,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   Future<void> _restartServerBetweenRuns(
     ServerRuntimeNotifier runtimeNotifier,
   ) async {
-    await runtimeNotifier.sendCommand('stop');
+    await runtimeNotifier.sendCommand(_commands.stopServer());
     final graceful = await _waitForOffline(
       timeout: const Duration(seconds: 15),
     );
@@ -1030,7 +1036,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   }) async {
     _saveAllCompleter = Completer<bool>();
     await _appendLog('Executando comando save-all e aguardando confirmação.');
-    await runtimeNotifier.sendCommand('save-all');
+    await runtimeNotifier.sendCommand(_commands.saveAll());
 
     final result = await Future.any<bool>([
       _saveAllCompleter!.future,
@@ -1055,50 +1061,39 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   }) async {
     final runtimeNotifier = ref.read(serverRuntimeProvider.notifier);
     await runtimeNotifier.sendCommand(
-      'chunky center ${config.centerX} ${config.centerZ}',
+      _commands.chunkyCenter(config.centerX, config.centerZ),
     );
     await runtimeNotifier.sendCommand(
-      _buildRadiusCommand(
+      _commands.chunkyRadius(
         radius: runRadius,
         shape: config.shape,
         mode: config.radiusMode,
       ),
     );
-    await runtimeNotifier.sendCommand('chunky pattern ${config.pattern}');
-    await runtimeNotifier.sendCommand('chunky shape ${config.shape}');
-    await runtimeNotifier.sendCommand('chunky start');
+    await runtimeNotifier.sendCommand(_commands.chunkyPattern(config.pattern));
+    await runtimeNotifier.sendCommand(_commands.chunkyShape(config.shape));
+    await runtimeNotifier.sendCommand(_commands.chunkyStart());
   }
 
   Future<void> _sendTaskCommands(ChunkyTask task) async {
     final runtimeNotifier = ref.read(serverRuntimeProvider.notifier);
-    await runtimeNotifier.sendCommand('chunky world ${task.world}');
+    await runtimeNotifier.sendCommand(_commands.chunkyWorld(task.world));
     await runtimeNotifier.sendCommand(
-      'chunky center ${task.centerX} ${task.centerZ}',
+      _commands.chunkyCenter(task.centerX, task.centerZ),
     );
-    await runtimeNotifier.sendCommand('chunky radius ${task.radius.round()}');
-    await runtimeNotifier.sendCommand('chunky shape ${task.shape}');
-    await runtimeNotifier.sendCommand('chunky pattern ${task.pattern}');
-    await runtimeNotifier.sendCommand('chunky start');
+    await runtimeNotifier.sendCommand(
+      _commands.chunkyRadius(
+        radius: task.radius.round(),
+        shape: task.shape,
+        mode: 'single',
+      ),
+    );
+    await runtimeNotifier.sendCommand(_commands.chunkyShape(task.shape));
+    await runtimeNotifier.sendCommand(_commands.chunkyPattern(task.pattern));
+    await runtimeNotifier.sendCommand(_commands.chunkyStart());
     await _appendLog(
       'Comandos enviados: chunky world ${task.world} -> center ${task.centerX} ${task.centerZ} -> radius ${task.radius.round()} -> shape ${task.shape} -> pattern ${task.pattern} -> start.',
     );
-  }
-
-  String _buildRadiusCommand({
-    required int radius,
-    required String shape,
-    required String mode,
-  }) {
-    final lowerShape = shape.toLowerCase();
-    final useDouble = switch (mode) {
-      'double' => true,
-      'single' => false,
-      _ => lowerShape == 'rectangle' || lowerShape == 'ellipse',
-    };
-    if (useDouble) {
-      return 'chunky radius $radius $radius';
-    }
-    return 'chunky radius $radius';
   }
 
   Future<void> _waitForOnline() async {

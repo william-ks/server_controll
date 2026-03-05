@@ -6,6 +6,7 @@ import '../../../components/inputs/app_text_input.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../server/providers/server_runtime_provider.dart';
+import '../../server/services/minecraft_command_provider.dart';
 
 enum KickMode { all, one, many }
 
@@ -17,15 +18,20 @@ class KickPlayersModal extends ConsumerStatefulWidget {
 }
 
 class _KickPlayersModalState extends ConsumerState<KickPlayersModal> {
+  static const _commands = MinecraftCommandProvider.vanilla;
   KickMode _mode = KickMode.all;
   String? _singlePlayer;
   final Set<String> _manyPlayers = <String>{};
-  final TextEditingController _messageController = TextEditingController(text: 'Desconectado pelo servidor');
+  final TextEditingController _messageController = TextEditingController(
+    text: 'Desconectado pelo servidor',
+  );
 
   @override
   void initState() {
     super.initState();
-    Future<void>(() => ref.read(serverRuntimeProvider.notifier).requestOnlinePlayers());
+    Future<void>(
+      () => ref.read(serverRuntimeProvider.notifier).requestOnlinePlayers(),
+    );
   }
 
   @override
@@ -41,12 +47,12 @@ class _KickPlayersModalState extends ConsumerState<KickPlayersModal> {
     final notifier = ref.read(serverRuntimeProvider.notifier);
 
     if (_mode == KickMode.all) {
-      await notifier.sendCommand('kick @a $message');
+      await notifier.sendCommand(_commands.kick('@a', message));
     } else if (_mode == KickMode.one && _singlePlayer != null) {
-      await notifier.sendCommand('kick $_singlePlayer $message');
+      await notifier.sendCommand(_commands.kick(_singlePlayer!, message));
     } else if (_mode == KickMode.many && _manyPlayers.isNotEmpty) {
       for (final player in _manyPlayers) {
-        await notifier.sendCommand('kick $player $message');
+        await notifier.sendCommand(_commands.kick(player, message));
       }
     }
 
@@ -85,7 +91,10 @@ class _KickPlayersModalState extends ConsumerState<KickPlayersModal> {
               initialValue: _singlePlayer,
               decoration: const InputDecoration(labelText: 'Jogador'),
               items: players
-                  .map((player) => DropdownMenuItem(value: player, child: Text(player)))
+                  .map(
+                    (player) =>
+                        DropdownMenuItem(value: player, child: Text(player)),
+                  )
                   .toList(),
               onChanged: (value) => setState(() => _singlePlayer = value),
             ),
@@ -140,4 +149,3 @@ class _KickPlayersModalState extends ConsumerState<KickPlayersModal> {
     );
   }
 }
-

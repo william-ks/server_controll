@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../components/buttons/app_button.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../server/services/minecraft_command_provider.dart';
 
 class QuickCommandItem {
   const QuickCommandItem({
@@ -26,30 +27,31 @@ class QuickCommandsModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const commandsProvider = MinecraftCommandProvider.vanilla;
     final commands = <QuickCommandItem>[
-      const QuickCommandItem(
+      QuickCommandItem(
         title: 'Enviar mensagem',
         description: 'Envia uma mensagem no chat do servidor.',
         displayCommand: '/say <mensagem>',
-        rawCommand: 'say <mensagem>',
+        rawCommand: commandsProvider.say('<mensagem>'),
       ),
-      const QuickCommandItem(
+      QuickCommandItem(
         title: 'Listar jogadores',
         description: 'Mostra os jogadores online no momento.',
         displayCommand: '/list',
-        rawCommand: 'list',
+        rawCommand: commandsProvider.listPlayers(),
       ),
-      const QuickCommandItem(
+      QuickCommandItem(
         title: 'Desconectar jogador',
         description: 'Remove um jogador online com mensagem personalizada.',
         displayCommand: '/kick <jogador> "<mensagem>"',
-        rawCommand: 'kick <jogador> "<mensagem>"',
+        rawCommand: commandsProvider.kick('<jogador>', '"<mensagem>"'),
       ),
-      const QuickCommandItem(
+      QuickCommandItem(
         title: 'Definir dia',
         description: 'Ajusta o tempo do mundo para período diurno.',
         displayCommand: '/time set day',
-        rawCommand: 'time set day',
+        rawCommand: commandsProvider.timeSetDay(),
       ),
     ];
 
@@ -119,18 +121,27 @@ class QuickCommandCard extends StatelessWidget {
               children: [
                 Text(
                   item.title,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   item.description,
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: theme.inputDecorationTheme.fillColor ?? theme.colorScheme.surface,
+                    color:
+                        theme.inputDecorationTheme.fillColor ??
+                        theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: theme.dividerColor),
                   ),
@@ -144,7 +155,9 @@ class QuickCommandCard extends StatelessWidget {
                       ),
                       IconButton(
                         tooltip: 'Copiar comando',
-                        onPressed: () => Clipboard.setData(ClipboardData(text: item.rawCommand)),
+                        onPressed: () => Clipboard.setData(
+                          ClipboardData(text: item.rawCommand),
+                        ),
                         icon: const Icon(Icons.copy_rounded, size: 18),
                         visualDensity: VisualDensity.compact,
                       ),

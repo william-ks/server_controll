@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'minecraft_command_provider.dart';
 import 'server_log_parser.dart';
 
 enum ServerHealthState { normal, overloaded, mitigating, recovering, blocked }
@@ -101,6 +102,7 @@ class ServerHealthMonitor {
   DateTime? _lastOverloadAt;
   bool _mitigationInProgress = false;
   ServerHealthSnapshot _snapshot = ServerHealthSnapshot.initial();
+  static const _commands = MinecraftCommandProvider.vanilla;
 
   ServerHealthSnapshot get snapshot => _snapshot;
 
@@ -170,8 +172,8 @@ class ServerHealthMonitor {
             'ms/$ticksBehind ticks.',
       );
 
-      await _sendCommand('chunky pause');
-      await _sendCommand('save-all flush');
+      await _sendCommand(_commands.chunkyPause());
+      await _sendCommand(_commands.saveAll(flush: true));
       await _appendLog(
         'Mitigação leve: chunky pause + save-all flush executados.',
         level: 'WARN',
@@ -181,7 +183,7 @@ class ServerHealthMonitor {
       _prune(DateTime.now());
       final stable = _isStableForWindow();
       if (stable) {
-        await _sendCommand('chunky continue');
+        await _sendCommand(_commands.chunkyContinue());
         await _setState(
           ServerHealthState.normal,
           message: 'Servidor estabilizado; chunky continue executado.',
@@ -207,9 +209,9 @@ class ServerHealthMonitor {
         return;
       }
 
-      await _sendCommand('chunky pause');
-      await _sendCommand('save-all flush');
-      await _sendCommand('stop');
+      await _sendCommand(_commands.chunkyPause());
+      await _sendCommand(_commands.saveAll(flush: true));
+      await _sendCommand(_commands.stopServer());
 
       final offline = await _waitForOffline(
         timeout: const Duration(seconds: 120),
@@ -227,7 +229,7 @@ class ServerHealthMonitor {
 
       await _startServer();
       await _waitForOnline();
-      await _sendCommand('chunky continue');
+      await _sendCommand(_commands.chunkyContinue());
 
       await _setState(
         ServerHealthState.normal,

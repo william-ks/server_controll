@@ -6,6 +6,7 @@ import '../../../models/server_runtime_state.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../config/services/server_properties_service.dart';
 import '../../server/providers/server_runtime_provider.dart';
+import '../../server/services/minecraft_command_provider.dart';
 
 class PvpControlState {
   const PvpControlState({
@@ -43,6 +44,7 @@ final pvpControlProvider =
 
 class PvpControlNotifier extends Notifier<PvpControlState> {
   final ServerPropertiesService _propertiesService = ServerPropertiesService();
+  static const _commands = MinecraftCommandProvider.vanilla;
   int? _lastAppliedReadyAtMillis;
 
   @override
@@ -81,9 +83,7 @@ class PvpControlNotifier extends Notifier<PvpControlState> {
     );
 
     try {
-      final command = desiredPvpEnabled
-          ? '/gamerule pvp true'
-          : '/gamerule pvp false';
+      final command = _commands.gamerulePvp(desiredPvpEnabled);
       await ref.read(serverRuntimeProvider.notifier).sendCommand(command);
       await AppDatabase.instance.setSetting(
         'pvp_enabled',
@@ -111,9 +111,7 @@ class PvpControlNotifier extends Notifier<PvpControlState> {
       await AppDatabase.instance.setSetting('prop_pvp', previous ? '1' : '0');
       final runtimeNow = ref.read(serverRuntimeProvider);
       if (runtimeNow.lifecycle == ServerLifecycleState.online) {
-        final revertCommand = previous
-            ? '/gamerule pvp true'
-            : '/gamerule pvp false';
+        final revertCommand = _commands.gamerulePvp(previous);
         await ref
             .read(serverRuntimeProvider.notifier)
             .sendCommand(revertCommand);
@@ -159,9 +157,7 @@ class PvpControlNotifier extends Notifier<PvpControlState> {
     if (runtime.lifecycle != ServerLifecycleState.online) {
       return;
     }
-    final command = state.enabled
-        ? '/gamerule pvp true'
-        : '/gamerule pvp false';
+    final command = _commands.gamerulePvp(state.enabled);
     await ref.read(serverRuntimeProvider.notifier).sendCommand(command);
   }
 }

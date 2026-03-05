@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../database/app_database.dart';
+import 'minecraft_command_provider.dart';
 import 'server_os_command_provider.dart';
 
 abstract class ServerProcessService {
@@ -29,6 +30,7 @@ class LocalServerProcessService implements ServerProcessService {
   final _stdoutController = StreamController<String>.broadcast();
   final _stderrController = StreamController<String>.broadcast();
   final _exitCodeController = StreamController<int>.broadcast();
+  static const _commands = MinecraftCommandProvider.vanilla;
   final ServerOsCommandProvider _osProvider;
 
   Process? _process;
@@ -200,7 +202,7 @@ class LocalServerProcessService implements ServerProcessService {
   }
 
   Future<void> _gracefulStopKnownProcess(Process process) async {
-    process.stdin.writeln('stop');
+    process.stdin.writeln(_commands.stopServer());
     await process.stdin.flush();
 
     var exited = false;
