@@ -23,7 +23,21 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  image_path: "lib/assets/minecraft.png"
+  windows:
+    generate: true
+    image_path: "lib/assets/minecraft.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "lib/assets/minecraft.png"
+  linux:
+    generate: true
+    image_path: "lib/assets/minecraft.png"
 
