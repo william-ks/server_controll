@@ -4,6 +4,7 @@ import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
 import '../../../layout/default_layout.dart';
 import '../subcomponents/advanced_settings_tab.dart';
+import '../subcomponents/backup_settings_tab.dart';
 import '../subcomponents/files_settings_tab.dart';
 
 enum ConfigTab { arquivos, backup, propriedades, avancado }
@@ -18,10 +19,14 @@ class ConfigPage extends StatefulWidget {
 class _ConfigPageState extends State<ConfigPage> {
   ConfigTab _active = ConfigTab.arquivos;
   int _filesReloadToken = 0;
+  int _backupReloadToken = 0;
 
   void _setTab(ConfigTab tab) {
     if (_active != tab && tab == ConfigTab.arquivos) {
       _filesReloadToken++;
+    }
+    if (_active != tab && tab == ConfigTab.backup) {
+      _backupReloadToken++;
     }
     setState(() => _active = tab);
   }
@@ -75,7 +80,13 @@ class _ConfigPageState extends State<ConfigPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              Expanded(child: _TabContent(tab: _active, filesReloadToken: _filesReloadToken)),
+              Expanded(
+                child: _TabContent(
+                  tab: _active,
+                  filesReloadToken: _filesReloadToken,
+                  backupReloadToken: _backupReloadToken,
+                ),
+              ),
             ],
           ),
         ),
@@ -106,8 +117,12 @@ class _TabChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
         decoration: BoxDecoration(
           borderRadius: AppStyles.radiusFull,
-          border: Border.all(color: active ? scheme.primary : Theme.of(context).dividerColor),
-          color: active ? scheme.primary.withValues(alpha: 0.14) : Colors.transparent,
+          border: Border.all(
+            color: active ? scheme.primary : Theme.of(context).dividerColor,
+          ),
+          color: active
+              ? scheme.primary.withValues(alpha: 0.14)
+              : Colors.transparent,
         ),
         child: Text(
           label,
@@ -122,17 +137,28 @@ class _TabChip extends StatelessWidget {
 }
 
 class _TabContent extends StatelessWidget {
-  const _TabContent({required this.tab, required this.filesReloadToken});
+  const _TabContent({
+    required this.tab,
+    required this.filesReloadToken,
+    required this.backupReloadToken,
+  });
 
   final ConfigTab tab;
   final int filesReloadToken;
+  final int backupReloadToken;
 
   @override
   Widget build(BuildContext context) {
     return switch (tab) {
-      ConfigTab.arquivos => FilesSettingsTab(key: ValueKey('files-$filesReloadToken')),
-      ConfigTab.backup => _PlaceholderContent(text: 'Configurações de Backup em construção.'),
-      ConfigTab.propriedades => _PlaceholderContent(text: 'Configurações de Propriedades em construção.'),
+      ConfigTab.arquivos => FilesSettingsTab(
+        key: ValueKey('files-$filesReloadToken'),
+      ),
+      ConfigTab.backup => BackupSettingsTab(
+        key: ValueKey('backup-$backupReloadToken'),
+      ),
+      ConfigTab.propriedades => _PlaceholderContent(
+        text: 'Configurações de Propriedades em construção.',
+      ),
       ConfigTab.avancado => const AdvancedSettingsTab(),
     };
   }
@@ -145,9 +171,6 @@ class _PlaceholderContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topLeft,
-      child: Text(text),
-    );
+    return Align(alignment: Alignment.topLeft, child: Text(text));
   }
 }
