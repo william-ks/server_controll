@@ -4,15 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_theme_extension.dart';
 import '../../../layout/default_layout.dart';
+import '../../../models/server_lifecycle_state.dart';
 import '../../backup/providers/backups_provider.dart';
 import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../providers/home_provider.dart';
+import '../providers/pvp_control_provider.dart';
 import '../subcomponents/active_players_card.dart';
 import '../subcomponents/kick_players_modal.dart';
 import '../subcomponents/manual_backup_modal.dart';
 import '../subcomponents/online_players_strip_card.dart';
+import '../subcomponents/pvp_control_card.dart';
 import '../subcomponents/server_actions_bar.dart';
 import '../subcomponents/status_card.dart';
 import '../subcomponents/uptime_card.dart';
@@ -24,6 +27,8 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final runtime = ref.watch(serverRuntimeProvider);
     final actions = ref.read(homeActionsProvider);
+    final pvpState = ref.watch(pvpControlProvider);
+    final pvpNotifier = ref.read(pvpControlProvider.notifier);
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final config = ref.watch(configFilesProvider);
     final hasEssentials =
@@ -74,6 +79,12 @@ class HomePage extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               OnlinePlayersStripCard(players: runtime.onlinePlayers),
+              const SizedBox(height: 12),
+              PvpControlCard(
+                enabled: pvpState.enabled,
+                interactive: runtime.lifecycle == ServerLifecycleState.online,
+                onChanged: (value) => pvpNotifier.setDesired(value),
+              ),
               const SizedBox(height: 16),
               ServerActionsBar(
                 lifecycle: runtime.lifecycle,
