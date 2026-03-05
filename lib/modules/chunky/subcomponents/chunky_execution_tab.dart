@@ -7,6 +7,7 @@ import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../server/providers/server_runtime_provider.dart';
+import '../../server/services/server_health_monitor.dart';
 import '../models/chunky_execution_status.dart';
 import '../providers/chunky_execution_provider.dart';
 
@@ -162,10 +163,48 @@ class ChunkyExecutionTab extends ConsumerWidget {
                       ? 'Arquivos de tarefa do Chunky: ENCONTRADOS'
                       : 'Arquivos de tarefa do Chunky: NAO ENCONTRADOS',
                 ),
+                if (state.pendingTasks.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _pendingTaskCard(context, state),
+                ],
+                const SizedBox(height: 8),
+                _line(
+                  context,
+                  'Saude do servidor',
+                  state.serverHealthState.label,
+                ),
+                const SizedBox(height: 6),
+                _line(
+                  context,
+                  'Overloads (janela 30s)',
+                  '${state.overloadEventsInWindow}',
+                ),
+                const SizedBox(height: 6),
+                _line(
+                  context,
+                  'Reinicios (ultima hora)',
+                  '${state.restartsInLastHour}',
+                ),
+                if (state.lastMsBehind != null &&
+                    state.lastTicksBehind != null) ...[
+                  const SizedBox(height: 6),
+                  _line(
+                    context,
+                    'Ultimo overload',
+                    '${state.lastMsBehind}ms / ${state.lastTicksBehind} ticks',
+                  ),
+                ],
                 if (state.statusMessage != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     state.statusMessage!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+                if (state.healthStatusMessage != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    state.healthStatusMessage!,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -225,6 +264,45 @@ class ChunkyExecutionTab extends ConsumerWidget {
         ),
         Expanded(child: Text(value, overflow: TextOverflow.ellipsis)),
       ],
+    );
+  }
+
+  Widget _pendingTaskCard(BuildContext context, ChunkyExecutionState state) {
+    final task = state.pendingTasks.first;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Task pendente detectada',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          _line(context, 'Arquivo', task.filePath),
+          const SizedBox(height: 4),
+          _line(context, 'World', task.world),
+          const SizedBox(height: 4),
+          _line(context, 'Center X/Z', '${task.centerX} / ${task.centerZ}'),
+          const SizedBox(height: 4),
+          _line(context, 'Radius', '${task.radius}'),
+          const SizedBox(height: 4),
+          _line(context, 'Shape / Pattern', '${task.shape} / ${task.pattern}'),
+          const SizedBox(height: 4),
+          _line(context, 'Chunks', '${task.chunks}'),
+          const SizedBox(height: 4),
+          _line(context, 'Time', '${task.time}'),
+          const SizedBox(height: 4),
+          _line(context, 'Cancelled', task.cancelled ? 'true' : 'false'),
+        ],
+      ),
     );
   }
 

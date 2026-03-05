@@ -1,10 +1,25 @@
 class ServerLogParser {
+  static final RegExp _overloadRegex = RegExp(
+    r"Can't keep up! Is the server overloaded\? Running (\d+)ms or (\d+) ticks behind",
+  );
+
   static bool isServerReady(String line) {
     return line.contains('Done (') && line.contains('For help, type');
   }
 
+  static ServerOverloadEvent? parseOverload(String line) {
+    final match = _overloadRegex.firstMatch(line);
+    if (match == null) return null;
+    final msBehind = int.tryParse(match.group(1) ?? '');
+    final ticksBehind = int.tryParse(match.group(2) ?? '');
+    if (msBehind == null || ticksBehind == null) return null;
+    return ServerOverloadEvent(msBehind: msBehind, ticksBehind: ticksBehind);
+  }
+
   static int? parsePlayersOnline(String line) {
-    final regex = RegExp(r'There are\s+(\d+)\s+of a max of\s+\d+\s+players online');
+    final regex = RegExp(
+      r'There are\s+(\d+)\s+of a max of\s+\d+\s+players online',
+    );
     final match = regex.firstMatch(line);
     if (match == null) {
       return null;
@@ -13,7 +28,9 @@ class ServerLogParser {
   }
 
   static List<String>? parseOnlinePlayersList(String line) {
-    final regex = RegExp(r'There are\s+\d+\s+of a max of\s+\d+\s+players online:\s*(.*)$');
+    final regex = RegExp(
+      r'There are\s+\d+\s+of a max of\s+\d+\s+players online:\s*(.*)$',
+    );
     final match = regex.firstMatch(line);
     if (match == null) {
       return null;
@@ -44,4 +61,14 @@ class ServerLogParser {
   static bool isStopping(String line) {
     return line.toLowerCase().contains('stopping server');
   }
+}
+
+class ServerOverloadEvent {
+  const ServerOverloadEvent({
+    required this.msBehind,
+    required this.ticksBehind,
+  });
+
+  final int msBehind;
+  final int ticksBehind;
 }

@@ -12,10 +12,12 @@ import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../config/services/server_properties_service.dart';
 import '../../server/providers/server_runtime_provider.dart';
+import '../../server/services/server_health_monitor.dart';
 import '../../server/services/server_process_service.dart';
 import '../models/chunky_config_settings.dart';
 import '../models/chunky_execution_log_entry.dart';
 import '../models/chunky_execution_status.dart';
+import '../models/chunky_pending_task.dart';
 import '../providers/chunky_config_provider.dart';
 
 class ChunkyExecutionState {
@@ -29,11 +31,18 @@ class ChunkyExecutionState {
     required this.elapsed,
     required this.plan,
     required this.tasksPending,
+    required this.pendingTasks,
     required this.backupBeforeStart,
     required this.hasRecoverableCheckpoint,
+    required this.serverHealthState,
+    required this.overloadEventsInWindow,
+    required this.restartsInLastHour,
     required this.logs,
+    this.lastMsBehind,
+    this.lastTicksBehind,
     this.errorMessage,
     this.statusMessage,
+    this.healthStatusMessage,
   });
 
   final ChunkyExecutionStatus status;
@@ -45,11 +54,18 @@ class ChunkyExecutionState {
   final Duration elapsed;
   final List<int> plan;
   final bool tasksPending;
+  final List<ChunkyPendingTask> pendingTasks;
   final bool backupBeforeStart;
   final bool hasRecoverableCheckpoint;
+  final ServerHealthState serverHealthState;
+  final int overloadEventsInWindow;
+  final int restartsInLastHour;
   final List<ChunkyExecutionLogEntry> logs;
+  final int? lastMsBehind;
+  final int? lastTicksBehind;
   final String? errorMessage;
   final String? statusMessage;
+  final String? healthStatusMessage;
 
   ChunkyExecutionState copyWith({
     ChunkyExecutionStatus? status,
@@ -61,13 +77,21 @@ class ChunkyExecutionState {
     Duration? elapsed,
     List<int>? plan,
     bool? tasksPending,
+    List<ChunkyPendingTask>? pendingTasks,
     bool? backupBeforeStart,
     bool? hasRecoverableCheckpoint,
+    ServerHealthState? serverHealthState,
+    int? overloadEventsInWindow,
+    int? restartsInLastHour,
     List<ChunkyExecutionLogEntry>? logs,
+    int? lastMsBehind,
+    int? lastTicksBehind,
     String? errorMessage,
     String? statusMessage,
+    String? healthStatusMessage,
     bool clearError = false,
     bool clearStatusMessage = false,
+    bool clearHealthMessage = false,
   }) {
     return ChunkyExecutionState(
       status: status ?? this.status,
@@ -79,14 +103,24 @@ class ChunkyExecutionState {
       elapsed: elapsed ?? this.elapsed,
       plan: plan ?? this.plan,
       tasksPending: tasksPending ?? this.tasksPending,
+      pendingTasks: pendingTasks ?? this.pendingTasks,
       backupBeforeStart: backupBeforeStart ?? this.backupBeforeStart,
       hasRecoverableCheckpoint:
           hasRecoverableCheckpoint ?? this.hasRecoverableCheckpoint,
+      serverHealthState: serverHealthState ?? this.serverHealthState,
+      overloadEventsInWindow:
+          overloadEventsInWindow ?? this.overloadEventsInWindow,
+      restartsInLastHour: restartsInLastHour ?? this.restartsInLastHour,
       logs: logs ?? this.logs,
+      lastMsBehind: lastMsBehind ?? this.lastMsBehind,
+      lastTicksBehind: lastTicksBehind ?? this.lastTicksBehind,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       statusMessage: clearStatusMessage
           ? null
           : (statusMessage ?? this.statusMessage),
+      healthStatusMessage: clearHealthMessage
+          ? null
+          : (healthStatusMessage ?? this.healthStatusMessage),
     );
   }
 
@@ -101,8 +135,12 @@ class ChunkyExecutionState {
       elapsed: Duration.zero,
       plan: [],
       tasksPending: false,
+      pendingTasks: [],
       backupBeforeStart: false,
       hasRecoverableCheckpoint: false,
+      serverHealthState: ServerHealthState.normal,
+      overloadEventsInWindow: 0,
+      restartsInLastHour: 0,
       logs: [],
     );
   }
@@ -131,9 +169,25 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   bool _resumeOnNextOnline = false;
   int _completedRuns = 0;
   Duration _runElapsedStart = Duration.zero;
+  int _lastChunksProcessed = 0;
+  double _lastCps = 0;
+  late final ServerHealthMonitor _healthMonitor;
 
   @override
   ChunkyExecutionState build() {
+    _healthMonitor = ServerHealthMonitor(
+      sendCommand: (command) =>
+          ref.read(serverRuntimeProvider.notifier).sendCommand(command),
+      waitForOffline: ({timeout = const Duration(seconds: 100)}) =>
+          _waitForOffline(timeout: timeout),
+      startServer: () => ref.read(serverRuntimeProvider.notifier).startServer(),
+      waitForOnline: _waitForOnline,
+      appendLog: _appendLog,
+      onSnapshot: _applyHealthSnapshot,
+      canMitigate: () =>
+          state.status == ChunkyExecutionStatus.running ||
+          state.status == ChunkyExecutionStatus.paused,
+    );
     _stdoutSub = ref
         .read(serverProcessServiceProvider)
         .stdoutLines
@@ -194,7 +248,8 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   Future<void> refreshTasksPending() async {
     final serverPath = ref.read(configFilesProvider).serverPath.trim();
     final pending = await _hasPendingTasks(serverPath);
-    state = state.copyWith(tasksPending: pending);
+    final pendingTasks = await _loadPendingTasks(serverPath);
+    state = state.copyWith(tasksPending: pending, pendingTasks: pendingTasks);
   }
 
   Future<void> setBackupBeforeStart(bool enabled) async {
@@ -288,6 +343,8 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     _pauseAfterCurrentCycleRequested = false;
     _resumeOnNextOnline = false;
     _completedRuns = 0;
+    _lastChunksProcessed = 0;
+    _lastCps = 0;
     state = state.copyWith(
       status: ChunkyExecutionStatus.running,
       currentRun: 1,
@@ -300,7 +357,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       hasRecoverableCheckpoint: false,
       clearError: true,
       clearStatusMessage: true,
+      clearHealthMessage: true,
     );
+    await _healthMonitor.reset();
     _startElapsedTimer();
     await _persistCheckpoint();
     await _appendLog(
@@ -360,6 +419,8 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     _pauseAfterCurrentCycleRequested = false;
     _resumeOnNextOnline = false;
     _completedRuns = startIndex;
+    _lastChunksProcessed = 0;
+    _lastCps = 0;
     state = state.copyWith(
       status: ChunkyExecutionStatus.running,
       currentRun: startIndex + 1,
@@ -369,7 +430,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       hasRecoverableCheckpoint: true,
       clearError: true,
       clearStatusMessage: true,
+      clearHealthMessage: true,
     );
+    await _healthMonitor.reset();
     _startElapsedTimer();
     await _persistCheckpoint();
     await _appendLog(
@@ -413,8 +476,11 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     await _clearLogs();
     _elapsedTimer?.cancel();
     _completedRuns = 0;
+    _lastChunksProcessed = 0;
+    _lastCps = 0;
     _pauseAfterCurrentCycleRequested = false;
     _resumeOnNextOnline = false;
+    await _healthMonitor.reset();
     state = state.copyWith(
       status: ChunkyExecutionStatus.idle,
       currentRun: 0,
@@ -424,10 +490,12 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       totalProgress: 0,
       elapsed: Duration.zero,
       plan: const [],
+      pendingTasks: const [],
       hasRecoverableCheckpoint: false,
       logs: const [],
       clearError: true,
       clearStatusMessage: true,
+      clearHealthMessage: true,
     );
     await refreshTasksPending();
   }
@@ -704,6 +772,10 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       if (state.status != ChunkyExecutionStatus.paused) {
         _paused = false;
       }
+      if (state.status != ChunkyExecutionStatus.running &&
+          state.status != ChunkyExecutionStatus.paused) {
+        await _healthMonitor.reset();
+      }
       await refreshTasksPending();
     }
   }
@@ -928,10 +1000,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
   Future<bool> _hasPendingTasks(String serverPath) async {
     if (serverPath.isEmpty) return false;
-    final dirs = <Directory>[
-      Directory(p.join(serverPath, 'config', 'Chunky', 'Tasks')),
-      Directory(p.join(serverPath, 'config', 'Chunky', 'tasks')),
-    ];
+    final dirs = _resolveChunkyTaskDirs(serverPath);
     for (final dir in dirs) {
       if (!await dir.exists()) continue;
       await for (final _ in dir.list(followLinks: false)) {
@@ -943,10 +1012,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
   Future<void> _clearTasksDirs(String serverPath) async {
     if (serverPath.isEmpty) return;
-    final dirs = <Directory>[
-      Directory(p.join(serverPath, 'config', 'Chunky', 'Tasks')),
-      Directory(p.join(serverPath, 'config', 'Chunky', 'tasks')),
-    ];
+    final dirs = _resolveChunkyTaskDirs(serverPath);
     for (final dir in dirs) {
       if (await dir.exists()) {
         await dir.delete(recursive: true);
@@ -954,8 +1020,85 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     }
   }
 
+  List<Directory> _resolveChunkyTaskDirs(String serverPath) {
+    return <Directory>[
+      Directory(p.join(serverPath, 'config', 'Chunky', 'Tasks')),
+      Directory(p.join(serverPath, 'config', 'Chunky', 'tasks')),
+      Directory(p.join(serverPath, 'config', 'chunky', 'Tasks')),
+      Directory(p.join(serverPath, 'config', 'chunky', 'tasks')),
+    ];
+  }
+
+  Future<List<ChunkyPendingTask>> _loadPendingTasks(String serverPath) async {
+    if (serverPath.isEmpty) return const [];
+    final tasks = <ChunkyPendingTask>[];
+    for (final dir in _resolveChunkyTaskDirs(serverPath)) {
+      if (!await dir.exists()) continue;
+      await for (final entity in dir.list(
+        recursive: true,
+        followLinks: false,
+      )) {
+        if (entity is! File) continue;
+        if (!entity.path.toLowerCase().endsWith('.properties')) continue;
+        final task = await _parseTaskFile(entity, rootDir: dir);
+        if (task != null) {
+          tasks.add(task);
+        }
+      }
+    }
+    tasks.sort((a, b) => a.filePath.compareTo(b.filePath));
+    return tasks;
+  }
+
+  Future<ChunkyPendingTask?> _parseTaskFile(
+    File file, {
+    required Directory rootDir,
+  }) async {
+    try {
+      final raw = await file.readAsLines();
+      final props = <String, String>{};
+      for (final line in raw) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty ||
+            trimmed.startsWith('#') ||
+            trimmed.startsWith('!')) {
+          continue;
+        }
+        final idx = trimmed.indexOf('=');
+        if (idx <= 0) continue;
+        final key = trimmed.substring(0, idx).trim();
+        final value = trimmed.substring(idx + 1).trim();
+        props[key] = value;
+      }
+
+      final relativePath = p.relative(file.path, from: rootDir.path);
+      return ChunkyPendingTask(
+        filePath: relativePath.replaceAll('\\', '/'),
+        world: props['world'] ?? '',
+        cancelled: (props['cancelled'] ?? '').toLowerCase() == 'true',
+        centerX: double.tryParse(props['center-x'] ?? '') ?? 0,
+        centerZ: double.tryParse(props['center-z'] ?? '') ?? 0,
+        radius: double.tryParse(props['radius'] ?? '') ?? 0,
+        shape: props['shape'] ?? '',
+        pattern: props['pattern'] ?? '',
+        chunks: int.tryParse(props['chunks'] ?? '') ?? 0,
+        time: int.tryParse(props['time'] ?? '') ?? 0,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _handleStdoutLine(String line) {
     final lowerLine = line.toLowerCase();
+    _captureChunkMetrics(line);
+    unawaited(
+      _healthMonitor.handleStdoutLine(
+        line,
+        metricsSnapshot: _buildHealthMetricsSnapshot(),
+      ),
+    );
+
     if (_saveAllCompleter != null && _looksLikeSaveAllAck(lowerLine)) {
       if (!(_saveAllCompleter?.isCompleted ?? true)) {
         _saveAllCompleter?.complete(true);
@@ -1004,6 +1147,46 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     if (line.contains('saved the world')) return true;
     if (line.contains('saved') && line.contains('game')) return true;
     return false;
+  }
+
+  void _captureChunkMetrics(String line) {
+    final chunksMatch = RegExp(
+      r'(\d+)\s*chunks?',
+      caseSensitive: false,
+    ).firstMatch(line);
+    if (chunksMatch != null) {
+      _lastChunksProcessed =
+          int.tryParse(chunksMatch.group(1) ?? '') ?? _lastChunksProcessed;
+    }
+
+    final cpsMatch = RegExp(
+      r'(\d+(?:[.,]\d+)?)\s*(?:cps|chunks/s)',
+      caseSensitive: false,
+    ).firstMatch(line);
+    if (cpsMatch != null) {
+      _lastCps =
+          double.tryParse((cpsMatch.group(1) ?? '').replaceAll(',', '.')) ??
+          _lastCps;
+    }
+  }
+
+  String _buildHealthMetricsSnapshot() {
+    final progress = state.currentRunProgress.toStringAsFixed(1);
+    final cps = _lastCps.toStringAsFixed(1);
+    final status = state.status.label;
+    return 'progress=$progress% chunks=$_lastChunksProcessed cps=$cps status=$status';
+  }
+
+  Future<void> _applyHealthSnapshot(ServerHealthSnapshot snapshot) {
+    state = state.copyWith(
+      serverHealthState: snapshot.state,
+      overloadEventsInWindow: snapshot.overloadEventsInWindow,
+      restartsInLastHour: snapshot.restartsInLastHour,
+      lastMsBehind: snapshot.lastMsBehind,
+      lastTicksBehind: snapshot.lastTicksBehind,
+      healthStatusMessage: snapshot.message,
+    );
+    return Future<void>.value();
   }
 
   void _startElapsedTimer() {
