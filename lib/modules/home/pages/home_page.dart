@@ -5,10 +5,10 @@ import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_theme_extension.dart';
 import '../../../layout/default_layout.dart';
 import '../../../models/server_lifecycle_state.dart';
+import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../../backup/providers/backups_provider.dart';
 import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
-import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../providers/home_provider.dart';
 import '../providers/pvp_control_provider.dart';
 import '../subcomponents/active_players_card.dart';
@@ -43,6 +43,7 @@ class HomePage extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: Container(
           width: double.infinity,
+          height: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: ext.cardBackground,
@@ -58,96 +59,124 @@ class HomePage extends ConsumerWidget {
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final showThreeCards = constraints.maxWidth >= 1080;
-              final hideActivePlayersCard = constraints.maxWidth < 760;
+              const metricSpacing = 12.0;
+              const metricMinWidth = 220.0;
+              final hideActivePlayersCard =
+                  constraints.maxWidth <
+                  (metricMinWidth * 3) + (metricSpacing * 2);
 
               return SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        _buildMetricTile(
-                          child: StatusCard(lifecycle: runtime.lifecycle),
-                          maxWidth: 360,
-                        ),
-                        _buildMetricTile(
-                          child: UptimeCard(
-                            uptime: runtime.uptime,
-                            lifecycle: runtime.lifecycle,
-                          ),
-                          maxWidth: 360,
-                        ),
-                        if (!hideActivePlayersCard)
-                          _buildMetricTile(
-                            child: ActivePlayersCard(
-                              activePlayers: runtime.activePlayers,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!hideActivePlayersCard)
+                        Wrap(
+                          spacing: metricSpacing,
+                          runSpacing: metricSpacing,
+                          children: [
+                            _buildMetricTile(
+                              child: StatusCard(lifecycle: runtime.lifecycle),
+                              maxWidth: 360,
                             ),
-                            maxWidth: showThreeCards ? 360 : 420,
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    OnlinePlayersStripCard(players: runtime.onlinePlayers),
-                    const SizedBox(height: 12),
-                    PvpControlCard(
-                      enabled: pvpState.enabled,
-                      interactive:
-                          runtime.lifecycle == ServerLifecycleState.online &&
-                          !pvpState.updating,
-                      onChanged: (value) async {
-                        final ok = await pvpNotifier.setDesiredWithRuntime(
-                          value,
-                        );
-                        if (!ok && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Falha ao aplicar PVP no servidor.',
+                            _buildMetricTile(
+                              child: UptimeCard(
+                                uptime: runtime.uptime,
+                                lifecycle: runtime.lifecycle,
+                              ),
+                              maxWidth: 360,
+                            ),
+                            _buildMetricTile(
+                              child: ActivePlayersCard(
+                                activePlayers: runtime.activePlayers,
+                              ),
+                              maxWidth: 360,
+                            ),
+                          ],
+                        )
+                      else
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildMetricTile(
+                                child: StatusCard(lifecycle: runtime.lifecycle),
+                                maxWidth: double.infinity,
                               ),
                             ),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    ServerActionsBar(
-                      lifecycle: runtime.lifecycle,
-                      canStartServer: hasEssentials,
-                      onStart: actions.startServer,
-                      onStop: actions.stopServer,
-                      onRestart: actions.restartServer,
-                      onBackup: () {
-                        _runManualBackup(context, ref);
-                      },
-                      onKickPlayers: () {
-                        showDialog<void>(
-                          context: context,
-                          builder: (_) => const KickPlayersModal(),
-                        );
-                      },
-                    ),
-                    if (!hasEssentials) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        'Defina Path do servidor, Comando do Java e Nome do file server em Config > Arquivos para iniciar.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
+                            const SizedBox(width: metricSpacing),
+                            Expanded(
+                              child: _buildMetricTile(
+                                child: UptimeCard(
+                                  uptime: runtime.uptime,
+                                  lifecycle: runtime.lifecycle,
+                                ),
+                                maxWidth: double.infinity,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                    if (runtime.lastError != null) ...[
                       const SizedBox(height: 12),
-                      Text(
-                        'Erro: ${runtime.lastError}',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
+                      OnlinePlayersStripCard(players: runtime.onlinePlayers),
+                      const SizedBox(height: 12),
+                      PvpControlCard(
+                        enabled: pvpState.enabled,
+                        interactive:
+                            runtime.lifecycle == ServerLifecycleState.online &&
+                            !pvpState.updating,
+                        onChanged: (value) async {
+                          final ok = await pvpNotifier.setDesiredWithRuntime(
+                            value,
+                          );
+                          if (!ok && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Falha ao aplicar PVP no servidor.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
                       ),
+                      const SizedBox(height: 16),
+                      ServerActionsBar(
+                        lifecycle: runtime.lifecycle,
+                        canStartServer: hasEssentials,
+                        onStart: actions.startServer,
+                        onStop: actions.stopServer,
+                        onRestart: actions.restartServer,
+                        onBackup: () {
+                          _runManualBackup(context, ref);
+                        },
+                        onKickPlayers: () {
+                          showDialog<void>(
+                            context: context,
+                            builder: (_) => const KickPlayersModal(),
+                          );
+                        },
+                      ),
+                      if (!hasEssentials) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          'Defina Path do servidor, Comando do Java e Nome do file server em Config > Arquivos para iniciar.',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                        ),
+                      ],
+                      if (runtime.lastError != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          'Erro: ${runtime.lastError}',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               );
             },
