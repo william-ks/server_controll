@@ -57,6 +57,21 @@ Status da base implementada:
   - nova aba com badge de alerta e ação de limpeza total de dados;
   - limpeza com dupla confirmação;
   - reset completo do banco local + remoção de ícones de whitelist no diretório de suporte.
+- Config > Propriedades:
+  - aba implementada com leitura e edição direta do arquivo `server.properties` em `serverPath/server.properties`;
+  - campos atuais:
+    - `level-name` (nome do servidor)
+    - `motd` (descrição)
+    - `level-seed` (seed)
+    - `hardcore` (switch)
+    - `gamemode` (select survival/creative/adventure/spectator)
+    - `max-players`
+    - `pvp` (switch)
+    - `white-list` (switch)
+    - `view-distance`
+    - `simulation-distance`
+  - persistência em SQLite com chaves `prop_*`;
+  - regra de precedência aplicada: se `server.properties` existir, ele sobrepõe os dados do banco ao carregar.
 - Backup:
   - nova aba `Config > Backup` com persistência em SQLite para:
     - `backup_path`

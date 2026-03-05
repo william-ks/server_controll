@@ -6,6 +6,7 @@ import '../../../layout/default_layout.dart';
 import '../subcomponents/advanced_settings_tab.dart';
 import '../subcomponents/backup_settings_tab.dart';
 import '../subcomponents/files_settings_tab.dart';
+import '../subcomponents/properties_settings_tab.dart';
 
 enum ConfigTab { arquivos, backup, propriedades, avancado }
 
@@ -20,6 +21,7 @@ class _ConfigPageState extends State<ConfigPage> {
   ConfigTab _active = ConfigTab.arquivos;
   int _filesReloadToken = 0;
   int _backupReloadToken = 0;
+  int _propertiesReloadToken = 0;
 
   void _setTab(ConfigTab tab) {
     if (_active != tab && tab == ConfigTab.arquivos) {
@@ -27,6 +29,9 @@ class _ConfigPageState extends State<ConfigPage> {
     }
     if (_active != tab && tab == ConfigTab.backup) {
       _backupReloadToken++;
+    }
+    if (_active != tab && tab == ConfigTab.propriedades) {
+      _propertiesReloadToken++;
     }
     setState(() => _active = tab);
   }
@@ -85,6 +90,7 @@ class _ConfigPageState extends State<ConfigPage> {
                   tab: _active,
                   filesReloadToken: _filesReloadToken,
                   backupReloadToken: _backupReloadToken,
+                  propertiesReloadToken: _propertiesReloadToken,
                 ),
               ),
             ],
@@ -141,11 +147,13 @@ class _TabContent extends StatelessWidget {
     required this.tab,
     required this.filesReloadToken,
     required this.backupReloadToken,
+    required this.propertiesReloadToken,
   });
 
   final ConfigTab tab;
   final int filesReloadToken;
   final int backupReloadToken;
+  final int propertiesReloadToken;
 
   @override
   Widget build(BuildContext context) {
@@ -156,21 +164,10 @@ class _TabContent extends StatelessWidget {
       ConfigTab.backup => BackupSettingsTab(
         key: ValueKey('backup-$backupReloadToken'),
       ),
-      ConfigTab.propriedades => _PlaceholderContent(
-        text: 'Configurações de Propriedades em construção.',
+      ConfigTab.propriedades => PropertiesSettingsTab(
+        key: ValueKey('properties-$propertiesReloadToken'),
       ),
       ConfigTab.avancado => const AdvancedSettingsTab(),
     };
-  }
-}
-
-class _PlaceholderContent extends StatelessWidget {
-  const _PlaceholderContent({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(alignment: Alignment.topLeft, child: Text(text));
   }
 }

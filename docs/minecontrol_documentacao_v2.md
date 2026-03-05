@@ -94,6 +94,22 @@ A aplicação centraliza:
   - botão `Backup` integrado ao fluxo real de backup manual;
   - execução permitida apenas com servidor offline e backups ativos/configurados.
   - fluxo de backup manual com confirmação + modal de progresso e cancelamento.
+- Configurações > Propriedades:
+  - aba funcional ligada ao arquivo físico `server.properties` no diretório do servidor;
+  - leitura automática dos campos gerenciados e escrita de volta no arquivo ao salvar;
+  - campos iniciais:
+    - nome do servidor (`level-name`)
+    - descrição (`motd`)
+    - seed (`level-seed`)
+    - hardcore (true/false)
+    - modo de jogo (`gamemode`)
+    - max players (`max-players`)
+    - pvp (true/false)
+    - whitelist (true/false)
+    - view distance (`view-distance`)
+    - simulation distance (`simulation-distance`)
+  - valores também são persistidos no SQLite (`prop_*`) como espelho local;
+  - precedência de leitura: arquivo físico `server.properties` sobrepõe o banco quando presente.
 
 - Tela `Agendamentos`:
   - nova página dedicada com busca e cadastro de agendamentos;
