@@ -5,6 +5,7 @@ import 'config/providers/theme_provider.dart';
 import 'config/routes/app_router.dart';
 import 'config/routes/routes_config.dart';
 import 'config/theme/app_theme.dart';
+import 'modules/schedules/services/schedules_runner_service.dart';
 
 class MineControlApp extends ConsumerWidget {
   const MineControlApp({super.key});
@@ -12,6 +13,7 @@ class MineControlApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    ref.watch(schedulesRunnerProvider);
 
     return MaterialApp(
       title: 'MineControl',

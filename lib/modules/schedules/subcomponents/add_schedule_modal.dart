@@ -1,0 +1,192 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../components/buttons/app_button.dart';
+import '../../../components/inputs/app_switch_card.dart';
+import '../../../components/inputs/app_text_input.dart';
+import '../../../components/modal/app_modal.dart';
+import '../../../components/selects/app_select.dart';
+import '../../../components/shared/app_variant.dart';
+import '../../backup/providers/backup_config_provider.dart';
+import '../models/schedule_action.dart';
+import '../services/cron_matcher.dart';
+
+class AddScheduleModal extends ConsumerStatefulWidget {
+  const AddScheduleModal({super.key, required this.onCreate});
+
+  final Future<void> Function({
+    required String cronExpression,
+    required ScheduleAction action,
+    required bool withBackup,
+  })
+  onCreate;
+
+  @override
+  ConsumerState<AddScheduleModal> createState() => _AddScheduleModalState();
+}
+
+class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
+  final TextEditingController _cronController = TextEditingController();
+
+  ScheduleAction _action = ScheduleAction.restartServer;
+  bool _withBackup = false;
+  bool _saving = false;
+  String? _cronError;
+
+  @override
+  void dispose() {
+    _cronController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final cron = _cronController.text.trim();
+    if (!CronMatcher.isValidExpression(cron)) {
+      setState(() => _cronError = 'Expressão crontab inválida. Use 5 campos.');
+      return;
+    }
+
+    final backupConfig = ref.read(backupConfigProvider);
+    final canEnableBackup =
+        backupConfig.backupsEnabled &&
+        backupConfig.backupPath.trim().isNotEmpty &&
+        Directory(backupConfig.backupPath.trim()).existsSync();
+    final effectiveWithBackup = canEnableBackup && _withBackup;
+
+    setState(() {
+      _saving = true;
+      _cronError = null;
+    });
+    try {
+      await widget.onCreate(
+        cronExpression: cron,
+        action: _action,
+        withBackup: effectiveWithBackup,
+      );
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final backupConfig = ref.watch(backupConfigProvider);
+    final backupPathOk =
+        backupConfig.backupPath.trim().isNotEmpty &&
+        Directory(backupConfig.backupPath.trim()).existsSync();
+    final canEnableBackup = backupConfig.backupsEnabled && backupPathOk;
+    final effectiveWithBackup = canEnableBackup ? _withBackup : false;
+
+    return AppModal(
+      icon: Icons.schedule_rounded,
+      title: 'Novo agendamento',
+      width: 640,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.28),
+              ),
+            ),
+            child: Text(
+              'Agendamentos executam tarefas automáticas do servidor (iniciar, reiniciar ou desligar) usando expressão crontab.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Text('Guia crontab: '),
+              TextButton(
+                onPressed: () => launchUrl(Uri.parse('https://crontab.guru')),
+                child: const Text('crontab.guru'),
+              ),
+            ],
+          ),
+          AppTextInput(
+            controller: _cronController,
+            label: 'Crontab',
+            hint: 'Ex.: */30 * * * *',
+            errorText: _cronError,
+          ),
+          const SizedBox(height: 12),
+          AppSelect<ScheduleAction>(
+            label: 'Ação',
+            value: _action,
+            items: const [
+              AppSelectItem(
+                value: ScheduleAction.startServer,
+                label: 'Iniciar servidor',
+              ),
+              AppSelectItem(
+                value: ScheduleAction.restartServer,
+                label: 'Reiniciar servidor',
+              ),
+              AppSelectItem(
+                value: ScheduleAction.stopServer,
+                label: 'Desligar servidor',
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _action = value);
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+          AppSwitchCard(
+            label: 'Fazer backup',
+            value: effectiveWithBackup,
+            onChanged: canEnableBackup
+                ? (value) => setState(() => _withBackup = value)
+                : null,
+          ),
+          if (!canEnableBackup)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Backup indisponível: verifique Config > Backup (ativos + pasta válida).',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        AppButton(
+          label: 'Cancelar',
+          onPressed: () => Navigator.of(context).pop(),
+          type: AppButtonType.textButton,
+          variant: AppVariant.danger,
+        ),
+        AppButton(
+          label: 'Adicionar',
+          onPressed: _save,
+          isLoading: _saving,
+          isDisabled: _saving,
+          variant: AppVariant.success,
+          icon: Icons.add_rounded,
+        ),
+      ],
+    );
+  }
+}

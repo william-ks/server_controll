@@ -1,13 +1,14 @@
 import 'migration.dart';
 import 'migration_v1.dart';
 import 'migration_v2.dart';
+import 'migration_v3.dart';
 
 class MigrationRunner {
   static final List<Migration> all = [
     MigrationV1(),
     MigrationV2(),
+    MigrationV3(),
   ];
 
   static int get latestVersion => all.last.version;
 }
-
