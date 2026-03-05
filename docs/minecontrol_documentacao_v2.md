@@ -939,3 +939,24 @@ Tabela `whitelist_players`:
 - Console:
   - modal de comandos rápidos em cards com título/descrição;
   - ações por card: copiar e inserir no input (sem executar automaticamente).
+ - Tela `Chunky`:
+  - abas `Execução` e `Config` implementadas;
+  - aba `Config` com persistência e autosave de:
+    - center X/Z
+    - radius
+    - pattern
+    - shape
+    - máximo de chunks por execução
+    - switch de backup antes de iniciar
+  - cálculo do plano em múltiplos runs a partir de `radius` e `maxChunksPerRun`;
+  - comando radius com regra `single/double/auto`:
+    - `auto` usa dois valores para `rectangle/ellipse`
+    - caso contrário usa valor único;
+  - aba `Execução` com status, progresso atual, progresso total, elapsed e controle de execução.
+  - fluxo de execução:
+    - limpa `config/Chunky/Tasks` antes do início;
+    - seta `max-players=0` e restaura ao final/cancelamento;
+    - executa backup opcional antes do primeiro run;
+    - executa comandos `chunky center`, `chunky radius`, `chunky pattern`, `chunky shape`, `chunky start`;
+    - usa parse de logs para atualizar progresso e conclusão de run;
+    - reinicia servidor entre runs e após restauração final de `max-players`.

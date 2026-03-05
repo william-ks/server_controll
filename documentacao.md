@@ -124,3 +124,28 @@ Status da base implementada:
 
 Regra:
 - qualquer mudança relevante de arquitetura, fluxo ou comportamento deve manter este arquivo e `docs/minecontrol_documentacao_v2.md` sincronizados.
+ - Chunky:
+  - tela com abas `Execução` e `Config` no mesmo padrão visual da Config;
+  - aba `Config` com persistência em SQLite para:
+    - center X/Z
+    - radius
+    - pattern
+    - shape
+    - máximo de chunks por execução
+    - backup antes de iniciar
+    - modo de comando de radius (single/double/auto)
+  - autosave por perda de foco (inputs) e mudança imediata em selects/switch;
+  - cálculo de plano em runs (`radius` dividido por `maxChunksPerRun`);
+  - aba `Execução` com:
+    - botões Iniciar/Pausar/Continuar/Cancelar
+    - status em tempo real (IDLE/RUNNING/PAUSED/CANCELLING/COMPLETED)
+    - progresso do run atual + progresso total animado
+    - elapsed time por execução
+    - indicador de tarefas pendentes (`config/Chunky/Tasks`)
+  - fluxo de execução:
+    - limpa tasks antigas antes de iniciar;
+    - aplica `max-players=0` em `server.properties` (salva valor antigo);
+    - opcionalmente executa backup antes do primeiro run;
+    - executa comandos `chunky center/radius/pattern/shape/start`;
+    - ao concluir cada run, reinicia o servidor e segue para próximo;
+    - ao final/cancelamento, restaura `max-players` e reinicia para aplicar.

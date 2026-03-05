@@ -7,6 +7,7 @@ import '../../../layout/default_layout.dart';
 import '../models/chunky_tab.dart';
 import '../providers/chunky_tab_provider.dart';
 import '../subcomponents/chunky_config_tab.dart';
+import '../subcomponents/chunky_execution_tab.dart';
 
 class ChunkyPage extends ConsumerStatefulWidget {
   const ChunkyPage({super.key});
@@ -69,7 +70,7 @@ class _ChunkyPageState extends ConsumerState<ChunkyPage> {
               const SizedBox(height: 16),
               Expanded(
                 child: switch (activeTab) {
-                  ChunkyTab.execution => const _ChunkyExecutionPlaceholder(),
+                  ChunkyTab.execution => const ChunkyExecutionTab(),
                   ChunkyTab.config => ChunkyConfigTab(
                     key: ValueKey('chunky-config-$_configReloadToken'),
                   ),
@@ -119,18 +120,6 @@ class _ChunkyTabChip extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ChunkyExecutionPlaceholder extends StatelessWidget {
-  const _ChunkyExecutionPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Align(
-      alignment: Alignment.topLeft,
-      child: Text('Execução em construção.'),
     );
   }
 }
