@@ -10,6 +10,7 @@ import 'modules/backup/models/backup_config_settings.dart';
 import 'modules/backup/providers/backup_config_provider.dart';
 import 'modules/config/models/config_files_settings.dart';
 import 'modules/config/providers/config_files_provider.dart';
+import 'modules/server/services/runtime_platform_bootstrap_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +19,7 @@ Future<void> main() async {
   }
 
   await AppDatabase.instance.database;
+  await RuntimePlatformBootstrapService().applyStartupPlatformValidation();
   final savedTheme = await AppDatabase.instance.getSetting('theme_mode');
   final initialThemeMode = ThemeModeNotifier.fromStorageValue(savedTheme);
   final initialConfigFiles = await ConfigFilesSettings.fromDatabase(

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../database/app_database.dart';
+import 'server_os_command_provider.dart';
 
 abstract class ServerProcessService {
   Stream<String> get stdoutLines;
@@ -22,9 +23,13 @@ abstract class ServerProcessService {
 }
 
 class LocalServerProcessService implements ServerProcessService {
+  LocalServerProcessService({ServerOsCommandProvider? osProvider})
+    : _osProvider = osProvider ?? ServerOsCommandProvider.fromCurrentPlatform();
+
   final _stdoutController = StreamController<String>.broadcast();
   final _stderrController = StreamController<String>.broadcast();
   final _exitCodeController = StreamController<int>.broadcast();
+  final ServerOsCommandProvider _osProvider;
 
   Process? _process;
 
@@ -42,8 +47,11 @@ class LocalServerProcessService implements ServerProcessService {
 
   @override
   Future<void> prepareForAppStartup() async {
+    _ensureSupportedPlatform();
     final config = await _loadLaunchConfig();
-    final activePids = await _findMatchingServerProcessIds(config.jarFile);
+    final activePids = await _osProvider.findMatchingServerProcessIds(
+      config.jarFile,
+    );
     if (activePids.isEmpty) {
       return;
     }
@@ -58,13 +66,17 @@ class LocalServerProcessService implements ServerProcessService {
 
   @override
   Future<bool> hasAnyServerInstance() async {
+    _ensureSupportedPlatform();
     final config = await _loadLaunchConfig();
-    final activePids = await _findMatchingServerProcessIds(config.jarFile);
+    final activePids = await _osProvider.findMatchingServerProcessIds(
+      config.jarFile,
+    );
     return activePids.isNotEmpty;
   }
 
   @override
   Future<void> start() async {
+    _ensureSupportedPlatform();
     if (_process != null) {
       return;
     }
@@ -116,6 +128,7 @@ class LocalServerProcessService implements ServerProcessService {
 
   @override
   Future<void> stop() async {
+    _ensureSupportedPlatform();
     final known = _process;
     if (known != null) {
       await _gracefulStopKnownProcess(known);
@@ -123,7 +136,7 @@ class LocalServerProcessService implements ServerProcessService {
     }
 
     final config = await _loadLaunchConfig();
-    final pids = await _findMatchingServerProcessIds(config.jarFile);
+    final pids = await _osProvider.findMatchingServerProcessIds(config.jarFile);
     if (pids.isEmpty) {
       return;
     }
@@ -158,8 +171,9 @@ class LocalServerProcessService implements ServerProcessService {
 
   @override
   Future<int?> getActiveServerMemoryMb() async {
+    _ensureSupportedPlatform();
     final config = await _loadLaunchConfig();
-    final pids = await _findMatchingServerProcessIds(config.jarFile);
+    final pids = await _osProvider.findMatchingServerProcessIds(config.jarFile);
     if (pids.isEmpty) return null;
 
     var highest = 0;
@@ -191,7 +205,7 @@ class LocalServerProcessService implements ServerProcessService {
 
     var exited = false;
     for (var i = 0; i < 60; i++) {
-      final running = await _isPidRunning(process.pid);
+      final running = await _osProvider.isPidRunning(process.pid);
       if (!running) {
         exited = true;
         break;
@@ -206,11 +220,11 @@ class LocalServerProcessService implements ServerProcessService {
     _stderrController.add(
       '[system] Timeout no stop gracioso. Finalizando processo do servidor (pid ${process.pid}).',
     );
-    await _killPid(process.pid);
+    await _osProvider.killPid(process.pid);
   }
 
   Future<void> _terminateDuplicateInstances(String jarFile) async {
-    final pids = await _findMatchingServerProcessIds(jarFile);
+    final pids = await _osProvider.findMatchingServerProcessIds(jarFile);
     if (pids.isEmpty) return;
 
     await _terminateByPids(
@@ -228,109 +242,13 @@ class LocalServerProcessService implements ServerProcessService {
       _stderrController.add(
         '[system] Encerrando processo do servidor pid=$pid. Motivo: $reason',
       );
-      await _killPid(pid);
+      await _osProvider.killPid(pid);
     }
     await AppDatabase.instance.setSetting('server_pid', '');
   }
 
-  Future<void> _killPid(int pid) async {
-    if (Platform.isWindows) {
-      await Process.run('taskkill', ['/PID', '$pid', '/T', '/F']);
-      return;
-    }
-    await Process.run('kill', ['-TERM', '$pid']);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (await _isPidRunning(pid)) {
-      await Process.run('kill', ['-KILL', '$pid']);
-    }
-  }
-
-  Future<bool> _isPidRunning(int pid) async {
-    if (pid <= 0) return false;
-    if (Platform.isWindows) {
-      final result = await Process.run('powershell', [
-        '-NoProfile',
-        '-Command',
-        'if (Get-Process -Id $pid -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }',
-      ]);
-      return result.exitCode == 0;
-    }
-    final result = await Process.run('kill', ['-0', '$pid']);
-    return result.exitCode == 0;
-  }
-
   Future<int?> _getPidMemoryMb(int pid) async {
-    if (pid <= 0) return null;
-    if (Platform.isWindows) {
-      final result = await Process.run('powershell', [
-        '-NoProfile',
-        '-Command',
-        r'$p=Get-Process -Id $args[0] -ErrorAction SilentlyContinue; if($null -eq $p){exit 1}; [int]([math]::Round($p.WorkingSet64/1MB))',
-        '$pid',
-      ]);
-      if (result.exitCode != 0) return null;
-      return int.tryParse(result.stdout.toString().trim());
-    }
-
-    final result = await Process.run('ps', ['-o', 'rss=', '-p', '$pid']);
-    if (result.exitCode != 0) return null;
-    final rssKb = int.tryParse(result.stdout.toString().trim());
-    if (rssKb == null || rssKb <= 0) return null;
-    return (rssKb / 1024).round();
-  }
-
-  Future<List<int>> _findMatchingServerProcessIds(String jarFile) async {
-    final escapedJar = RegExp.escape(jarFile.trim());
-    if (escapedJar.isEmpty) return [];
-
-    if (Platform.isWindows) {
-      final script = r'''
-$jar = [regex]::Escape($args[0])
-Get-CimInstance Win32_Process |
-Where-Object {
-  $_.Name -match '^java(w)?(\.exe)?$' -and
-  $_.CommandLine -match '-jar' -and
-  $_.CommandLine -match $jar
-} |
-Select-Object -ExpandProperty ProcessId
-''';
-      final result = await Process.run('powershell', [
-        '-NoProfile',
-        '-Command',
-        script,
-        jarFile,
-      ]);
-      if (result.exitCode != 0) {
-        return [];
-      }
-      return result.stdout
-          .toString()
-          .split(RegExp(r'\s+'))
-          .map((e) => int.tryParse(e.trim()))
-          .whereType<int>()
-          .toList();
-    }
-
-    final ps = await Process.run('ps', ['-eo', 'pid=,args=']);
-    if (ps.exitCode != 0) return [];
-
-    final ids = <int>[];
-    for (final raw in ps.stdout.toString().split('\n')) {
-      final line = raw.trim();
-      if (line.isEmpty) continue;
-      final firstSpace = line.indexOf(' ');
-      if (firstSpace <= 0) continue;
-      final pid = int.tryParse(line.substring(0, firstSpace).trim());
-      if (pid == null) continue;
-      final args = line.substring(firstSpace + 1);
-      if (!RegExp('\\bjava(w)?\\b', caseSensitive: false).hasMatch(args)) {
-        continue;
-      }
-      if (!args.contains('-jar')) continue;
-      if (!RegExp(escapedJar, caseSensitive: false).hasMatch(args)) continue;
-      ids.add(pid);
-    }
-    return ids;
+    return _osProvider.getPidMemoryMb(pid);
   }
 
   Future<_LaunchConfig> _loadLaunchConfig() async {
@@ -398,6 +316,15 @@ Select-Object -ExpandProperty ProcessId
     }
 
     return (xms, xmx);
+  }
+
+  void _ensureSupportedPlatform() {
+    if (_osProvider.isSupported) {
+      return;
+    }
+    throw UnsupportedError(
+      'Sistema operacional nao suportado para gerenciamento de processos do servidor.',
+    );
   }
 }
 
