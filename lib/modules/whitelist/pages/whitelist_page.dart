@@ -76,14 +76,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Você está prestes a remover "$nickname" da whitelist local do MineControl.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Essa ação remove o jogador da listagem e da sincronização automática com o servidor.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                'Você está prestes a remover o jogador $nickname da whitelist local impedindo o jogador de se conectar ao servidor, você tem certeza ?',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
               ),
               const SizedBox(height: 14),
@@ -113,12 +108,15 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                   ],
                 ),
               ),
+              const SizedBox(height: 8),
             ],
           ),
           actions: [
-            TextButton(
+            AppButton(
+              label: 'Cancelar',
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
+              variant: AppVariant.danger,
+              icon: Icons.close_rounded,
             ),
             AppButton(
               label: 'Confirmar',
