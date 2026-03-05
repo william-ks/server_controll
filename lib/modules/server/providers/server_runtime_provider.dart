@@ -15,9 +15,10 @@ final serverProcessServiceProvider = Provider<ServerProcessService>((ref) {
   return service;
 });
 
-final serverRuntimeProvider = NotifierProvider<ServerRuntimeNotifier, ServerRuntimeState>(
-  ServerRuntimeNotifier.new,
-);
+final serverRuntimeProvider =
+    NotifierProvider<ServerRuntimeNotifier, ServerRuntimeState>(
+      ServerRuntimeNotifier.new,
+    );
 
 final onlinePlayersProvider = Provider<List<String>>((ref) {
   return ref.watch(serverRuntimeProvider).onlinePlayers;
@@ -36,6 +37,16 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
     _stdoutSub = _service.stdoutLines.listen(_handleStdout);
     _stderrSub = _service.stderrLines.listen(_handleStderr);
     _exitSub = _service.exitCodes.listen(_handleExit);
+    Future<void>(() async {
+      await _service.prepareForAppStartup();
+      if (await _service.hasAnyServerInstance()) {
+        state = state.copyWith(
+          lifecycle: ServerLifecycleState.error,
+          lastError:
+              'Instancia de servidor detectada ao iniciar e nao foi possivel assumir controle.',
+        );
+      }
+    });
 
     ref.onDispose(() {
       _uptimeTimer?.cancel();
@@ -48,7 +59,8 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
   }
 
   Future<void> startServer() async {
-    if (state.lifecycle == ServerLifecycleState.online || state.lifecycle == ServerLifecycleState.starting) {
+    if (state.lifecycle == ServerLifecycleState.online ||
+        state.lifecycle == ServerLifecycleState.starting) {
       return;
     }
 
@@ -74,7 +86,9 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
   }
 
   Future<void> stopServer() async {
-    if (state.lifecycle != ServerLifecycleState.online) {
+    if (state.lifecycle != ServerLifecycleState.online &&
+        state.lifecycle != ServerLifecycleState.starting &&
+        state.lifecycle != ServerLifecycleState.restarting) {
       return;
     }
     state = state.copyWith(lifecycle: ServerLifecycleState.stopping);
@@ -85,7 +99,10 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
     if (state.lifecycle != ServerLifecycleState.online) {
       return;
     }
-    state = state.copyWith(lifecycle: ServerLifecycleState.restarting, uptime: Duration.zero);
+    state = state.copyWith(
+      lifecycle: ServerLifecycleState.restarting,
+      uptime: Duration.zero,
+    );
     await _service.restart();
     state = state.copyWith(
       lifecycle: ServerLifecycleState.starting,
@@ -98,6 +115,11 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
 
   Future<void> sendCommand(String command) async {
     await _service.sendCommand(command);
+  }
+
+  Future<void> shutdownForAppExit() async {
+    state = state.copyWith(lifecycle: ServerLifecycleState.stopping);
+    await _service.shutdownForAppExit();
   }
 
   Future<void> requestOnlinePlayers() async {
@@ -150,7 +172,8 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
   }
 
   void _handleStderr(String line) {
-    if (state.lifecycle == ServerLifecycleState.starting || state.lifecycle == ServerLifecycleState.online) {
+    if (state.lifecycle == ServerLifecycleState.starting ||
+        state.lifecycle == ServerLifecycleState.online) {
       state = state.copyWith(lastError: line);
     }
   }
@@ -158,7 +181,9 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
   void _handleExit(int code) {
     _uptimeTimer?.cancel();
     state = state.copyWith(
-      lifecycle: code == 0 ? ServerLifecycleState.offline : ServerLifecycleState.error,
+      lifecycle: code == 0
+          ? ServerLifecycleState.offline
+          : ServerLifecycleState.error,
       uptime: Duration.zero,
       activePlayers: 0,
       onlinePlayers: const [],
