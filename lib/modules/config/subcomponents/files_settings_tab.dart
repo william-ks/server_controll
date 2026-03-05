@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
+import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
@@ -147,11 +148,9 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
       setState(() => _checkingJava = true);
     }
     try {
-      final result = await Process.run(
-        javaCommand,
-        const ['-version'],
-        runInShell: true,
-      ).timeout(const Duration(seconds: 4));
+      final result = await Process.run(javaCommand, const [
+        '-version',
+      ], runInShell: true).timeout(const Duration(seconds: 4));
 
       if (mounted) {
         setState(() {
@@ -213,7 +212,8 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
   void _validateRam() {
     final min = int.tryParse(_ramMinController.text.trim());
     final max = int.tryParse(_ramMaxController.text.trim());
-    if (_ramMinController.text.trim().isEmpty || _ramMaxController.text.trim().isEmpty) {
+    if (_ramMinController.text.trim().isEmpty ||
+        _ramMaxController.text.trim().isEmpty) {
       _ramError = null;
       return;
     }
@@ -263,7 +263,8 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     ].join('|');
   }
 
-  bool get _isDirty => _initialSnapshot != null && _snapshot() != _initialSnapshot;
+  bool get _isDirty =>
+      _initialSnapshot != null && _snapshot() != _initialSnapshot;
 
   bool get _hasEssentialsFilled {
     return _serverPathController.text.trim().isNotEmpty &&
@@ -280,9 +281,15 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
   }
 
   ConfigFilesSettings _toSettings() {
-    final ramMin = _ramMinController.text.trim().isEmpty ? '2' : _ramMinController.text.trim();
-    final ramMax = _ramMaxController.text.trim().isEmpty ? '8' : _ramMaxController.text.trim();
-    final restartWait = _restartWaitController.text.trim().isEmpty ? '10' : _restartWaitController.text.trim();
+    final ramMin = _ramMinController.text.trim().isEmpty
+        ? '2'
+        : _ramMinController.text.trim();
+    final ramMax = _ramMaxController.text.trim().isEmpty
+        ? '8'
+        : _ramMaxController.text.trim();
+    final restartWait = _restartWaitController.text.trim().isEmpty
+        ? '10'
+        : _restartWaitController.text.trim();
 
     return ConfigFilesSettings(
       serverPath: _serverPathController.text.trim(),
@@ -320,9 +327,9 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
       child: Text(
         text,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
+          fontWeight: FontWeight.w700,
+          color: Theme.of(context).colorScheme.secondary,
+        ),
       ),
     );
   }
@@ -332,7 +339,9 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w400),
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w400),
       ),
     );
   }
@@ -342,26 +351,9 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     required AppVariant variant,
     required IconData icon,
   }) {
-    final color = AppVariantPalette.resolve(variant);
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: AppBadge(title: text, icon: icon, variant: variant),
     );
   }
 
@@ -372,7 +364,9 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     }
 
     final showPathBadge = _serverPathController.text.trim().isNotEmpty;
-    final showFileBadge = _serverPathController.text.trim().isNotEmpty && _jarFileController.text.trim().isNotEmpty;
+    final showFileBadge =
+        _serverPathController.text.trim().isNotEmpty &&
+        _jarFileController.text.trim().isNotEmpty;
     final showJavaBadge = _javaCommandController.text.trim().isNotEmpty;
 
     return SingleChildScrollView(
@@ -391,7 +385,9 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
             _validationBadge(
               text: _pathExists ? 'ENCONTRADO' : 'NAO ENCONTRADO',
               variant: _pathExists ? AppVariant.success : AppVariant.danger,
-              icon: _pathExists ? Icons.check_circle_outline_rounded : Icons.close_rounded,
+              icon: _pathExists
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.close_rounded,
             ),
           if (!showPathBadge)
             _validationBadge(
@@ -411,13 +407,17 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
             _validationBadge(
               text: _fileExists ? 'ENCONTRADO' : 'NAO ENCONTRADO',
               variant: _fileExists ? AppVariant.success : AppVariant.danger,
-              icon: _fileExists ? Icons.check_circle_outline_rounded : Icons.close_rounded,
+              icon: _fileExists
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.close_rounded,
             ),
           const SizedBox(height: 14),
           _fieldLabel('Comando do Java:'),
           Text(
             'Comando utilizado pelo sistema para executar o Java no terminal. Esse valor sera utilizado quando o servidor for iniciado.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 6),
           AppTextInput(
@@ -430,13 +430,19 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
             _validationBadge(
               text: _checkingJava
                   ? 'VALIDANDO...'
-                  : (_javaAvailable == true ? 'JAVA DISPONIVEL' : 'JAVA NAO ENCONTRADO'),
+                  : (_javaAvailable == true
+                        ? 'JAVA DISPONIVEL'
+                        : 'JAVA NAO ENCONTRADO'),
               variant: _checkingJava
                   ? AppVariant.info
-                  : (_javaAvailable == true ? AppVariant.success : AppVariant.danger),
+                  : (_javaAvailable == true
+                        ? AppVariant.success
+                        : AppVariant.danger),
               icon: _checkingJava
                   ? Icons.hourglass_top_rounded
-                  : (_javaAvailable == true ? Icons.check_circle_outline_rounded : Icons.close_rounded),
+                  : (_javaAvailable == true
+                        ? Icons.check_circle_outline_rounded
+                        : Icons.close_rounded),
             ),
           const SizedBox(height: 14),
           _fieldLabel('JVM args:'),
@@ -447,7 +453,8 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
             onChanged: (_) => setState(() {}),
           ),
           _validationBadge(
-            text: 'ATENCAO: Flags com -XX:+AlwaysPreTouch pre-alocam toda a RAM. Deixe vazio para o comportamento padrao.',
+            text:
+                'ATENCAO: Flags com -XX:+AlwaysPreTouch pre-alocam toda a RAM. Deixe vazio para o comportamento padrao.',
             variant: AppVariant.warning,
             icon: Icons.warning_amber_rounded,
           ),
@@ -535,7 +542,11 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
                 label: 'Salvar',
                 onPressed: _save,
                 isLoading: _isSaving,
-                isDisabled: !_isDirty || !_hasValidPreconditions || _checkingJava || _isSaving,
+                isDisabled:
+                    !_isDirty ||
+                    !_hasValidPreconditions ||
+                    _checkingJava ||
+                    _isSaving,
                 variant: AppVariant.success,
                 icon: Icons.save_rounded,
               ),
@@ -548,8 +559,8 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
               child: Text(
                 'Para salvar: preencha Path, File Server e Java; valide path/jar/java; e mantenha RAM valida (min <= max).',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
+                  color: Theme.of(context).colorScheme.error,
+                ),
               ),
             ),
         ],

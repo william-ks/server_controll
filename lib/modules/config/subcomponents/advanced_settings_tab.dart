@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/shared/app_variant.dart';
@@ -114,7 +115,7 @@ class _AdvancedSettingsTabState extends ConsumerState<AdvancedSettingsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _InfoBadge(
+          AppBadge(
             icon: Icons.warning_amber_rounded,
             color: scheme.error,
             title: 'Zona avançada: limpeza total de dados',
@@ -129,65 +130,6 @@ class _AdvancedSettingsTabState extends ConsumerState<AdvancedSettingsTab> {
             isDisabled: _isClearing,
             variant: AppVariant.danger,
             icon: Icons.delete_sweep_rounded,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoBadge extends StatelessWidget {
-  const _InfoBadge({
-    required this.icon,
-    required this.color,
-    required this.title,
-    this.description,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String? description;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (description != null && description!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    description!,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: color.withValues(alpha: 0.82),
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
-              ],
-            ),
           ),
         ],
       ),

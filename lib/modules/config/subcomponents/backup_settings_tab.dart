@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
@@ -186,30 +187,9 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
     required AppVariant variant,
     required IconData icon,
   }) {
-    final color = AppVariantPalette.resolve(variant);
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: AppBadge(title: text, icon: icon, variant: variant),
     );
   }
 

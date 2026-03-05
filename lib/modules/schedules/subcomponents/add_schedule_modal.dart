@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
@@ -90,7 +91,6 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final badgeColor = scheme.primary;
     final backupConfig = ref.watch(backupConfigProvider);
     final backupPathOk =
         backupConfig.backupPath.trim().isNotEmpty &&
@@ -105,49 +105,23 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: badgeColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: badgeColor.withValues(alpha: 0.28)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Como funciona o agendamento',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: badgeColor.withValues(alpha: 0.94),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Defina uma expressão cron para executar tarefas automáticas no servidor (iniciar, reiniciar ou desligar). '
-                  'Se o backup estiver ativo e válido, ele pode ser acoplado ao fluxo da ação.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w400,
-                    color: badgeColor.withValues(alpha: 0.78),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: AppButton(
-                    label: 'Guia',
-                    type: AppButtonType.textIcon,
-                    transparent: true,
-                    variant: AppVariant.primary,
-                    icon: Icons.exit_to_app_rounded,
-                    onPressed: () => launchUrl(
-                      Uri.parse('https://crontab.guru/#*_*_*_*_*_*'),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                  ),
-                ),
-              ],
+          AppBadge(
+            icon: Icons.info_outline_rounded,
+            variant: AppVariant.primary,
+            title: 'Como funciona o agendamento',
+            description:
+                'Defina uma expressão cron para executar tarefas automáticas no servidor (iniciar, reiniciar ou desligar). '
+                'Se o backup estiver ativo e válido, ele pode ser acoplado ao fluxo da ação.',
+            trailing: AppButton(
+              label: 'Guia',
+              type: AppButtonType.textIcon,
+              transparent: true,
+              variant: AppVariant.primary,
+              icon: Icons.exit_to_app_rounded,
+              onPressed: () => launchUrl(
+                Uri.parse('https://crontab.guru/#*_*_*_*_*_*'),
+                mode: LaunchMode.externalApplication,
+              ),
             ),
           ),
           const SizedBox(height: 16),
