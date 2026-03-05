@@ -72,6 +72,9 @@ A aplicação centraliza:
   - provider dedicado para persistência total das configurações de arquivos e refresh de estado ao navegar nas abas.
   - salvamento condicionado às pré-condições de execução (path/jar/java válidos e RAM consistente).
   - salvamento silencioso (sem snackbar de sucesso).
+- Configurações > Avançado:
+  - aba de administração avançada com badge de alerta para operação destrutiva;
+  - botão para limpeza total dos dados locais com dupla confirmação.
 - Home:
   - inicialização do servidor bloqueada quando configurações essenciais não estiverem definidas.
 - Whitelist:

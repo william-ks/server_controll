@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
 import '../../../layout/default_layout.dart';
+import '../subcomponents/advanced_settings_tab.dart';
 import '../subcomponents/files_settings_tab.dart';
 
-enum ConfigTab { arquivos, backup, propriedades }
+enum ConfigTab { arquivos, backup, propriedades, avancado }
 
 class ConfigPage extends StatefulWidget {
   const ConfigPage({super.key});
@@ -64,6 +65,11 @@ class _ConfigPageState extends State<ConfigPage> {
                       label: 'Propriedades',
                       active: _active == ConfigTab.propriedades,
                       onTap: () => _setTab(ConfigTab.propriedades),
+                    ),
+                    _TabChip(
+                      label: 'Avançado',
+                      active: _active == ConfigTab.avancado,
+                      onTap: () => _setTab(ConfigTab.avancado),
                     ),
                   ],
                 ),
@@ -127,6 +133,7 @@ class _TabContent extends StatelessWidget {
       ConfigTab.arquivos => FilesSettingsTab(key: ValueKey('files-$filesReloadToken')),
       ConfigTab.backup => _PlaceholderContent(text: 'Configurações de Backup em construção.'),
       ConfigTab.propriedades => _PlaceholderContent(text: 'Configurações de Propriedades em construção.'),
+      ConfigTab.avancado => const AdvancedSettingsTab(),
     };
   }
 }

@@ -53,6 +53,10 @@ Status da base implementada:
   - ordem dos botões ajustada (`Sincronizar`, `Refresh`, `Adicionar jogador`).
 - Config > Arquivos:
   - removida mensagem de sucesso por snackbar após salvar.
+- Config > Avançado:
+  - nova aba com badge de alerta e ação de limpeza total de dados;
+  - limpeza com dupla confirmação;
+  - reset completo do banco local + remoção de ícones de whitelist no diretório de suporte.
 
 Regra:
 - qualquer mudança relevante de arquitetura, fluxo ou comportamento deve manter este arquivo e `docs/minecontrol_documentacao_v2.md` sincronizados.
