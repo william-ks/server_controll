@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_theme_extension.dart';
 import '../../../layout/default_layout.dart';
+import '../../backup/providers/backups_provider.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../providers/home_provider.dart';
@@ -23,7 +24,8 @@ class HomePage extends ConsumerWidget {
     final actions = ref.read(homeActionsProvider);
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final config = ref.watch(configFilesProvider);
-    final hasEssentials = config.serverPath.trim().isNotEmpty &&
+    final hasEssentials =
+        config.serverPath.trim().isNotEmpty &&
         config.javaCommand.trim().isNotEmpty &&
         config.fileServerName.trim().isNotEmpty;
 
@@ -53,13 +55,18 @@ class HomePage extends ConsumerWidget {
               GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: MediaQuery.of(context).size.width > 1100 ? 3 : 1,
+                crossAxisCount: MediaQuery.of(context).size.width > 1100
+                    ? 3
+                    : 1,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
                 childAspectRatio: 3.5,
                 children: [
                   StatusCard(lifecycle: runtime.lifecycle),
-                  UptimeCard(uptime: runtime.uptime, lifecycle: runtime.lifecycle),
+                  UptimeCard(
+                    uptime: runtime.uptime,
+                    lifecycle: runtime.lifecycle,
+                  ),
                   ActivePlayersCard(activePlayers: runtime.activePlayers),
                 ],
               ),
@@ -73,9 +80,7 @@ class HomePage extends ConsumerWidget {
                 onStop: actions.stopServer,
                 onRestart: actions.restartServer,
                 onBackup: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Backup será implementado em task futura.')),
-                  );
+                  _runManualBackup(context, ref);
                 },
                 onKickPlayers: () {
                   showDialog<void>(
@@ -89,8 +94,8 @@ class HomePage extends ConsumerWidget {
                 Text(
                   'Defina Path do servidor, Comando do Java e Nome do file server em Config > Arquivos para iniciar.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+                    color: Theme.of(context).colorScheme.error,
+                  ),
                 ),
               ],
               if (runtime.lastError != null) ...[
@@ -105,5 +110,25 @@ class HomePage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _runManualBackup(BuildContext context, WidgetRef ref) async {
+    final backupsNotifier = ref.read(backupsProvider.notifier);
+    try {
+      await backupsNotifier.createManualBackup();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Backup manual concluído com sucesso.')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Bad state: ', '')),
+          ),
+        );
+      }
+    }
   }
 }
