@@ -16,7 +16,8 @@ class AdvancedSettingsTab extends ConsumerStatefulWidget {
   const AdvancedSettingsTab({super.key});
 
   @override
-  ConsumerState<AdvancedSettingsTab> createState() => _AdvancedSettingsTabState();
+  ConsumerState<AdvancedSettingsTab> createState() =>
+      _AdvancedSettingsTabState();
 }
 
 class _AdvancedSettingsTabState extends ConsumerState<AdvancedSettingsTab> {
@@ -57,7 +58,9 @@ class _AdvancedSettingsTabState extends ConsumerState<AdvancedSettingsTab> {
         icon: Icons.delete_forever_rounded,
         title: 'Última confirmação',
         width: 560,
-        body: const Text('A operação é irreversível. Confirmar limpeza total agora?'),
+        body: const Text(
+          'A operação é irreversível. Confirmar limpeza total agora?',
+        ),
         actions: [
           AppButton(
             label: 'Voltar',
@@ -111,26 +114,12 @@ class _AdvancedSettingsTabState extends ConsumerState<AdvancedSettingsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: scheme.error.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: scheme.error.withValues(alpha: 0.28)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.warning_amber_rounded, size: 16, color: scheme.error),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Zona avançada: limpar dados remove todo o estado local da aplicação.',
-                    style: TextStyle(color: scheme.error, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
+          _InfoBadge(
+            icon: Icons.warning_amber_rounded,
+            color: scheme.error,
+            title: 'Zona avançada: limpeza total de dados',
+            description:
+                'Esta ação restaura a aplicação para o estado original e remove configurações, whitelist local, cache e dados persistidos.',
           ),
           const SizedBox(height: 18),
           AppButton(
@@ -140,6 +129,65 @@ class _AdvancedSettingsTabState extends ConsumerState<AdvancedSettingsTab> {
             isDisabled: _isClearing,
             variant: AppVariant.danger,
             icon: Icons.delete_sweep_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoBadge extends StatelessWidget {
+  const _InfoBadge({
+    required this.icon,
+    required this.color,
+    required this.title,
+    this.description,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String? description;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (description != null && description!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    description!,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: color.withValues(alpha: 0.82),
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
