@@ -6,14 +6,29 @@ import '../../../config/theme/app_styles.dart';
 import '../../../layout/default_layout.dart';
 import '../models/chunky_tab.dart';
 import '../providers/chunky_tab_provider.dart';
+import '../subcomponents/chunky_config_tab.dart';
 
-class ChunkyPage extends ConsumerWidget {
+class ChunkyPage extends ConsumerStatefulWidget {
   const ChunkyPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChunkyPage> createState() => _ChunkyPageState();
+}
+
+class _ChunkyPageState extends ConsumerState<ChunkyPage> {
+  int _configReloadToken = 0;
+
+  void _setTab(ChunkyTab tab) {
+    final current = ref.read(chunkyTabProvider);
+    if (current != tab && tab == ChunkyTab.config) {
+      setState(() => _configReloadToken++);
+    }
+    ref.read(chunkyTabProvider.notifier).setTab(tab);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final activeTab = ref.watch(chunkyTabProvider);
-    final tabNotifier = ref.read(chunkyTabProvider.notifier);
 
     return DefaultLayout(
       title: 'MineControl',
@@ -41,12 +56,12 @@ class ChunkyPage extends ConsumerWidget {
                     _ChunkyTabChip(
                       label: 'Execução',
                       active: activeTab == ChunkyTab.execution,
-                      onTap: () => tabNotifier.setTab(ChunkyTab.execution),
+                      onTap: () => _setTab(ChunkyTab.execution),
                     ),
                     _ChunkyTabChip(
                       label: 'Config',
                       active: activeTab == ChunkyTab.config,
-                      onTap: () => tabNotifier.setTab(ChunkyTab.config),
+                      onTap: () => _setTab(ChunkyTab.config),
                     ),
                   ],
                 ),
@@ -55,7 +70,9 @@ class ChunkyPage extends ConsumerWidget {
               Expanded(
                 child: switch (activeTab) {
                   ChunkyTab.execution => const _ChunkyExecutionPlaceholder(),
-                  ChunkyTab.config => const _ChunkyConfigPlaceholder(),
+                  ChunkyTab.config => ChunkyConfigTab(
+                    key: ValueKey('chunky-config-$_configReloadToken'),
+                  ),
                 },
               ),
             ],
@@ -114,18 +131,6 @@ class _ChunkyExecutionPlaceholder extends StatelessWidget {
     return const Align(
       alignment: Alignment.topLeft,
       child: Text('Execução em construção.'),
-    );
-  }
-}
-
-class _ChunkyConfigPlaceholder extends StatelessWidget {
-  const _ChunkyConfigPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Align(
-      alignment: Alignment.topLeft,
-      child: Text('Config em construção.'),
     );
   }
 }
