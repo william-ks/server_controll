@@ -10,7 +10,9 @@ import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../models/chunky_config_settings.dart';
+import '../models/chunky_execution_status.dart';
 import '../providers/chunky_config_provider.dart';
+import '../providers/chunky_execution_provider.dart';
 
 class ChunkyConfigTab extends ConsumerStatefulWidget {
   const ChunkyConfigTab({super.key});
@@ -90,6 +92,13 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
 
   Future<void> _save() async {
     if (_isSaving || _isLoading) return;
+    final execution = ref.read(chunkyExecutionProvider);
+    final locked =
+        execution.tasksPending ||
+        execution.status == ChunkyExecutionStatus.running ||
+        execution.status == ChunkyExecutionStatus.paused ||
+        execution.status == ChunkyExecutionStatus.cancelling;
+    if (locked) return;
     setState(() => _isSaving = true);
     try {
       final settings = ChunkyConfigSettings(
@@ -133,6 +142,12 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
   @override
   Widget build(BuildContext context) {
     final serverPath = ref.watch(configFilesProvider).serverPath.trim();
+    final execution = ref.watch(chunkyExecutionProvider);
+    final configLocked =
+        execution.tasksPending ||
+        execution.status == ChunkyExecutionStatus.running ||
+        execution.status == ChunkyExecutionStatus.paused ||
+        execution.status == ChunkyExecutionStatus.cancelling;
     final chunkFolderPath = serverPath.isEmpty
         ? ''
         : p.join(serverPath, 'config', 'Chunky');
@@ -147,6 +162,15 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (configLocked) ...[
+            const AppBadge(
+              icon: Icons.lock_rounded,
+              variant: AppVariant.warning,
+              title:
+                  'Config bloqueada enquanto houver tarefa pendente/execução.',
+            ),
+            const SizedBox(height: 12),
+          ],
           _fieldLabel('Pasta do Chunk'),
           if (serverPath.isEmpty)
             const AppBadge(
@@ -168,6 +192,7 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
                       controller: _centerXController,
                       focusNode: _centerXFocus,
                       hint: 'Ex.: 0',
+                      enabled: !configLocked,
                     ),
                   ],
                 ),
@@ -182,6 +207,7 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
                       controller: _centerZController,
                       focusNode: _centerZFocus,
                       hint: 'Ex.: 0',
+                      enabled: !configLocked,
                     ),
                   ],
                 ),
@@ -195,6 +221,7 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
             focusNode: _radiusFocus,
             hint: 'Ex.: 1000',
             keyboardType: TextInputType.number,
+            enabled: !configLocked,
           ),
           const SizedBox(height: 14),
           _fieldLabel('Pattern'),
@@ -208,6 +235,7 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
               AppSelectItem(value: 'csv', label: 'CSV'),
               AppSelectItem(value: 'world', label: 'World'),
             ],
+            enabled: !configLocked,
             onChanged: (value) async {
               if (value == null) return;
               setState(() => _pattern = value);
@@ -229,6 +257,7 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
               AppSelectItem(value: 'rectangle', label: 'Rectangle'),
               AppSelectItem(value: 'ellipse', label: 'Ellipse'),
             ],
+            enabled: !configLocked,
             onChanged: (value) async {
               if (value == null) return;
               setState(() => _shape = value);
@@ -242,6 +271,7 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
             focusNode: _maxChunksFocus,
             hint: 'Ex.: 1000',
             keyboardType: TextInputType.number,
+            enabled: !configLocked,
           ),
           if (maxChunks > 5000) ...[
             const SizedBox(height: 8),

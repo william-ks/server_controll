@@ -144,12 +144,12 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   List<int> buildRunPlan({required int radius, required int maxPerRun}) {
     if (radius <= 0 || maxPerRun <= 0) return [];
     final plan = <int>[];
-    var remaining = radius;
-    while (remaining > 0) {
-      final run = remaining > maxPerRun ? maxPerRun : remaining;
-      plan.add(run);
-      remaining -= run;
+    var current = maxPerRun;
+    while (current < radius) {
+      plan.add(current);
+      current += maxPerRun;
     }
+    plan.add(radius);
     return plan;
   }
 
@@ -195,6 +195,43 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     Future<void>(() => _runExecutionLoop(config, plan));
   }
 
+  Future<void> refreshChunkProgress() async {
+    final lifecycle = ref.read(serverRuntimeProvider).lifecycle;
+    if (lifecycle != ServerLifecycleState.online) return;
+    await ref
+        .read(serverRuntimeProvider.notifier)
+        .sendCommand('chunky progress');
+  }
+
+  Future<void> clearChunkyState() async {
+    final runtimeNotifier = ref.read(serverRuntimeProvider.notifier);
+    final serverPath = ref.read(configFilesProvider).serverPath.trim();
+    _cancelRequested = true;
+    _paused = false;
+    _runCompleter?.complete();
+    _runCompleter = null;
+    try {
+      if (ref.read(serverRuntimeProvider).lifecycle ==
+          ServerLifecycleState.online) {
+        await runtimeNotifier.sendCommand('chunky cancel');
+      }
+    } catch (_) {}
+    await _clearTasksDirs(serverPath);
+    _elapsedTimer?.cancel();
+    _completedRuns = 0;
+    state = state.copyWith(
+      status: ChunkyExecutionStatus.idle,
+      currentRun: 0,
+      totalRuns: 0,
+      currentRunProgress: 0,
+      totalProgress: 0,
+      elapsed: Duration.zero,
+      plan: const [],
+      clearError: true,
+    );
+    await refreshTasksPending();
+  }
+
   Future<void> pause() async {
     if (state.status != ChunkyExecutionStatus.running) return;
     _paused = true;
@@ -227,7 +264,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     String? previousMaxPlayers;
 
     try {
-      await _clearTasksDir(serverPath);
+      await _clearTasksDirs(serverPath);
       await refreshTasksPending();
 
       final props = await _propertiesService.loadFromFile(serverPath);
@@ -268,11 +305,12 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         if (_cancelRequested) break;
 
         final runRadius = plan[index];
+        await _clearTasksDirs(serverPath);
+        await refreshTasksPending();
         state = state.copyWith(
           status: ChunkyExecutionStatus.running,
           currentRun: index + 1,
           currentRunProgress: 0,
-          elapsed: Duration.zero,
         );
         _runCompleter = Completer<void>();
 
@@ -288,9 +326,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         );
 
         if (_completedRuns < plan.length) {
-          await runtimeNotifier.stopServer();
+          await runtimeNotifier.sendCommand('stop');
           await _waitForOffline();
-          await Future<void>.delayed(const Duration(seconds: 10));
+          await Future<void>.delayed(const Duration(seconds: 5));
           if (_cancelRequested) break;
           await runtimeNotifier.startServer();
           await _waitForOnline();
@@ -323,6 +361,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
           plan: const [],
         );
       } else {
+        await _clearTasksDirs(serverPath);
         state = state.copyWith(
           status: ChunkyExecutionStatus.completed,
           currentRunProgress: 100,
@@ -409,19 +448,29 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
   Future<bool> _hasPendingTasks(String serverPath) async {
     if (serverPath.isEmpty) return false;
-    final tasksDir = Directory(p.join(serverPath, 'config', 'Chunky', 'Tasks'));
-    if (!await tasksDir.exists()) return false;
-    await for (final _ in tasksDir.list(followLinks: false)) {
-      return true;
+    final dirs = <Directory>[
+      Directory(p.join(serverPath, 'config', 'Chunky', 'Tasks')),
+      Directory(p.join(serverPath, 'config', 'Chunky', 'tasks')),
+    ];
+    for (final dir in dirs) {
+      if (!await dir.exists()) continue;
+      await for (final _ in dir.list(followLinks: false)) {
+        return true;
+      }
     }
     return false;
   }
 
-  Future<void> _clearTasksDir(String serverPath) async {
+  Future<void> _clearTasksDirs(String serverPath) async {
     if (serverPath.isEmpty) return;
-    final tasksDir = Directory(p.join(serverPath, 'config', 'Chunky', 'Tasks'));
-    if (await tasksDir.exists()) {
-      await tasksDir.delete(recursive: true);
+    final dirs = <Directory>[
+      Directory(p.join(serverPath, 'config', 'Chunky', 'Tasks')),
+      Directory(p.join(serverPath, 'config', 'Chunky', 'tasks')),
+    ];
+    for (final dir in dirs) {
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
     }
   }
 
@@ -434,9 +483,18 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       return;
     }
 
-    final percentMatch = RegExp(r'(\d{1,3}(?:\.\d+)?)%').firstMatch(line);
+    if (line.toLowerCase().contains('task finished')) {
+      state = state.copyWith(currentRunProgress: 100);
+      _runCompleter?.complete();
+      _runCompleter = null;
+      return;
+    }
+
+    final percentMatch = RegExp(r'(\d{1,3}(?:[.,]\d+)?)%').firstMatch(line);
     if (percentMatch != null) {
-      final parsed = double.tryParse(percentMatch.group(1)!);
+      final parsed = double.tryParse(
+        percentMatch.group(1)!.replaceAll(',', '.'),
+      );
       if (parsed != null) {
         final bounded = parsed.clamp(0, 100).toDouble();
         final totalRuns = state.totalRuns == 0 ? 1 : state.totalRuns;

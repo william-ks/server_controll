@@ -90,6 +90,19 @@ class ChunkyExecutionTab extends ConsumerWidget {
                         state.status != ChunkyExecutionStatus.paused),
                 onPressed: notifier.cancel,
               ),
+              AppButton(
+                label: 'Refresh',
+                icon: Icons.refresh_rounded,
+                variant: AppVariant.secondary,
+                isDisabled: !serverOnline,
+                onPressed: notifier.refreshChunkProgress,
+              ),
+              AppButton(
+                label: 'Limpar Chunky',
+                icon: Icons.cleaning_services_rounded,
+                variant: AppVariant.secondary,
+                onPressed: notifier.clearChunkyState,
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -144,9 +157,9 @@ class ChunkyExecutionTab extends ConsumerWidget {
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 6),
-          LinearProgressIndicator(
+          _buildRoundedProgressBar(
+            context,
             value: (state.currentRunProgress / 100).clamp(0, 1),
-            minHeight: 8,
           ),
           const SizedBox(height: 6),
           Text('${state.currentRunProgress.toStringAsFixed(1)}%'),
@@ -163,7 +176,7 @@ class ChunkyExecutionTab extends ConsumerWidget {
             ),
             duration: const Duration(milliseconds: 350),
             builder: (context, value, _) {
-              return LinearProgressIndicator(value: value, minHeight: 8);
+              return _buildRoundedProgressBar(context, value: value);
             },
           ),
           const SizedBox(height: 6),
@@ -191,6 +204,20 @@ class ChunkyExecutionTab extends ConsumerWidget {
         ),
         Expanded(child: Text(value, overflow: TextOverflow.ellipsis)),
       ],
+    );
+  }
+
+  Widget _buildRoundedProgressBar(
+    BuildContext context, {
+    required double value,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return LinearProgressIndicator(
+      value: value,
+      minHeight: 8,
+      borderRadius: BorderRadius.circular(999),
+      backgroundColor: scheme.onPrimary,
+      valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
     );
   }
 
