@@ -3,13 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
-import '../../../components/inputs/app_switch_card.dart';
+import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../server/providers/server_runtime_provider.dart';
 import '../../server/services/server_health_monitor.dart';
 import '../models/chunky_execution_status.dart';
+import '../models/chunky_task_status.dart';
 import '../providers/chunky_execution_provider.dart';
+import '../providers/chunky_tasks_provider.dart';
 
 class ChunkyExecutionTab extends ConsumerWidget {
   const ChunkyExecutionTab({super.key});
@@ -19,63 +21,61 @@ class ChunkyExecutionTab extends ConsumerWidget {
     final runtime = ref.watch(serverRuntimeProvider);
     final state = ref.watch(chunkyExecutionProvider);
     final notifier = ref.read(chunkyExecutionProvider.notifier);
+    final tasksState = ref.watch(chunkyTasksProvider);
+    final tasksNotifier = ref.read(chunkyTasksProvider.notifier);
+    final selectedTask = tasksState.selectedTask;
     final serverOnline = runtime.lifecycle == ServerLifecycleState.online;
 
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          AppSelect<int>(
+            label: 'Select Task',
+            hint: 'Select a task',
+            value: selectedTask?.id,
+            items: tasksState.items
+                .where((item) => item.id != null)
+                .map(
+                  (item) => AppSelectItem<int>(
+                    value: item.id!,
+                    label: '${item.name} (${chunkyWorldLabel(item.world)})',
+                  ),
+                )
+                .toList(),
+            onChanged: (value) async {
+              if (value == null) return;
+              try {
+                await tasksNotifier.selectTask(value);
+              } catch (error) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      error.toString().replaceFirst('Bad state: ', ''),
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               AppButton(
-                label: 'Reiniciar do zero',
+                label: 'Start',
                 icon: Icons.play_arrow_rounded,
                 variant: AppVariant.success,
                 isDisabled:
                     !serverOnline ||
+                    selectedTask == null ||
                     state.status == ChunkyExecutionStatus.running ||
                     state.status == ChunkyExecutionStatus.paused ||
                     state.status == ChunkyExecutionStatus.cancelling,
-                onPressed: () async {
-                  if (runtime.activePlayers > 0) {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: const Text('Jogadores online'),
-                        content: const Text(
-                          'Existem jogadores online. Deseja reiniciar e desligar o servidor agora?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: const Text('Cancelar'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('Confirmar'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm != true) return;
-                  }
-                  await notifier.restartExecutionFromZero();
-                },
+                onPressed: notifier.startSelectedTask,
               ),
-              if (state.hasRecoverableCheckpoint ||
-                  state.status == ChunkyExecutionStatus.awaitingResume)
-                AppButton(
-                  label: 'Continuar tarefa',
-                  icon: Icons.play_circle_fill_rounded,
-                  variant: AppVariant.info,
-                  isDisabled:
-                      !serverOnline ||
-                      state.status == ChunkyExecutionStatus.running ||
-                      state.status == ChunkyExecutionStatus.cancelling,
-                  onPressed: notifier.continueExecution,
-                ),
               AppButton(
                 label: 'Pausar',
                 icon: Icons.pause_rounded,
@@ -134,22 +134,48 @@ class ChunkyExecutionTab extends ConsumerWidget {
                 const SizedBox(height: 6),
                 _line(
                   context,
-                  'Execução atual',
-                  state.totalRuns == 0
-                      ? 'Execução 0 de 0'
-                      : 'Execução ${state.currentRun} de ${state.totalRuns}',
+                  'Task selecionada',
+                  selectedTask?.name ?? 'Nenhuma',
                 ),
                 const SizedBox(height: 6),
-                _line(context, 'Radius atual', '${state.currentRadius}'),
+                _line(
+                  context,
+                  'Region / World',
+                  selectedTask == null
+                      ? '-'
+                      : chunkyWorldLabel(selectedTask.world),
+                ),
                 const SizedBox(height: 6),
-                _line(context, 'Total de execuções', '${state.totalRuns}'),
+                _line(
+                  context,
+                  'Center X/Z',
+                  selectedTask == null
+                      ? '-'
+                      : 'X ${selectedTask.centerX} | Z ${selectedTask.centerZ}',
+                ),
                 const SizedBox(height: 6),
-                _line(context, 'Elapsed time', _formatDuration(state.elapsed)),
-                const SizedBox(height: 10),
-                AppSwitchCard(
-                  label: 'Efetuar backup antes de iniciar',
-                  value: state.backupBeforeStart,
-                  onChanged: notifier.setBackupBeforeStart,
+                _line(
+                  context,
+                  'Radius',
+                  selectedTask == null
+                      ? '${state.currentRadius}'
+                      : selectedTask.radius.toStringAsFixed(0),
+                ),
+                const SizedBox(height: 6),
+                _line(context, 'Shape', selectedTask?.shape ?? '-'),
+                const SizedBox(height: 6),
+                _line(context, 'Pattern', selectedTask?.pattern ?? '-'),
+                const SizedBox(height: 6),
+                _line(context, 'Total Time', _formatDuration(state.elapsed)),
+                const SizedBox(height: 6),
+                _line(
+                  context,
+                  'Backup before start',
+                  selectedTask == null
+                      ? '-'
+                      : (selectedTask.backupBeforeStart
+                            ? 'Enabled'
+                            : 'Disabled'),
                 ),
                 const SizedBox(height: 10),
                 AppBadge(
@@ -194,6 +220,12 @@ class ChunkyExecutionTab extends ConsumerWidget {
                     '${state.lastMsBehind}ms / ${state.lastTicksBehind} ticks',
                   ),
                 ],
+                if (selectedTask != null) ...[
+                  const SizedBox(height: 6),
+                  _line(context, 'Task status', selectedTask.status.label),
+                  if (selectedTask.status == ChunkyTaskStatus.running)
+                    const SizedBox(height: 4),
+                ],
                 if (state.statusMessage != null) ...[
                   const SizedBox(height: 8),
                   Text(
@@ -225,7 +257,7 @@ class ChunkyExecutionTab extends ConsumerWidget {
           Text('${state.currentRunProgress.toStringAsFixed(1)}%'),
           const SizedBox(height: 12),
           Text(
-            'Progresso total do plano',
+            'Progresso total',
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 6),

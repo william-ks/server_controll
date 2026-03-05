@@ -9,6 +9,7 @@ import '../providers/chunky_tab_provider.dart';
 import '../subcomponents/chunky_config_tab.dart';
 import '../subcomponents/chunky_execution_tab.dart';
 import '../subcomponents/chunky_logs_tab.dart';
+import '../subcomponents/chunky_tasks_tab.dart';
 
 class ChunkyPage extends ConsumerStatefulWidget {
   const ChunkyPage({super.key});
@@ -66,6 +67,11 @@ class _ChunkyPageState extends ConsumerState<ChunkyPage> {
                       onTap: () => _setTab(ChunkyTab.config),
                     ),
                     _ChunkyTabChip(
+                      label: 'Tasks',
+                      active: activeTab == ChunkyTab.tasks,
+                      onTap: () => _setTab(ChunkyTab.tasks),
+                    ),
+                    _ChunkyTabChip(
                       label: 'Logs',
                       active: activeTab == ChunkyTab.logs,
                       onTap: () => _setTab(ChunkyTab.logs),
@@ -77,6 +83,7 @@ class _ChunkyPageState extends ConsumerState<ChunkyPage> {
               Expanded(
                 child: switch (activeTab) {
                   ChunkyTab.execution => const ChunkyExecutionTab(),
+                  ChunkyTab.tasks => const ChunkyTasksTab(),
                   ChunkyTab.logs => const ChunkyLogsTab(),
                   ChunkyTab.config => ChunkyConfigTab(
                     key: ValueKey('chunky-config-$_configReloadToken'),

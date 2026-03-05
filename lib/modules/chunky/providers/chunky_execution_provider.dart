@@ -18,7 +18,10 @@ import '../models/chunky_config_settings.dart';
 import '../models/chunky_execution_log_entry.dart';
 import '../models/chunky_execution_status.dart';
 import '../models/chunky_pending_task.dart';
+import '../models/chunky_task.dart';
+import '../models/chunky_task_status.dart';
 import '../providers/chunky_config_provider.dart';
+import '../providers/chunky_tasks_provider.dart';
 
 class ChunkyExecutionState {
   const ChunkyExecutionState({
@@ -305,6 +308,86 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     await restartExecutionFromZero();
   }
 
+  Future<void> startSelectedTask() async {
+    if (state.status == ChunkyExecutionStatus.running ||
+        state.status == ChunkyExecutionStatus.cancelling) {
+      return;
+    }
+
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.online) {
+      state = state.copyWith(
+        status: ChunkyExecutionStatus.error,
+        errorMessage: 'Servidor precisa estar online para iniciar a task.',
+      );
+      await _appendLog(
+        'Falha ao iniciar task: servidor não está online.',
+        level: 'ERROR',
+      );
+      return;
+    }
+
+    final tasksState = ref.read(chunkyTasksProvider);
+    final selectedTask = tasksState.selectedTask;
+    if (selectedTask == null || selectedTask.id == null) {
+      state = state.copyWith(
+        status: ChunkyExecutionStatus.error,
+        errorMessage: 'Selecione uma task para iniciar.',
+      );
+      await _appendLog(
+        'Falha ao iniciar task: nenhuma task selecionada.',
+        level: 'ERROR',
+      );
+      return;
+    }
+
+    final runningTask = tasksState.runningTask;
+    if (runningTask != null && runningTask.id != selectedTask.id) {
+      state = state.copyWith(
+        status: ChunkyExecutionStatus.error,
+        errorMessage:
+            'Já existe outra task em execução. Pause/cancele antes de iniciar.',
+      );
+      await _appendLog(
+        'Bloqueado: tentativa de iniciar task com outra já em execução.',
+        level: 'WARN',
+      );
+      return;
+    }
+
+    _cancelRequested = false;
+    _paused = false;
+    _pauseAfterCurrentCycleRequested = false;
+    _resumeOnNextOnline = false;
+    _completedRuns = 0;
+    _lastChunksProcessed = 0;
+    _lastCps = 0;
+
+    await ref.read(chunkyTasksProvider.notifier).markRunning(selectedTask.id!);
+    await _healthMonitor.reset();
+
+    state = state.copyWith(
+      status: ChunkyExecutionStatus.running,
+      currentRun: 1,
+      currentRadius: selectedTask.radius.round(),
+      totalRuns: 0,
+      plan: const [],
+      currentRunProgress: 0,
+      totalProgress: 0,
+      elapsed: Duration.zero,
+      clearError: true,
+      clearStatusMessage: true,
+      clearHealthMessage: true,
+    );
+
+    _startElapsedTimer();
+    await _persistCheckpoint();
+    await _appendLog(
+      'Task iniciada: ${selectedTask.name} (${selectedTask.world}).',
+    );
+    await _sendTaskCommands(selectedTask);
+  }
+
   Future<void> restartExecutionFromZero() async {
     if (state.status == ChunkyExecutionStatus.running ||
         state.status == ChunkyExecutionStatus.paused ||
@@ -472,6 +555,12 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       }
     } catch (_) {}
     await _clearTasksDirs(serverPath);
+    final selected = ref.read(chunkyTasksProvider).selectedTask;
+    if (selected?.id != null &&
+        (selected!.status == ChunkyTaskStatus.running ||
+            selected.status == ChunkyTaskStatus.paused)) {
+      await ref.read(chunkyTasksProvider.notifier).markCancelled(selected.id!);
+    }
     await _clearCheckpoint();
     await _clearLogs();
     _elapsedTimer?.cancel();
@@ -502,16 +591,28 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
   Future<void> pause() async {
     if (state.status != ChunkyExecutionStatus.running) return;
+    await ref.read(serverRuntimeProvider.notifier).sendCommand('chunky pause');
     _paused = true;
     state = state.copyWith(status: ChunkyExecutionStatus.paused);
+    final running = ref.read(chunkyTasksProvider).runningTask;
+    if (running?.id != null) {
+      await ref.read(chunkyTasksProvider.notifier).markPaused(running!.id!);
+    }
     await _persistCheckpoint();
     await _appendLog('Execução pausada manualmente.', level: 'WARN');
   }
 
   Future<void> resume() async {
     if (state.status != ChunkyExecutionStatus.paused) return;
+    await ref
+        .read(serverRuntimeProvider.notifier)
+        .sendCommand('chunky continue');
     _paused = false;
     state = state.copyWith(status: ChunkyExecutionStatus.running);
+    final selected = ref.read(chunkyTasksProvider).selectedTask;
+    if (selected?.id != null) {
+      await ref.read(chunkyTasksProvider.notifier).markRunning(selected!.id!);
+    }
     await _persistCheckpoint();
     await _appendLog('Execução retomada manualmente.');
   }
@@ -526,6 +627,17 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     _pauseAfterCurrentCycleRequested = false;
     _resumeOnNextOnline = false;
     state = state.copyWith(status: ChunkyExecutionStatus.cancelling);
+    await ref.read(serverRuntimeProvider.notifier).sendCommand('chunky cancel');
+    final selected = ref.read(chunkyTasksProvider).selectedTask;
+    if (selected?.id != null) {
+      await ref.read(chunkyTasksProvider.notifier).markCancelled(selected!.id!);
+    }
+    state = state.copyWith(
+      status: ChunkyExecutionStatus.idle,
+      currentRunProgress: 0,
+      totalProgress: 0,
+      clearStatusMessage: true,
+    );
     await _persistCheckpoint();
     await _appendLog('Cancelamento solicitado.', level: 'WARN');
   }
@@ -957,6 +1069,21 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     await runtimeNotifier.sendCommand('chunky start');
   }
 
+  Future<void> _sendTaskCommands(ChunkyTask task) async {
+    final runtimeNotifier = ref.read(serverRuntimeProvider.notifier);
+    await runtimeNotifier.sendCommand('chunky world ${task.world}');
+    await runtimeNotifier.sendCommand(
+      'chunky center ${task.centerX} ${task.centerZ}',
+    );
+    await runtimeNotifier.sendCommand('chunky radius ${task.radius.round()}');
+    await runtimeNotifier.sendCommand('chunky shape ${task.shape}');
+    await runtimeNotifier.sendCommand('chunky pattern ${task.pattern}');
+    await runtimeNotifier.sendCommand('chunky start');
+    await _appendLog(
+      'Comandos enviados: chunky world ${task.world} -> center ${task.centerX} ${task.centerZ} -> radius ${task.radius.round()} -> shape ${task.shape} -> pattern ${task.pattern} -> start.',
+    );
+  }
+
   String _buildRadiusCommand({
     required int radius,
     required String shape,
@@ -1117,6 +1244,17 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       state = state.copyWith(currentRunProgress: 100);
       _runCompleter?.complete();
       _runCompleter = null;
+      final selected = ref.read(chunkyTasksProvider).selectedTask;
+      if (selected?.id != null) {
+        unawaited(
+          ref.read(chunkyTasksProvider.notifier).markCompleted(selected!.id!),
+        );
+      }
+      state = state.copyWith(
+        status: ChunkyExecutionStatus.completed,
+        totalProgress: 100,
+        statusMessage: 'Task concluída com sucesso.',
+      );
       unawaited(_persistCheckpoint());
       return;
     }
