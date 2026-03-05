@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../database/app_database.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../server/providers/server_runtime_provider.dart';
 
@@ -40,6 +41,7 @@ final pvpControlProvider =
 class PvpControlNotifier extends Notifier<PvpControlState> {
   @override
   PvpControlState build() {
+    Future<void>(() => _loadFromDb());
     return PvpControlState.initial();
   }
 
@@ -61,6 +63,10 @@ class PvpControlNotifier extends Notifier<PvpControlState> {
           ? '/gamerule pvp true'
           : '/gamerule pvp false';
       await ref.read(serverRuntimeProvider.notifier).sendCommand(command);
+      await AppDatabase.instance.setSetting(
+        'pvp_enabled',
+        desiredPvpEnabled ? '1' : '0',
+      );
       state = state.copyWith(updating: false);
       return true;
     } catch (error) {
@@ -71,5 +77,13 @@ class PvpControlNotifier extends Notifier<PvpControlState> {
       );
       return false;
     }
+  }
+
+  Future<void> _loadFromDb() async {
+    final raw = await AppDatabase.instance.getSetting('pvp_enabled');
+    if (raw == null) {
+      return;
+    }
+    state = state.copyWith(enabled: raw == '1');
   }
 }
