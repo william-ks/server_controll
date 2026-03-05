@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../database/app_database.dart';
 import '../../../models/server_lifecycle_state.dart';
+import '../../../models/server_runtime_state.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../config/services/server_properties_service.dart';
 import '../../server/providers/server_runtime_provider.dart';
@@ -42,9 +43,26 @@ final pvpControlProvider =
 
 class PvpControlNotifier extends Notifier<PvpControlState> {
   final ServerPropertiesService _propertiesService = ServerPropertiesService();
+  int? _lastAppliedReadyAtMillis;
 
   @override
   PvpControlState build() {
+    ref.listen<ServerRuntimeState>(serverRuntimeProvider, (previous, next) {
+      final becameOnline =
+          previous?.lifecycle != ServerLifecycleState.online &&
+          next.lifecycle == ServerLifecycleState.online;
+      final readyAt = next.readyAt;
+      final readyMark = readyAt?.millisecondsSinceEpoch;
+      if (!becameOnline || readyMark == null) {
+        return;
+      }
+      if (_lastAppliedReadyAtMillis == readyMark) {
+        return;
+      }
+      _lastAppliedReadyAtMillis = readyMark;
+      Future<void>(() => _applyRuntimeDesiredState());
+    });
+
     Future<void>(() => _loadFromDb());
     return PvpControlState.initial();
   }
@@ -101,5 +119,16 @@ class PvpControlNotifier extends Notifier<PvpControlState> {
       return;
     }
     state = state.copyWith(enabled: raw == '1');
+  }
+
+  Future<void> _applyRuntimeDesiredState() async {
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.online) {
+      return;
+    }
+    final command = state.enabled
+        ? '/gamerule pvp true'
+        : '/gamerule pvp false';
+    await ref.read(serverRuntimeProvider.notifier).sendCommand(command);
   }
 }
