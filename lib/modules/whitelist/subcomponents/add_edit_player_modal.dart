@@ -56,12 +56,6 @@ class _AddEditPlayerModalState extends State<AddEditPlayerModal> {
           iconPath: _iconPath,
           onPickIcon: () async {
             final nickname = _nicknameController.text.trim();
-            if (nickname.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Preencha o Nickname antes de escolher o icone.')),
-              );
-              return;
-            }
             final path = await widget.onPickIcon(nickname);
             if (path == null) {
               return;

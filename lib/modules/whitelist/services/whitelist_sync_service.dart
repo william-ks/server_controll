@@ -121,7 +121,8 @@ class WhitelistSyncService {
       await iconsDir.create(recursive: true);
     }
 
-    final safeName = nickname.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+    final normalized = nickname.trim().replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+    final safeName = normalized.isEmpty ? 'player_${DateTime.now().millisecondsSinceEpoch}' : normalized;
     final targetPath = p.join(iconsDir.path, '$safeName$safeExt');
     await File(sourcePath).copy(targetPath);
     return targetPath;
