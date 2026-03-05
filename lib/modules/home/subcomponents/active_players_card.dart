@@ -33,18 +33,30 @@ class ActivePlayersCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.group_rounded, color: AppColors.primary, size: 20),
+              const Icon(
+                Icons.group_rounded,
+                color: AppColors.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
-              Text(
-                'JOGADORES ATIVOS',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              Expanded(
+                child: Text(
+                  'JOGADORES ATIVOS',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             '$activePlayers',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(color: color),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: color),
           ),
         ],
       ),

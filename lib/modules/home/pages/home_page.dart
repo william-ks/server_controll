@@ -56,93 +56,116 @@ class HomePage extends ConsumerWidget {
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _buildMetricTile(StatusCard(lifecycle: runtime.lifecycle)),
-                  _buildMetricTile(
-                    UptimeCard(
-                      uptime: runtime.uptime,
-                      lifecycle: runtime.lifecycle,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final showThreeCards = constraints.maxWidth >= 1080;
+              final hideActivePlayersCard = constraints.maxWidth < 760;
+
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _buildMetricTile(
+                          child: StatusCard(lifecycle: runtime.lifecycle),
+                          maxWidth: 360,
+                        ),
+                        _buildMetricTile(
+                          child: UptimeCard(
+                            uptime: runtime.uptime,
+                            lifecycle: runtime.lifecycle,
+                          ),
+                          maxWidth: 360,
+                        ),
+                        if (!hideActivePlayersCard)
+                          _buildMetricTile(
+                            child: ActivePlayersCard(
+                              activePlayers: runtime.activePlayers,
+                            ),
+                            maxWidth: showThreeCards ? 360 : 420,
+                          ),
+                      ],
                     ),
-                  ),
-                  _buildMetricTile(
-                    ActivePlayersCard(activePlayers: runtime.activePlayers),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              OnlinePlayersStripCard(players: runtime.onlinePlayers),
-              const SizedBox(height: 12),
-              PvpControlCard(
-                enabled: pvpState.enabled,
-                interactive:
-                    runtime.lifecycle == ServerLifecycleState.online &&
-                    !pvpState.updating,
-                onChanged: (value) async {
-                  final ok = await pvpNotifier.setDesiredWithRuntime(value);
-                  if (!ok && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Falha ao aplicar PVP no servidor.'),
+                    const SizedBox(height: 12),
+                    OnlinePlayersStripCard(players: runtime.onlinePlayers),
+                    const SizedBox(height: 12),
+                    PvpControlCard(
+                      enabled: pvpState.enabled,
+                      interactive:
+                          runtime.lifecycle == ServerLifecycleState.online &&
+                          !pvpState.updating,
+                      onChanged: (value) async {
+                        final ok = await pvpNotifier.setDesiredWithRuntime(
+                          value,
+                        );
+                        if (!ok && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Falha ao aplicar PVP no servidor.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    ServerActionsBar(
+                      lifecycle: runtime.lifecycle,
+                      canStartServer: hasEssentials,
+                      onStart: actions.startServer,
+                      onStop: actions.stopServer,
+                      onRestart: actions.restartServer,
+                      onBackup: () {
+                        _runManualBackup(context, ref);
+                      },
+                      onKickPlayers: () {
+                        showDialog<void>(
+                          context: context,
+                          builder: (_) => const KickPlayersModal(),
+                        );
+                      },
+                    ),
+                    if (!hasEssentials) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        'Defina Path do servidor, Comando do Java e Nome do file server em Config > Arquivos para iniciar.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
-                    );
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              ServerActionsBar(
-                lifecycle: runtime.lifecycle,
-                canStartServer: hasEssentials,
-                onStart: actions.startServer,
-                onStop: actions.stopServer,
-                onRestart: actions.restartServer,
-                onBackup: () {
-                  _runManualBackup(context, ref);
-                },
-                onKickPlayers: () {
-                  showDialog<void>(
-                    context: context,
-                    builder: (_) => const KickPlayersModal(),
-                  );
-                },
-              ),
-              if (!hasEssentials) ...[
-                const SizedBox(height: 10),
-                Text(
-                  'Defina Path do servidor, Comando do Java e Nome do file server em Config > Arquivos para iniciar.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                    ],
+                    if (runtime.lastError != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        'Erro: ${runtime.lastError}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-              if (runtime.lastError != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Erro: ${runtime.lastError}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-            ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildMetricTile(Widget child) {
+  Widget _buildMetricTile({required Widget child, required double maxWidth}) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(
-        minWidth: 280,
-        maxWidth: 360,
-        minHeight: 112,
+      constraints: BoxConstraints(
+        minWidth: 220,
+        maxWidth: maxWidth,
+        minHeight: 96,
         maxHeight: 112,
       ),
-      child: SizedBox(height: 112, child: child),
+      child: SizedBox(height: 104, child: child),
     );
   }
 
