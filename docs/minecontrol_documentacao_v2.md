@@ -93,6 +93,23 @@ A aplicação centraliza:
 - Home:
   - botão `Backup` integrado ao fluxo real de backup manual;
   - execução permitida apenas com servidor offline e backups ativos/configurados.
+  - fluxo de backup manual com confirmação + modal de progresso e cancelamento.
+
+- Tela `Agendamentos`:
+  - nova página dedicada com busca e cadastro de agendamentos;
+  - modal com expressão crontab, link para `crontab.guru`, ação (`iniciar`, `reiniciar`, `desligar`) e opção de backup;
+  - opção de backup no modal é bloqueada automaticamente quando `Config > Backup` estiver inválido/inativo;
+  - agendamentos podem ser ativados/desativados pela lista.
+
+- Runner de agendamentos:
+  - serviço em background com avaliação periódica da expressão cron;
+  - execução automática das ações configuradas;
+  - envio de avisos de 15/10/5/1 minutos quando existir jogador online usando:
+    - `say [Server] ...`
+  - regras de backup por ação:
+    - `iniciar`: backup antes de iniciar;
+    - `desligar`: desliga e depois executa backup;
+    - `reiniciar`: stop, backup e start.
 - Home:
   - inicialização do servidor bloqueada quando configurações essenciais não estiverem definidas.
 - Whitelist:

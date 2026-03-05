@@ -75,6 +75,25 @@ Status da base implementada:
     - métricas de quantidade total e peso total;
     - tamanho por backup no card;
     - remoção de backup com confirmação.
+- Agendamentos:
+  - novo módulo em `lib/modules/schedules/` com:
+    - tabela `schedules` (migration v3);
+    - listagem com busca;
+    - modal de criação com expressão crontab, ação e switch de backup;
+    - ativação/desativação de agendamento.
+  - runner de agendamentos iniciado no bootstrap do app:
+    - avaliação periódica de cron;
+    - execução das ações `iniciar`, `reiniciar`, `desligar`;
+    - suporte ao backup por agendamento (`Agendamento_<timestamp>.zip`) conforme regra de ação;
+    - avisos de 15/10/5/1 minutos quando houver jogador online, via comando:
+      - `say [Server] ...`
+  - validação de switch de backup no modal:
+    - desabilitado automaticamente quando backups estiverem desativados ou pasta inválida.
+- Home > Backup:
+  - fluxo manual atualizado com modal de confirmação;
+  - modal de progresso com mensagens rotativas;
+  - botão de cancelamento durante execução;
+  - cancelamento remove o arquivo parcial/final do backup em andamento.
 
 Regra:
 - qualquer mudança relevante de arquitetura, fluxo ou comportamento deve manter este arquivo e `docs/minecontrol_documentacao_v2.md` sincronizados.
