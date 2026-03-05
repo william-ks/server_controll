@@ -29,7 +29,7 @@ class ChunkyExecutionTab extends ConsumerWidget {
             runSpacing: 8,
             children: [
               AppButton(
-                label: 'Iniciar',
+                label: 'Reiniciar do zero',
                 icon: Icons.play_arrow_rounded,
                 variant: AppVariant.success,
                 isDisabled:
@@ -60,9 +60,21 @@ class ChunkyExecutionTab extends ConsumerWidget {
                     );
                     if (confirm != true) return;
                   }
-                  await notifier.startExecution();
+                  await notifier.restartExecutionFromZero();
                 },
               ),
+              if (state.hasRecoverableCheckpoint ||
+                  state.status == ChunkyExecutionStatus.awaitingResume)
+                AppButton(
+                  label: 'Continuar tarefa',
+                  icon: Icons.play_circle_fill_rounded,
+                  variant: AppVariant.info,
+                  isDisabled:
+                      !serverOnline ||
+                      state.status == ChunkyExecutionStatus.running ||
+                      state.status == ChunkyExecutionStatus.cancelling,
+                  onPressed: notifier.continueExecution,
+                ),
               AppButton(
                 label: 'Pausar',
                 icon: Icons.pause_rounded,
@@ -121,7 +133,7 @@ class ChunkyExecutionTab extends ConsumerWidget {
                 const SizedBox(height: 6),
                 _line(
                   context,
-                  'Tarefa atual',
+                  'Execução atual',
                   state.totalRuns == 0
                       ? 'Execução 0 de 0'
                       : 'Execução ${state.currentRun} de ${state.totalRuns}',
@@ -147,9 +159,16 @@ class ChunkyExecutionTab extends ConsumerWidget {
                       ? AppVariant.warning
                       : AppVariant.success,
                   title: state.tasksPending
-                      ? 'Tarefas pendentes: PENDENTE'
-                      : 'Tarefas pendentes: LIMPO',
+                      ? 'Arquivos de tarefa do Chunky: ENCONTRADOS'
+                      : 'Arquivos de tarefa do Chunky: NAO ENCONTRADOS',
                 ),
+                if (state.statusMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    state.statusMessage!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ],
             ),
           ),

@@ -144,6 +144,8 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
     final serverPath = ref.watch(configFilesProvider).serverPath.trim();
     final execution = ref.watch(chunkyExecutionProvider);
     final configLocked =
+        execution.hasRecoverableCheckpoint ||
+        execution.status == ChunkyExecutionStatus.awaitingResume ||
         execution.tasksPending ||
         execution.status == ChunkyExecutionStatus.running ||
         execution.status == ChunkyExecutionStatus.paused ||

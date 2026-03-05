@@ -28,7 +28,9 @@ class ChunkyExecutionState {
     required this.plan,
     required this.tasksPending,
     required this.backupBeforeStart,
+    required this.hasRecoverableCheckpoint,
     this.errorMessage,
+    this.statusMessage,
   });
 
   final ChunkyExecutionStatus status;
@@ -41,7 +43,9 @@ class ChunkyExecutionState {
   final List<int> plan;
   final bool tasksPending;
   final bool backupBeforeStart;
+  final bool hasRecoverableCheckpoint;
   final String? errorMessage;
+  final String? statusMessage;
 
   ChunkyExecutionState copyWith({
     ChunkyExecutionStatus? status,
@@ -54,8 +58,11 @@ class ChunkyExecutionState {
     List<int>? plan,
     bool? tasksPending,
     bool? backupBeforeStart,
+    bool? hasRecoverableCheckpoint,
     String? errorMessage,
+    String? statusMessage,
     bool clearError = false,
+    bool clearStatusMessage = false,
   }) {
     return ChunkyExecutionState(
       status: status ?? this.status,
@@ -68,7 +75,12 @@ class ChunkyExecutionState {
       plan: plan ?? this.plan,
       tasksPending: tasksPending ?? this.tasksPending,
       backupBeforeStart: backupBeforeStart ?? this.backupBeforeStart,
+      hasRecoverableCheckpoint:
+          hasRecoverableCheckpoint ?? this.hasRecoverableCheckpoint,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      statusMessage: clearStatusMessage
+          ? null
+          : (statusMessage ?? this.statusMessage),
     );
   }
 
@@ -84,6 +96,7 @@ class ChunkyExecutionState {
       plan: [],
       tasksPending: false,
       backupBeforeStart: false,
+      hasRecoverableCheckpoint: false,
     );
   }
 }
@@ -130,6 +143,32 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   Future<void> _bootstrap() async {
     final backupBeforeStart = ref.read(chunkyConfigProvider).backupBeforeStart;
     await refreshTasksPending();
+
+    final checkpoint = await _loadCheckpoint();
+    if (checkpoint != null && checkpoint.plan.isNotEmpty) {
+      final currentRun = checkpoint.currentRun.clamp(1, checkpoint.plan.length);
+      final currentRadius = checkpoint.currentRadius == 0
+          ? checkpoint.plan[currentRun - 1]
+          : checkpoint.currentRadius;
+
+      state = state.copyWith(
+        backupBeforeStart: backupBeforeStart,
+        status: ChunkyExecutionStatus.awaitingResume,
+        currentRun: currentRun,
+        currentRadius: currentRadius,
+        totalRuns: checkpoint.totalRuns,
+        currentRunProgress: checkpoint.currentRunProgress,
+        totalProgress: checkpoint.totalProgress,
+        elapsed: Duration(seconds: checkpoint.elapsedSeconds),
+        plan: checkpoint.plan,
+        hasRecoverableCheckpoint: true,
+        statusMessage: state.tasksPending
+            ? 'Execução anterior detectada. Existem tarefas do Chunky pendentes em disco.'
+            : 'Execução anterior detectada. Sem arquivos pendentes; ao continuar, a execução atual será recriada.',
+      );
+      return;
+    }
+
     state = state.copyWith(backupBeforeStart: backupBeforeStart);
   }
 
@@ -168,6 +207,10 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   }
 
   Future<void> startExecution() async {
+    await restartExecutionFromZero();
+  }
+
+  Future<void> restartExecutionFromZero() async {
     if (state.status == ChunkyExecutionStatus.running ||
         state.status == ChunkyExecutionStatus.paused ||
         state.status == ChunkyExecutionStatus.cancelling) {
@@ -176,6 +219,10 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
     final runtime = ref.read(serverRuntimeProvider);
     if (runtime.lifecycle != ServerLifecycleState.online) {
+      state = state.copyWith(
+        status: ChunkyExecutionStatus.error,
+        errorMessage: 'Servidor precisa estar online para iniciar o Chunky.',
+      );
       return;
     }
 
@@ -205,11 +252,82 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       currentRunProgress: 0,
       totalProgress: 0,
       elapsed: Duration.zero,
+      hasRecoverableCheckpoint: false,
       clearError: true,
+      clearStatusMessage: true,
     );
     _startElapsedTimer();
+    await _persistCheckpoint();
 
-    Future<void>(() => _runExecutionLoop(config, plan));
+    Future<void>(
+      () => _runExecutionLoop(
+        config: config,
+        plan: plan,
+        startIndex: 0,
+        freshStart: true,
+      ),
+    );
+  }
+
+  Future<void> continueExecution() async {
+    if (state.status == ChunkyExecutionStatus.running ||
+        state.status == ChunkyExecutionStatus.cancelling) {
+      return;
+    }
+
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.online) {
+      state = state.copyWith(
+        status: ChunkyExecutionStatus.error,
+        errorMessage: 'Servidor precisa estar online para continuar o Chunky.',
+      );
+      return;
+    }
+
+    final config = ref.read(chunkyConfigProvider);
+    final plan = state.plan.isNotEmpty
+        ? state.plan
+        : buildRunPlan(
+            radius: int.tryParse(config.radius.trim()) ?? 0,
+            maxPerRun: int.tryParse(config.maxChunksPerRun.trim()) ?? 1000,
+          );
+    if (plan.isEmpty) {
+      state = state.copyWith(
+        status: ChunkyExecutionStatus.error,
+        errorMessage: 'Sem plano recuperável para continuar.',
+      );
+      return;
+    }
+
+    final currentRun = state.currentRun <= 0 ? 1 : state.currentRun;
+    final startIndex = (currentRun - 1).clamp(0, plan.length - 1);
+
+    _cancelRequested = false;
+    _paused = false;
+    _pauseAfterCurrentCycleRequested = false;
+    _resumeOnNextOnline = false;
+    _completedRuns = startIndex;
+    state = state.copyWith(
+      status: ChunkyExecutionStatus.running,
+      currentRun: startIndex + 1,
+      currentRadius: plan[startIndex],
+      totalRuns: plan.length,
+      plan: plan,
+      hasRecoverableCheckpoint: true,
+      clearError: true,
+      clearStatusMessage: true,
+    );
+    _startElapsedTimer();
+    await _persistCheckpoint();
+
+    Future<void>(
+      () => _runExecutionLoop(
+        config: config,
+        plan: plan,
+        startIndex: startIndex,
+        freshStart: false,
+      ),
+    );
   }
 
   Future<void> refreshChunkProgress() async {
@@ -234,6 +352,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       }
     } catch (_) {}
     await _clearTasksDirs(serverPath);
+    await _clearCheckpoint();
     _elapsedTimer?.cancel();
     _completedRuns = 0;
     _pauseAfterCurrentCycleRequested = false;
@@ -247,7 +366,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       totalProgress: 0,
       elapsed: Duration.zero,
       plan: const [],
+      hasRecoverableCheckpoint: false,
       clearError: true,
+      clearStatusMessage: true,
     );
     await refreshTasksPending();
   }
@@ -256,12 +377,14 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     if (state.status != ChunkyExecutionStatus.running) return;
     _paused = true;
     state = state.copyWith(status: ChunkyExecutionStatus.paused);
+    await _persistCheckpoint();
   }
 
   Future<void> resume() async {
     if (state.status != ChunkyExecutionStatus.paused) return;
     _paused = false;
     state = state.copyWith(status: ChunkyExecutionStatus.running);
+    await _persistCheckpoint();
   }
 
   Future<void> cancel() async {
@@ -274,6 +397,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     _pauseAfterCurrentCycleRequested = false;
     _resumeOnNextOnline = false;
     state = state.copyWith(status: ChunkyExecutionStatus.cancelling);
+    await _persistCheckpoint();
   }
 
   Future<void> pauseForScheduleConflict() async {
@@ -291,32 +415,43 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     if (state.status != ChunkyExecutionStatus.paused) return;
     _paused = false;
     state = state.copyWith(status: ChunkyExecutionStatus.running);
+    await _persistCheckpoint();
   }
 
-  Future<void> _runExecutionLoop(
-    ChunkyConfigSettings config,
-    List<int> plan,
-  ) async {
+  Future<void> _runExecutionLoop({
+    required ChunkyConfigSettings config,
+    required List<int> plan,
+    required int startIndex,
+    required bool freshStart,
+  }) async {
     final runtimeNotifier = ref.read(serverRuntimeProvider.notifier);
     final serverPath = ref.read(configFilesProvider).serverPath.trim();
     final backupConfig = ref.read(backupConfigProvider);
     String? previousMaxPlayers;
 
     try {
-      await _clearTasksDirs(serverPath);
+      if (freshStart) {
+        await _clearTasksDirs(serverPath);
+      }
       await refreshTasksPending();
 
+      final db = AppDatabase.instance;
+      final savedPrevMaxPlayers = await db.getSetting('chunk_prev_max_players');
       final props = await _propertiesService.loadFromFile(serverPath);
       if (props != null) {
         previousMaxPlayers = props.maxPlayers;
-        await AppDatabase.instance.setSetting(
-          'chunk_prev_max_players',
-          previousMaxPlayers,
-        );
-        await _propertiesService.saveToFile(
-          serverPath: serverPath,
-          settings: props.copyWith(maxPlayers: '0'),
-        );
+        if (previousMaxPlayers.trim().isNotEmpty && previousMaxPlayers != '0') {
+          await db.setSetting('chunk_prev_max_players', previousMaxPlayers);
+          await _propertiesService.saveToFile(
+            serverPath: serverPath,
+            settings: props.copyWith(maxPlayers: '0'),
+          );
+        } else if (savedPrevMaxPlayers != null &&
+            savedPrevMaxPlayers.trim().isNotEmpty) {
+          previousMaxPlayers = savedPrevMaxPlayers;
+        }
+      } else {
+        previousMaxPlayers = savedPrevMaxPlayers;
       }
 
       final lifecycleBefore = ref.read(serverRuntimeProvider).lifecycle;
@@ -325,7 +460,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         await _waitForOffline();
       }
 
-      if (state.backupBeforeStart) {
+      if (freshStart && state.backupBeforeStart) {
         await ref
             .read(backupServiceProvider)
             .createBackup(
@@ -338,23 +473,40 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       await runtimeNotifier.startServer();
       await _waitForOnline();
 
-      for (var index = 0; index < plan.length; index++) {
+      for (var index = startIndex; index < plan.length; index++) {
         if (_cancelRequested) break;
         await _waitWhilePaused();
         if (_cancelRequested) break;
 
         final runRadius = plan[index];
-        await _clearTasksDirs(serverPath);
-        await refreshTasksPending();
+        final isFirstRun = index == startIndex;
+        final continueCurrentRun =
+            !freshStart && isFirstRun && await _hasPendingTasks(serverPath);
+
+        if (!continueCurrentRun) {
+          await _clearTasksDirs(serverPath);
+          await refreshTasksPending();
+        }
+
+        _completedRuns = index;
         state = state.copyWith(
           status: ChunkyExecutionStatus.running,
           currentRun: index + 1,
           currentRadius: runRadius,
-          currentRunProgress: 0,
+          currentRunProgress: continueCurrentRun ? state.currentRunProgress : 0,
+          totalRuns: plan.length,
+          plan: plan,
+          clearStatusMessage: true,
         );
-        _runCompleter = Completer<void>();
+        await _persistCheckpoint();
 
-        await _sendChunkCommands(config: config, runRadius: runRadius);
+        _runCompleter = Completer<void>();
+        if (continueCurrentRun) {
+          await runtimeNotifier.sendCommand('chunky continue');
+        } else {
+          await _sendChunkCommands(config: config, runRadius: runRadius);
+        }
+
         await _runCompleter!.future;
         if (_cancelRequested) break;
 
@@ -364,11 +516,13 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
           currentRunProgress: 100,
           totalProgress: totalProgress,
         );
+        await _persistCheckpoint();
 
         if (_pauseAfterCurrentCycleRequested) {
           _pauseAfterCurrentCycleRequested = false;
           _paused = true;
           state = state.copyWith(status: ChunkyExecutionStatus.paused);
+          await _persistCheckpoint();
           continue;
         }
 
@@ -382,7 +536,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         }
       }
 
-      if (previousMaxPlayers != null && previousMaxPlayers.trim().isNotEmpty) {
+      if (previousMaxPlayers != null &&
+          previousMaxPlayers.trim().isNotEmpty &&
+          previousMaxPlayers != '0') {
         final propsAfter = await _propertiesService.loadFromFile(serverPath);
         if (propsAfter != null) {
           await _propertiesService.saveToFile(
@@ -407,20 +563,30 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
           totalProgress: 0,
           elapsed: Duration.zero,
           plan: const [],
+          hasRecoverableCheckpoint: false,
+          clearStatusMessage: true,
         );
+        await _clearCheckpoint();
       } else {
         await _clearTasksDirs(serverPath);
         state = state.copyWith(
           status: ChunkyExecutionStatus.completed,
           currentRunProgress: 100,
           totalProgress: 100,
+          hasRecoverableCheckpoint: false,
+          statusMessage: 'Execução concluída com sucesso.',
         );
+        await _clearCheckpoint();
       }
     } catch (error) {
       state = state.copyWith(
-        status: ChunkyExecutionStatus.error,
+        status: ChunkyExecutionStatus.awaitingResume,
+        hasRecoverableCheckpoint: true,
         errorMessage: error.toString(),
+        statusMessage:
+            'Execução interrompida. Revise o status do servidor e escolha Continuar ou Reiniciar.',
       );
+      await _persistCheckpoint();
     } finally {
       _elapsedTimer?.cancel();
       _runCompleter = null;
@@ -537,6 +703,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       state = state.copyWith(currentRunProgress: 100);
       _runCompleter?.complete();
       _runCompleter = null;
+      unawaited(_persistCheckpoint());
       return;
     }
 
@@ -571,4 +738,119 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       }
     });
   }
+
+  Future<void> _persistCheckpoint() async {
+    final db = AppDatabase.instance;
+    await db.setSetting('chunk_exec_exists', '1');
+    await db.setSetting('chunk_exec_status', state.status.name);
+    await db.setSetting('chunk_exec_current_run', '${state.currentRun}');
+    await db.setSetting('chunk_exec_current_radius', '${state.currentRadius}');
+    await db.setSetting('chunk_exec_total_runs', '${state.totalRuns}');
+    await db.setSetting(
+      'chunk_exec_current_progress',
+      state.currentRunProgress.toStringAsFixed(3),
+    );
+    await db.setSetting(
+      'chunk_exec_total_progress',
+      state.totalProgress.toStringAsFixed(3),
+    );
+    await db.setSetting(
+      'chunk_exec_elapsed_seconds',
+      '${state.elapsed.inSeconds}',
+    );
+    await db.setSetting('chunk_exec_plan', state.plan.join(','));
+  }
+
+  Future<_ChunkyCheckpoint?> _loadCheckpoint() async {
+    final db = AppDatabase.instance;
+    final exists = await db.getSetting('chunk_exec_exists');
+    if (exists != '1') {
+      return null;
+    }
+
+    final planRaw = await db.getSetting('chunk_exec_plan') ?? '';
+    final plan = planRaw
+        .split(',')
+        .map((value) => int.tryParse(value.trim()))
+        .whereType<int>()
+        .toList();
+    if (plan.isEmpty) {
+      return null;
+    }
+
+    final statusRaw = await db.getSetting('chunk_exec_status') ?? '';
+    var status = ChunkyExecutionStatus.awaitingResume;
+    for (final candidate in ChunkyExecutionStatus.values) {
+      if (candidate.name == statusRaw) {
+        status = candidate;
+        break;
+      }
+    }
+
+    return _ChunkyCheckpoint(
+      status: status,
+      currentRun:
+          int.tryParse(await db.getSetting('chunk_exec_current_run') ?? '') ??
+          1,
+      currentRadius:
+          int.tryParse(
+            await db.getSetting('chunk_exec_current_radius') ?? '',
+          ) ??
+          0,
+      totalRuns:
+          int.tryParse(await db.getSetting('chunk_exec_total_runs') ?? '') ??
+          plan.length,
+      currentRunProgress:
+          double.tryParse(
+            await db.getSetting('chunk_exec_current_progress') ?? '',
+          ) ??
+          0,
+      totalProgress:
+          double.tryParse(
+            await db.getSetting('chunk_exec_total_progress') ?? '',
+          ) ??
+          0,
+      elapsedSeconds:
+          int.tryParse(
+            await db.getSetting('chunk_exec_elapsed_seconds') ?? '',
+          ) ??
+          0,
+      plan: plan,
+    );
+  }
+
+  Future<void> _clearCheckpoint() async {
+    final db = AppDatabase.instance;
+    await db.setSetting('chunk_exec_exists', '0');
+    await db.setSetting('chunk_exec_status', '');
+    await db.setSetting('chunk_exec_current_run', '0');
+    await db.setSetting('chunk_exec_current_radius', '0');
+    await db.setSetting('chunk_exec_total_runs', '0');
+    await db.setSetting('chunk_exec_current_progress', '0');
+    await db.setSetting('chunk_exec_total_progress', '0');
+    await db.setSetting('chunk_exec_elapsed_seconds', '0');
+    await db.setSetting('chunk_exec_plan', '');
+  }
+}
+
+class _ChunkyCheckpoint {
+  const _ChunkyCheckpoint({
+    required this.status,
+    required this.currentRun,
+    required this.currentRadius,
+    required this.totalRuns,
+    required this.currentRunProgress,
+    required this.totalProgress,
+    required this.elapsedSeconds,
+    required this.plan,
+  });
+
+  final ChunkyExecutionStatus status;
+  final int currentRun;
+  final int currentRadius;
+  final int totalRuns;
+  final double currentRunProgress;
+  final double totalProgress;
+  final int elapsedSeconds;
+  final List<int> plan;
 }

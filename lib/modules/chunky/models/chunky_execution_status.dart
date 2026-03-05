@@ -1,5 +1,6 @@
 enum ChunkyExecutionStatus {
   idle,
+  awaitingResume,
   running,
   paused,
   cancelling,
@@ -10,6 +11,7 @@ enum ChunkyExecutionStatus {
 extension ChunkyExecutionStatusX on ChunkyExecutionStatus {
   String get label => switch (this) {
     ChunkyExecutionStatus.idle => 'IDLE',
+    ChunkyExecutionStatus.awaitingResume => 'AGUARDANDO ACAO',
     ChunkyExecutionStatus.running => 'RUNNING',
     ChunkyExecutionStatus.paused => 'PAUSED',
     ChunkyExecutionStatus.cancelling => 'CANCELLING',

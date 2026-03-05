@@ -170,6 +170,7 @@ class SchedulesRunnerService {
       final state = _ref.read(chunkyExecutionProvider);
       if (state.status == ChunkyExecutionStatus.paused ||
           state.status == ChunkyExecutionStatus.idle ||
+          state.status == ChunkyExecutionStatus.awaitingResume ||
           state.status == ChunkyExecutionStatus.completed ||
           state.status == ChunkyExecutionStatus.error) {
         return;
