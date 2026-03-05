@@ -3,6 +3,7 @@ import 'schedule_action.dart';
 class ScheduleItem {
   const ScheduleItem({
     this.id,
+    required this.title,
     required this.cronExpression,
     required this.action,
     required this.withBackup,
@@ -13,6 +14,7 @@ class ScheduleItem {
   });
 
   final int? id;
+  final String title;
   final String cronExpression;
   final ScheduleAction action;
   final bool withBackup;
@@ -23,6 +25,7 @@ class ScheduleItem {
 
   ScheduleItem copyWith({
     int? id,
+    String? title,
     String? cronExpression,
     ScheduleAction? action,
     bool? withBackup,
@@ -34,6 +37,7 @@ class ScheduleItem {
   }) {
     return ScheduleItem(
       id: id ?? this.id,
+      title: title ?? this.title,
       cronExpression: cronExpression ?? this.cronExpression,
       action: action ?? this.action,
       withBackup: withBackup ?? this.withBackup,
@@ -49,6 +53,7 @@ class ScheduleItem {
   Map<String, Object?> toMap() {
     return {
       if (id != null) 'id': id,
+      'title': title,
       'cron_expression': cronExpression,
       'action': action.storageValue,
       'with_backup': withBackup ? 1 : 0,
@@ -62,6 +67,7 @@ class ScheduleItem {
   factory ScheduleItem.fromMap(Map<String, Object?> map) {
     return ScheduleItem(
       id: map['id'] as int?,
+      title: (map['title'] as String?) ?? '',
       cronExpression: map['cron_expression'] as String,
       action: ScheduleActionX.fromStorage(map['action'] as String),
       withBackup: (map['with_backup'] as int? ?? 0) == 1,

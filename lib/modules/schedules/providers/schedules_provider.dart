@@ -60,12 +60,14 @@ class SchedulesNotifier extends Notifier<SchedulesState> {
   }
 
   Future<void> create({
+    required String title,
     required String cronExpression,
     required ScheduleAction action,
     required bool withBackup,
   }) async {
     final now = DateTime.now();
     final item = ScheduleItem(
+      title: title.trim(),
       cronExpression: cronExpression.trim(),
       action: action,
       withBackup: withBackup,

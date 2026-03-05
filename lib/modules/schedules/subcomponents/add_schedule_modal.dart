@@ -18,6 +18,7 @@ class AddScheduleModal extends ConsumerStatefulWidget {
   const AddScheduleModal({super.key, required this.onCreate});
 
   final Future<void> Function({
+    required String title,
     required String cronExpression,
     required ScheduleAction action,
     required bool withBackup,
@@ -29,21 +30,29 @@ class AddScheduleModal extends ConsumerStatefulWidget {
 }
 
 class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
+  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _cronController = TextEditingController();
 
   ScheduleAction _action = ScheduleAction.restartServer;
   bool _withBackup = false;
   bool _saving = false;
   String? _cronError;
+  String? _titleError;
 
   @override
   void dispose() {
+    _titleController.dispose();
     _cronController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
+    final title = _titleController.text.trim();
     final cron = _cronController.text.trim();
+    if (title.isEmpty) {
+      setState(() => _titleError = 'Informe o título do agendamento.');
+      return;
+    }
     if (!CronMatcher.isValidExpression(cron)) {
       setState(() => _cronError = 'Expressão crontab inválida. Use 5 campos.');
       return;
@@ -59,9 +68,11 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
     setState(() {
       _saving = true;
       _cronError = null;
+      _titleError = null;
     });
     try {
       await widget.onCreate(
+        title: title,
         cronExpression: cron,
         action: _action,
         withBackup: effectiveWithBackup,
@@ -94,7 +105,7 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: Theme.of(
                 context,
@@ -106,32 +117,71 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
                 ).colorScheme.primary.withValues(alpha: 0.28),
               ),
             ),
-            child: Text(
-              'Agendamentos executam tarefas automáticas do servidor (iniciar, reiniciar ou desligar) usando expressão crontab.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Como funciona o agendamento',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Defina uma expressão cron para executar tarefas automáticas no servidor (iniciar, reiniciar ou desligar). '
+                  'Se o backup estiver ativo e válido, ele pode ser acoplado ao fluxo da ação.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Text('Guia crontab: '),
-              TextButton(
-                onPressed: () => launchUrl(Uri.parse('https://crontab.guru')),
-                child: const Text('crontab.guru'),
-              ),
-            ],
+          const SizedBox(height: 14),
+          AppButton(
+            label: 'Guia',
+            type: AppButtonType.textButton,
+            icon: Icons.exit_to_app_rounded,
+            onPressed: () => launchUrl(
+              Uri.parse('https://crontab.guru/#*_*_*_*_*_*'),
+              mode: LaunchMode.externalApplication,
+            ),
           ),
+          const SizedBox(height: 16),
+          Text(
+            'Título do agendamento',
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
+          AppTextInput(
+            controller: _titleController,
+            hint: 'Ex.: Reinício diário da madrugada',
+            errorText: _titleError,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Expressão cron',
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
           AppTextInput(
             controller: _cronController,
-            label: 'Crontab',
             hint: 'Ex.: */30 * * * *',
             errorText: _cronError,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          Text(
+            'Ação',
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
           AppSelect<ScheduleAction>(
-            label: 'Ação',
             value: _action,
             items: const [
               AppSelectItem(
@@ -153,7 +203,7 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
               }
             },
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           AppSwitchCard(
             label: 'Fazer backup',
             value: effectiveWithBackup,

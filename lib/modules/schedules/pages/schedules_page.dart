@@ -40,7 +40,8 @@ class _SchedulesPageState extends ConsumerState<SchedulesPage> {
     final filtered = state.items.where((item) {
       final q = _query.trim().toLowerCase();
       if (q.isEmpty) return true;
-      return item.cronExpression.toLowerCase().contains(q) ||
+      return item.title.toLowerCase().contains(q) ||
+          item.cronExpression.toLowerCase().contains(q) ||
           item.action.label.toLowerCase().contains(q);
     }).toList();
 
@@ -79,10 +80,12 @@ class _SchedulesPageState extends ConsumerState<SchedulesPage> {
                         builder: (_) => AddScheduleModal(
                           onCreate:
                               ({
+                                required String title,
                                 required String cronExpression,
                                 required ScheduleAction action,
                                 required bool withBackup,
                               }) => notifier.create(
+                                title: title,
                                 cronExpression: cronExpression,
                                 action: action,
                                 withBackup: withBackup,
@@ -173,14 +176,16 @@ class _ScheduleCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.cronExpression,
+                  item.title.trim().isEmpty
+                      ? 'Agendamento sem título'
+                      : item.title,
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${item.action.label} • Backup: ${item.withBackup ? 'Sim' : 'Não'} • $lastRun',
+                  '${item.cronExpression} • ${item.action.label} • Backup: ${item.withBackup ? 'Sim' : 'Não'} • $lastRun',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: ext.mutedText),
