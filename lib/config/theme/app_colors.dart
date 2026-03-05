@@ -9,7 +9,7 @@ class AppColors {
   static const Color success = Color(0xFF4EA64F); // Creeper tone
   static const Color info = Color(0xFF1F7FBF); // Ocean
   static const Color warning = Color(0xFFD6A824); // Gold
-  static const Color danger = Color(0xFFE8475F); // Brighter redstone tone
+  static const Color danger = Color.fromARGB(255, 250, 79, 105); // Brighter redstone tone
   static const Color accent = Color(0xFF6A4BAE); // End portal
 
   static const Color surfaceLight = Color(0xFFFFFFFF);
