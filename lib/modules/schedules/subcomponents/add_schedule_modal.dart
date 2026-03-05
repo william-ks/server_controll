@@ -89,6 +89,8 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final badgeColor = scheme.primary;
     final backupConfig = ref.watch(backupConfigProvider);
     final backupPathOk =
         backupConfig.backupPath.trim().isNotEmpty &&
@@ -107,52 +109,54 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.12),
+              color: badgeColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.28),
-              ),
+              border: Border.all(color: badgeColor.withValues(alpha: 0.28)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Como funciona o agendamento',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: badgeColor.withValues(alpha: 0.94),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Defina uma expressão cron para executar tarefas automáticas no servidor (iniciar, reiniciar ou desligar). '
                   'Se o backup estiver ativo e válido, ele pode ser acoplado ao fluxo da ação.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: badgeColor.withValues(alpha: 0.78),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: AppButton(
+                    label: 'Guia',
+                    type: AppButtonType.textIcon,
+                    transparent: true,
+                    variant: AppVariant.primary,
+                    icon: Icons.exit_to_app_rounded,
+                    onPressed: () => launchUrl(
+                      Uri.parse('https://crontab.guru/#*_*_*_*_*_*'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          AppButton(
-            label: 'Guia',
-            type: AppButtonType.textButton,
-            icon: Icons.exit_to_app_rounded,
-            onPressed: () => launchUrl(
-              Uri.parse('https://crontab.guru/#*_*_*_*_*_*'),
-              mode: LaunchMode.externalApplication,
             ),
           ),
           const SizedBox(height: 16),
           Text(
             'Título do agendamento',
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w400,
+              color: scheme.onSurface.withValues(alpha: 0.7),
+            ),
           ),
           const SizedBox(height: 6),
           AppTextInput(
@@ -163,9 +167,10 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
           const SizedBox(height: 14),
           Text(
             'Expressão cron',
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w400,
+              color: scheme.onSurface.withValues(alpha: 0.7),
+            ),
           ),
           const SizedBox(height: 6),
           AppTextInput(
@@ -176,9 +181,10 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
           const SizedBox(height: 14),
           Text(
             'Ação',
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w400,
+              color: scheme.onSurface.withValues(alpha: 0.7),
+            ),
           ),
           const SizedBox(height: 6),
           AppSelect<ScheduleAction>(
