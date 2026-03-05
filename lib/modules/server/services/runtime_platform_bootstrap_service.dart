@@ -14,9 +14,10 @@ class RuntimePlatformBootstrapService {
       _platformLabel(_osProvider.platform),
     );
 
-    final javaCommand = (await db.getSetting('java_command'))?.trim() ?? '';
-    if (javaCommand.isEmpty) {
-      await db.setSetting('java_command', _osProvider.defaultJavaCommand);
+    final javaCommand = (await db.getSetting('java_command'))?.trim();
+    final normalizedJavaCommand = _normalizeJavaCommand(javaCommand);
+    if (normalizedJavaCommand != null) {
+      await db.setSetting('java_command', normalizedJavaCommand);
     }
   }
 
@@ -27,5 +28,22 @@ class RuntimePlatformBootstrapService {
       HostPlatform.macos => 'macos',
       HostPlatform.unknown => 'unknown',
     };
+  }
+
+  String? _normalizeJavaCommand(String? currentValue) {
+    final normalized = currentValue?.trim() ?? '';
+    if (normalized.isEmpty) {
+      return _osProvider.defaultJavaCommand;
+    }
+
+    final lower = normalized.toLowerCase();
+    final isPosix =
+        _osProvider.platform == HostPlatform.linux ||
+        _osProvider.platform == HostPlatform.macos;
+    if (isPosix && lower.endsWith('.exe')) {
+      return _osProvider.defaultJavaCommand;
+    }
+
+    return null;
   }
 }

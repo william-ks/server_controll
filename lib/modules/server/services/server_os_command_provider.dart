@@ -122,6 +122,21 @@ class _LinuxServerOsCommandProvider extends ServerOsCommandProvider {
   @override
   Future<int?> getPidMemoryMb(int pid) async {
     if (pid <= 0) return null;
+    if (platform == HostPlatform.linux) {
+      final status = File('/proc/$pid/status');
+      if (await status.exists()) {
+        final content = await status.readAsString();
+        for (final line in content.split('\n')) {
+          if (!line.startsWith('VmRSS:')) continue;
+          final value = line.replaceFirst('VmRSS:', '').trim();
+          final kb = int.tryParse(value.split(RegExp(r'\s+')).first);
+          if (kb != null && kb > 0) {
+            return (kb / 1024).round();
+          }
+        }
+      }
+    }
+
     final result = await Process.run('ps', ['-o', 'rss=', '-p', '$pid']);
     if (result.exitCode != 0) return null;
     final rssKb = int.tryParse(result.stdout.toString().trim());
@@ -133,6 +148,22 @@ class _LinuxServerOsCommandProvider extends ServerOsCommandProvider {
   Future<List<int>> findMatchingServerProcessIds(String jarFile) async {
     final escapedJar = RegExp.escape(jarFile.trim());
     if (escapedJar.isEmpty) return [];
+
+    if (platform == HostPlatform.linux) {
+      final pattern = 'java(w)?\\b.*-jar\\b.*$escapedJar';
+      final pgrep = await Process.run('pgrep', ['-f', pattern]);
+      if (pgrep.exitCode == 0) {
+        final pids = pgrep.stdout
+            .toString()
+            .split(RegExp(r'\s+'))
+            .map((value) => int.tryParse(value.trim()))
+            .whereType<int>()
+            .toList();
+        if (pids.isNotEmpty) {
+          return pids;
+        }
+      }
+    }
 
     final ps = await Process.run('ps', ['-eo', 'pid=,args=']);
     if (ps.exitCode != 0) return [];
