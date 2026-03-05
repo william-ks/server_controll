@@ -5,11 +5,13 @@ import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_theme_extension.dart';
 import '../../../layout/default_layout.dart';
 import '../../backup/providers/backups_provider.dart';
+import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../providers/home_provider.dart';
 import '../subcomponents/active_players_card.dart';
 import '../subcomponents/kick_players_modal.dart';
+import '../subcomponents/manual_backup_modal.dart';
 import '../subcomponents/online_players_strip_card.dart';
 import '../subcomponents/server_actions_bar.dart';
 import '../subcomponents/status_card.dart';
@@ -113,22 +115,28 @@ class HomePage extends ConsumerWidget {
   }
 
   Future<void> _runManualBackup(BuildContext context, WidgetRef ref) async {
-    final backupsNotifier = ref.read(backupsProvider.notifier);
-    try {
-      await backupsNotifier.createManualBackup();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Backup manual concluído com sucesso.')),
-        );
-      }
-    } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Bad state: ', '')),
-          ),
-        );
-      }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const ManualBackupConfirmModal(),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final controller = BackupTaskController();
+    final result = await showDialog<ManualBackupResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ManualBackupProgressModal(controller: controller),
+    );
+
+    if (!context.mounted || result == null) return;
+    final message = result.message;
+    if (message == null || message.trim().isEmpty) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+    if (result.type == ManualBackupResultType.success) {
+      await ref.read(backupsProvider.notifier).load();
     }
   }
 }

@@ -89,6 +89,32 @@ class BackupsNotifier extends Notifier<BackupsState> {
     }
   }
 
+  Future<void> createManualBackupWithController(
+    BackupTaskController controller,
+  ) async {
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.offline) {
+      throw StateError('Servidor precisa estar OFFLINE para executar backup.');
+    }
+
+    state = state.copyWith(creating: true, clearError: true);
+    try {
+      final configFiles = ref.read(configFilesProvider);
+      final backupConfig = ref.read(backupConfigProvider);
+      await _service.createBackup(
+        serverPath: configFiles.serverPath.trim(),
+        config: backupConfig,
+        trigger: BackupTriggerType.manual,
+        controller: controller,
+      );
+      final entries = await _service.listBackups(backupConfig);
+      state = state.copyWith(entries: entries, creating: false);
+    } catch (error) {
+      state = state.copyWith(creating: false, error: error.toString());
+      rethrow;
+    }
+  }
+
   Future<void> deleteBackup(String filePath) async {
     await _service.deleteBackup(filePath);
     await load();

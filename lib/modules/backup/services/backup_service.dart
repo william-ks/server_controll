@@ -9,11 +9,34 @@ import '../models/backup_entry.dart';
 
 enum BackupTriggerType { manual, schedule, chunk }
 
+class BackupTaskController {
+  bool _cancelled = false;
+  String? _targetFilePath;
+
+  bool get isCancelled => _cancelled;
+  String? get targetFilePath => _targetFilePath;
+
+  void attachTarget(String path) {
+    _targetFilePath = path;
+  }
+
+  Future<void> cancel() async {
+    _cancelled = true;
+    final target = _targetFilePath;
+    if (target == null || target.isEmpty) return;
+    final file = File(target);
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
+}
+
 class BackupService {
   Future<BackupEntry> createBackup({
     required String serverPath,
     required BackupConfigSettings config,
     required BackupTriggerType trigger,
+    BackupTaskController? controller,
   }) async {
     final sourceDir = Directory(serverPath);
     if (!await sourceDir.exists()) {
@@ -42,11 +65,20 @@ class BackupService {
     };
     final backupName = '${prefix}_$timestamp.zip';
     final backupFilePath = p.join(backupDir.path, backupName);
+    controller?.attachTarget(backupFilePath);
 
     final encoder = ZipFileEncoder();
     encoder.create(backupFilePath);
     encoder.addDirectory(sourceDir, includeDirName: false);
     encoder.close();
+
+    if (controller?.isCancelled == true) {
+      final cancelledFile = File(backupFilePath);
+      if (await cancelledFile.exists()) {
+        await cancelledFile.delete();
+      }
+      throw StateError('Backup cancelado pelo usuário.');
+    }
 
     await enforceRetention(config);
 
