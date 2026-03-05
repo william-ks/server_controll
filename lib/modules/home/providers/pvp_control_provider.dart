@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../database/app_database.dart';
 import '../../../models/server_lifecycle_state.dart';
+import '../../config/providers/config_files_provider.dart';
+import '../../config/services/server_properties_service.dart';
 import '../../server/providers/server_runtime_provider.dart';
 
 class PvpControlState {
@@ -39,6 +41,8 @@ final pvpControlProvider =
     );
 
 class PvpControlNotifier extends Notifier<PvpControlState> {
+  final ServerPropertiesService _propertiesService = ServerPropertiesService();
+
   @override
   PvpControlState build() {
     Future<void>(() => _loadFromDb());
@@ -67,6 +71,18 @@ class PvpControlNotifier extends Notifier<PvpControlState> {
         'pvp_enabled',
         desiredPvpEnabled ? '1' : '0',
       );
+      await AppDatabase.instance.setSetting(
+        'prop_pvp',
+        desiredPvpEnabled ? '1' : '0',
+      );
+
+      final serverPath = ref.read(configFilesProvider).serverPath.trim();
+      if (serverPath.isNotEmpty) {
+        await _propertiesService.setPvpValue(
+          serverPath: serverPath,
+          enabled: desiredPvpEnabled,
+        );
+      }
       state = state.copyWith(updating: false);
       return true;
     } catch (error) {

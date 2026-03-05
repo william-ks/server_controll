@@ -114,6 +114,18 @@ class ServerPropertiesService {
     await file.writeAsString('${output.join('\n')}\n');
   }
 
+  Future<void> setPvpValue({
+    required String serverPath,
+    required bool enabled,
+  }) async {
+    final current = await loadFromFile(serverPath);
+    if (current == null) {
+      throw StateError('Arquivo server.properties não encontrado.');
+    }
+    final next = current.copyWith(pvp: enabled);
+    await saveToFile(serverPath: serverPath, settings: next);
+  }
+
   Map<String, String> _toMap(ConfigPropertiesSettings s) {
     return {
       keyLevelName: s.serverName,

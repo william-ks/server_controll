@@ -25,6 +25,32 @@ class ConfigPropertiesSettings {
   final String viewDistance;
   final String simulationDistance;
 
+  ConfigPropertiesSettings copyWith({
+    String? serverName,
+    String? description,
+    String? seed,
+    bool? hardcore,
+    String? gameMode,
+    String? maxPlayers,
+    bool? pvp,
+    bool? whitelist,
+    String? viewDistance,
+    String? simulationDistance,
+  }) {
+    return ConfigPropertiesSettings(
+      serverName: serverName ?? this.serverName,
+      description: description ?? this.description,
+      seed: seed ?? this.seed,
+      hardcore: hardcore ?? this.hardcore,
+      gameMode: gameMode ?? this.gameMode,
+      maxPlayers: maxPlayers ?? this.maxPlayers,
+      pvp: pvp ?? this.pvp,
+      whitelist: whitelist ?? this.whitelist,
+      viewDistance: viewDistance ?? this.viewDistance,
+      simulationDistance: simulationDistance ?? this.simulationDistance,
+    );
+  }
+
   factory ConfigPropertiesSettings.defaults() {
     return const ConfigPropertiesSettings(
       serverName: 'world',
