@@ -37,7 +37,9 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
 
   void _insertCommand(String command) {
     _controller.text = command;
-    _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+    _controller.selection = TextSelection.collapsed(
+      offset: _controller.text.length,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _focusNode.requestFocus();
@@ -66,7 +68,6 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
             focusNode: _focusNode,
             hint: 'Digite um comando e pressione Enter',
             onSubmitted: (_) => _send(),
-            suffixIcon: const Icon(Icons.terminal_rounded),
           ),
         ),
         const SizedBox(width: 8),

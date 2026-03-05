@@ -10,9 +10,7 @@ class ConsoleState {
 
   final List<ConsoleEntry> entries;
 
-  ConsoleState copyWith({
-    List<ConsoleEntry>? entries,
-  }) {
+  ConsoleState copyWith({List<ConsoleEntry>? entries}) {
     return ConsoleState(entries: entries ?? this.entries);
   }
 
@@ -21,7 +19,9 @@ class ConsoleState {
   }
 }
 
-final consoleProvider = NotifierProvider<ConsoleNotifier, ConsoleState>(ConsoleNotifier.new);
+final consoleProvider = NotifierProvider<ConsoleNotifier, ConsoleState>(
+  ConsoleNotifier.new,
+);
 
 class ConsoleNotifier extends Notifier<ConsoleState> {
   StreamSubscription<String>? _stdoutSub;
@@ -30,8 +30,12 @@ class ConsoleNotifier extends Notifier<ConsoleState> {
   @override
   ConsoleState build() {
     final service = ref.read(serverProcessServiceProvider);
-    _stdoutSub = service.stdoutLines.listen((line) => _append(ConsoleEntrySource.server, line));
-    _stderrSub = service.stderrLines.listen((line) => _append(ConsoleEntrySource.system, line));
+    _stdoutSub = service.stdoutLines.listen(
+      (line) => _append(ConsoleEntrySource.server, line),
+    );
+    _stderrSub = service.stderrLines.listen(
+      (line) => _append(ConsoleEntrySource.system, line),
+    );
 
     ref.onDispose(() {
       unawaited(_stdoutSub?.cancel());
@@ -59,9 +63,19 @@ class ConsoleNotifier extends Notifier<ConsoleState> {
     await ref.read(serverRuntimeProvider.notifier).sendCommand(trimmed);
   }
 
+  void clearTerminal() {
+    state = state.copyWith(entries: const []);
+  }
+
   void _append(ConsoleEntrySource source, String message) {
     final next = List<ConsoleEntry>.from(state.entries)
-      ..add(ConsoleEntry(source: source, timestamp: DateTime.now(), message: message));
+      ..add(
+        ConsoleEntry(
+          source: source,
+          timestamp: DateTime.now(),
+          message: message,
+        ),
+      );
 
     final maxLines = 1500;
     if (next.length > maxLines) {
