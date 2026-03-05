@@ -20,6 +20,7 @@ class ChunkyExecutionState {
   const ChunkyExecutionState({
     required this.status,
     required this.currentRun,
+    required this.currentRadius,
     required this.totalRuns,
     required this.currentRunProgress,
     required this.totalProgress,
@@ -32,6 +33,7 @@ class ChunkyExecutionState {
 
   final ChunkyExecutionStatus status;
   final int currentRun;
+  final int currentRadius;
   final int totalRuns;
   final double currentRunProgress;
   final double totalProgress;
@@ -44,6 +46,7 @@ class ChunkyExecutionState {
   ChunkyExecutionState copyWith({
     ChunkyExecutionStatus? status,
     int? currentRun,
+    int? currentRadius,
     int? totalRuns,
     double? currentRunProgress,
     double? totalProgress,
@@ -57,6 +60,7 @@ class ChunkyExecutionState {
     return ChunkyExecutionState(
       status: status ?? this.status,
       currentRun: currentRun ?? this.currentRun,
+      currentRadius: currentRadius ?? this.currentRadius,
       totalRuns: totalRuns ?? this.totalRuns,
       currentRunProgress: currentRunProgress ?? this.currentRunProgress,
       totalProgress: totalProgress ?? this.totalProgress,
@@ -72,6 +76,7 @@ class ChunkyExecutionState {
     return const ChunkyExecutionState(
       status: ChunkyExecutionStatus.idle,
       currentRun: 0,
+      currentRadius: 0,
       totalRuns: 0,
       currentRunProgress: 0,
       totalProgress: 0,
@@ -95,6 +100,8 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   Completer<void>? _runCompleter;
   bool _cancelRequested = false;
   bool _paused = false;
+  bool _pauseAfterCurrentCycleRequested = false;
+  bool _resumeOnNextOnline = false;
   int _completedRuns = 0;
 
   @override
@@ -104,6 +111,13 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         .stdoutLines
         .listen(_handleStdoutLine);
     Future<void>(() => _bootstrap());
+    ref.listen(serverRuntimeProvider, (previous, next) {
+      if (!_resumeOnNextOnline) return;
+      if (next.lifecycle != ServerLifecycleState.online) return;
+      if (state.status != ChunkyExecutionStatus.paused) return;
+      _resumeOnNextOnline = false;
+      unawaited(resumeAfterScheduleIfOnline());
+    });
 
     ref.onDispose(() {
       _elapsedTimer?.cancel();
@@ -179,10 +193,13 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
     _cancelRequested = false;
     _paused = false;
+    _pauseAfterCurrentCycleRequested = false;
+    _resumeOnNextOnline = false;
     _completedRuns = 0;
     state = state.copyWith(
       status: ChunkyExecutionStatus.running,
       currentRun: 1,
+      currentRadius: plan.first,
       totalRuns: plan.length,
       plan: plan,
       currentRunProgress: 0,
@@ -219,9 +236,12 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     await _clearTasksDirs(serverPath);
     _elapsedTimer?.cancel();
     _completedRuns = 0;
+    _pauseAfterCurrentCycleRequested = false;
+    _resumeOnNextOnline = false;
     state = state.copyWith(
       status: ChunkyExecutionStatus.idle,
       currentRun: 0,
+      currentRadius: 0,
       totalRuns: 0,
       currentRunProgress: 0,
       totalProgress: 0,
@@ -251,7 +271,26 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     }
     _cancelRequested = true;
     _paused = false;
+    _pauseAfterCurrentCycleRequested = false;
+    _resumeOnNextOnline = false;
     state = state.copyWith(status: ChunkyExecutionStatus.cancelling);
+  }
+
+  Future<void> pauseForScheduleConflict() async {
+    if (state.status != ChunkyExecutionStatus.running &&
+        state.status != ChunkyExecutionStatus.paused) {
+      return;
+    }
+    _pauseAfterCurrentCycleRequested = true;
+    _resumeOnNextOnline = true;
+  }
+
+  Future<void> resumeAfterScheduleIfOnline() async {
+    final lifecycle = ref.read(serverRuntimeProvider).lifecycle;
+    if (lifecycle != ServerLifecycleState.online) return;
+    if (state.status != ChunkyExecutionStatus.paused) return;
+    _paused = false;
+    state = state.copyWith(status: ChunkyExecutionStatus.running);
   }
 
   Future<void> _runExecutionLoop(
@@ -310,6 +349,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         state = state.copyWith(
           status: ChunkyExecutionStatus.running,
           currentRun: index + 1,
+          currentRadius: runRadius,
           currentRunProgress: 0,
         );
         _runCompleter = Completer<void>();
@@ -324,6 +364,13 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
           currentRunProgress: 100,
           totalProgress: totalProgress,
         );
+
+        if (_pauseAfterCurrentCycleRequested) {
+          _pauseAfterCurrentCycleRequested = false;
+          _paused = true;
+          state = state.copyWith(status: ChunkyExecutionStatus.paused);
+          continue;
+        }
 
         if (_completedRuns < plan.length) {
           await runtimeNotifier.sendCommand('stop');
@@ -354,6 +401,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         state = state.copyWith(
           status: ChunkyExecutionStatus.idle,
           currentRun: 0,
+          currentRadius: 0,
           totalRuns: 0,
           currentRunProgress: 0,
           totalProgress: 0,
@@ -377,7 +425,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       _elapsedTimer?.cancel();
       _runCompleter = null;
       _cancelRequested = false;
-      _paused = false;
+      if (state.status != ChunkyExecutionStatus.paused) {
+        _paused = false;
+      }
       await refreshTasksPending();
     }
   }

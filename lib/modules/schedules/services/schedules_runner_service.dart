@@ -9,6 +9,8 @@ import '../../backup/providers/backup_config_provider.dart';
 import '../../backup/providers/backups_provider.dart';
 import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
+import '../../chunky/models/chunky_execution_status.dart';
+import '../../chunky/providers/chunky_execution_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
 import '../models/schedule_action.dart';
 import '../models/schedule_item.dart';
@@ -113,12 +115,22 @@ class SchedulesRunnerService {
 
   Future<void> _executeSchedule(ScheduleItem schedule) async {
     final runtimeNotifier = _ref.read(serverRuntimeProvider.notifier);
+    final chunkyNotifier = _ref.read(chunkyExecutionProvider.notifier);
     final config = _ref.read(configFilesProvider);
     final backupConfig = _ref.read(backupConfigProvider);
     final backupAllowed = await _isBackupAllowed(backupConfig);
     final shouldBackup = schedule.withBackup && backupAllowed;
 
     try {
+      final chunkyState = _ref.read(chunkyExecutionProvider);
+      final chunkyRunning =
+          chunkyState.status == ChunkyExecutionStatus.running ||
+          chunkyState.status == ChunkyExecutionStatus.paused;
+      if (chunkyRunning) {
+        await chunkyNotifier.pauseForScheduleConflict();
+        await _waitForChunkyPauseBoundary();
+      }
+
       switch (schedule.action) {
         case ScheduleAction.startServer:
           if (shouldBackup) {
@@ -140,11 +152,29 @@ class SchedulesRunnerService {
           await runtimeNotifier.startServer();
       }
 
+      final runtime = _ref.read(serverRuntimeProvider);
+      if (runtime.lifecycle == ServerLifecycleState.online) {
+        await chunkyNotifier.resumeAfterScheduleIfOnline();
+      }
+
       if (schedule.id != null) {
         await _ref.read(schedulesProvider.notifier).markExecuted(schedule.id!);
       }
     } catch (_) {
       // Silent by design for background runner.
+    }
+  }
+
+  Future<void> _waitForChunkyPauseBoundary() async {
+    for (var i = 0; i < 240; i++) {
+      final state = _ref.read(chunkyExecutionProvider);
+      if (state.status == ChunkyExecutionStatus.paused ||
+          state.status == ChunkyExecutionStatus.idle ||
+          state.status == ChunkyExecutionStatus.completed ||
+          state.status == ChunkyExecutionStatus.error) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
   }
 

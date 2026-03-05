@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
@@ -23,6 +24,14 @@ class PropertiesSettingsTab extends ConsumerStatefulWidget {
 }
 
 class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
+  static const String _serverIconFileName = 'server-icon.png';
+  static const List<String> _serverIconCandidates = [
+    'server-icon.png',
+    'server-icon.jpg',
+    'server-icon.jpeg',
+    'server-icon.webp',
+  ];
+
   final TextEditingController _serverNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _seedController = TextEditingController();
@@ -41,6 +50,8 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
   String? _numbersError;
   String _serverPath = '';
   bool _serverPropertiesFound = false;
+  File? _serverIconFile;
+  bool _isHandlingIcon = false;
 
   @override
   void initState() {
@@ -74,6 +85,7 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
         .loadFromSources(_serverPath);
     final settings = ref.read(configPropertiesProvider);
     _applySettings(settings);
+    _loadServerIconFromDisk();
     _validateNumbers();
     _initialSnapshot = _snapshot();
 
@@ -173,6 +185,106 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
     await _load();
   }
 
+  void _loadServerIconFromDisk() {
+    if (_serverPath.isEmpty) {
+      _serverIconFile = null;
+      return;
+    }
+    for (final fileName in _serverIconCandidates) {
+      final file = File(p.join(_serverPath, fileName));
+      if (file.existsSync()) {
+        _serverIconFile = file;
+        return;
+      }
+    }
+    _serverIconFile = null;
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  Future<void> _pickServerIcon() async {
+    if (_serverPath.isEmpty) {
+      _showMessage('Defina o path do servidor em Config > Arquivos.');
+      return;
+    }
+    final serverDir = Directory(_serverPath);
+    if (!serverDir.existsSync()) {
+      _showMessage('Diretorio do servidor nao encontrado.');
+      return;
+    }
+
+    setState(() => _isHandlingIcon = true);
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        dialogTitle: 'Selecione a imagem do servidor',
+        type: FileType.custom,
+        allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
+      );
+
+      if (picked == null ||
+          picked.files.isEmpty ||
+          picked.files.single.path == null) {
+        return;
+      }
+
+      final sourcePath = picked.files.single.path!;
+      final targetPath = p.join(_serverPath, _serverIconFileName);
+      final sourceFile = File(sourcePath);
+      if (!sourceFile.existsSync()) {
+        _showMessage('Arquivo selecionado nao foi encontrado.');
+        return;
+      }
+
+      if (p.normalize(sourcePath) != p.normalize(targetPath)) {
+        await sourceFile.copy(targetPath);
+      }
+
+      for (final fileName in _serverIconCandidates) {
+        if (fileName == _serverIconFileName) continue;
+        final file = File(p.join(_serverPath, fileName));
+        if (file.existsSync()) {
+          await file.delete();
+        }
+      }
+
+      setState(() => _serverIconFile = File(targetPath));
+      _showMessage('Imagem do servidor atualizada.');
+    } catch (_) {
+      _showMessage('Nao foi possivel atualizar a imagem do servidor.');
+    } finally {
+      if (mounted) {
+        setState(() => _isHandlingIcon = false);
+      }
+    }
+  }
+
+  Future<void> _removeServerIcon() async {
+    if (_serverPath.isEmpty || _isHandlingIcon) return;
+
+    setState(() => _isHandlingIcon = true);
+    try {
+      for (final fileName in _serverIconCandidates) {
+        final file = File(p.join(_serverPath, fileName));
+        if (file.existsSync()) {
+          await file.delete();
+        }
+      }
+      setState(() => _serverIconFile = null);
+      _showMessage('Imagem do servidor removida.');
+    } catch (_) {
+      _showMessage('Nao foi possivel remover a imagem do servidor.');
+    } finally {
+      if (mounted) {
+        setState(() => _isHandlingIcon = false);
+      }
+    }
+  }
+
   Widget _sectionTitle(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -226,6 +338,78 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
           ),
           const SizedBox(height: 14),
           _sectionTitle('Servidor'),
+          _fieldLabel('Imagem do servidor'),
+          Row(
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: ClipOval(
+                  child: _serverIconFile == null
+                      ? Icon(
+                          Icons.image_not_supported_rounded,
+                          size: 30,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.45),
+                        )
+                      : Image.file(
+                          _serverIconFile!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.broken_image_rounded,
+                              size: 30,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.45),
+                            );
+                          },
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  AppButton(
+                    label: _serverIconFile == null
+                        ? 'Escolher foto'
+                        : 'Editar foto',
+                    onPressed: _pickServerIcon,
+                    isLoading: _isHandlingIcon,
+                    isDisabled: _isHandlingIcon,
+                    icon: Icons.upload_rounded,
+                  ),
+                  AppButton(
+                    label: 'Remover',
+                    onPressed: _removeServerIcon,
+                    variant: AppVariant.danger,
+                    transparent: true,
+                    isDisabled: _serverIconFile == null || _isHandlingIcon,
+                    icon: Icons.delete_outline_rounded,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Arquivo salvo como $_serverIconFileName no diretorio do servidor.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
           _fieldLabel('Nome do servidor'),
           AppTextInput(
             controller: _serverNameController,

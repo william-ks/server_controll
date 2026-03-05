@@ -127,6 +127,8 @@ class ChunkyExecutionTab extends ConsumerWidget {
                       : 'Execução ${state.currentRun} de ${state.totalRuns}',
                 ),
                 const SizedBox(height: 6),
+                _line(context, 'Radius atual', '${state.currentRadius}'),
+                const SizedBox(height: 6),
                 _line(context, 'Total de execuções', '${state.totalRuns}'),
                 const SizedBox(height: 6),
                 _line(context, 'Elapsed time', _formatDuration(state.elapsed)),

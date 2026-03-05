@@ -59,22 +59,20 @@ class HomePage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: MediaQuery.of(context).size.width > 1100
-                    ? 3
-                    : 1,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 3.5,
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
                 children: [
-                  StatusCard(lifecycle: runtime.lifecycle),
-                  UptimeCard(
-                    uptime: runtime.uptime,
-                    lifecycle: runtime.lifecycle,
+                  _buildMetricTile(StatusCard(lifecycle: runtime.lifecycle)),
+                  _buildMetricTile(
+                    UptimeCard(
+                      uptime: runtime.uptime,
+                      lifecycle: runtime.lifecycle,
+                    ),
                   ),
-                  ActivePlayersCard(activePlayers: runtime.activePlayers),
+                  _buildMetricTile(
+                    ActivePlayersCard(activePlayers: runtime.activePlayers),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -133,6 +131,18 @@ class HomePage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMetricTile(Widget child) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minWidth: 280,
+        maxWidth: 360,
+        minHeight: 112,
+        maxHeight: 112,
+      ),
+      child: SizedBox(height: 112, child: child),
     );
   }
 
