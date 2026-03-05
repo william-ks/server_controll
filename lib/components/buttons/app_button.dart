@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../shared/app_variant.dart';
 
-enum AppButtonType { text, icon, textIcon }
+enum AppButtonType { button, icon, textIcon, textButton }
 
 class AppButton extends StatelessWidget {
   const AppButton({
@@ -11,7 +11,7 @@ class AppButton extends StatelessWidget {
     required this.onPressed,
     this.variant = AppVariant.primary,
     this.icon,
-    this.type = AppButtonType.text,
+    this.type = AppButtonType.button,
     this.transparent = false,
     this.isLoading = false,
     this.isDisabled = false,
@@ -31,9 +31,11 @@ class AppButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final baseColor = AppVariantPalette.resolve(variant);
-    final requestedType = type == AppButtonType.text && icon != null ? AppButtonType.textIcon : type;
-    final effectiveType = requestedType == AppButtonType.textIcon && icon == null ? AppButtonType.text : requestedType;
-    final foreground = transparent ? baseColor : Colors.white;
+    final requestedType = type == AppButtonType.button && icon != null ? AppButtonType.textIcon : type;
+    final effectiveType = requestedType == AppButtonType.textIcon && icon == null ? AppButtonType.button : requestedType;
+    final isTextButton = effectiveType == AppButtonType.textButton;
+    final isIconButton = effectiveType == AppButtonType.icon;
+    final foreground = (transparent || isTextButton) ? baseColor : Colors.white;
 
     final child = _ButtonChild(
       label: label,
@@ -44,20 +46,31 @@ class AppButton extends StatelessWidget {
     );
 
     final style = ButtonStyle(
-      padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 14, vertical: 11)),
-      shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+      padding: WidgetStateProperty.all(
+        isIconButton ? const EdgeInsets.all(11) : const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      ),
+      shape: WidgetStateProperty.all(
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(isIconButton ? 999 : 10),
+        ),
+      ),
       elevation: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.pressed)) return 0;
-        return transparent ? 0 : 1;
+        return (transparent || isTextButton) ? 0 : 1;
       }),
       side: WidgetStateProperty.resolveWith((states) {
-        if (!transparent) return BorderSide.none;
+        if (!transparent || isTextButton) return BorderSide.none;
         final alpha = states.contains(WidgetState.hovered) ? 0.95 : 0.7;
         return BorderSide(color: baseColor.withValues(alpha: alpha));
       }),
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
-          return transparent ? Colors.transparent : baseColor.withValues(alpha: 0.24);
+          return (transparent || isTextButton) ? Colors.transparent : baseColor.withValues(alpha: 0.24);
+        }
+        if (isTextButton) {
+          if (states.contains(WidgetState.hovered)) return baseColor.withValues(alpha: 0.08);
+          if (states.contains(WidgetState.pressed)) return baseColor.withValues(alpha: 0.14);
+          return Colors.transparent;
         }
         if (transparent) {
           if (states.contains(WidgetState.hovered)) return baseColor.withValues(alpha: 0.1);
@@ -118,7 +131,7 @@ class _ButtonChild extends StatelessWidget {
     }
 
     if (type == AppButtonType.icon) {
-      return Icon(icon, size: 18);
+      return Icon(icon ?? Icons.circle, size: 18);
     }
 
     if (type == AppButtonType.textIcon && icon != null) {

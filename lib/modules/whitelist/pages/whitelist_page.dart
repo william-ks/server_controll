@@ -77,8 +77,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
             children: [
               Text(
                 'Você está prestes a remover o jogador $nickname da whitelist local impedindo o jogador de se conectar ao servidor, você tem certeza ?',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w700,
+                      fontSize: 16,
                     ),
               ),
               const SizedBox(height: 14),
@@ -108,15 +109,15 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 18),
             ],
           ),
           actions: [
             AppButton(
               label: 'Cancelar',
               onPressed: () => Navigator.of(context).pop(),
+              type: AppButtonType.textButton,
               variant: AppVariant.danger,
-              icon: Icons.close_rounded,
             ),
             AppButton(
               label: 'Confirmar',
