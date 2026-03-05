@@ -70,7 +70,7 @@ A aplicação centraliza:
   - switch de comportamento padronizado por componente global de card (`AppSwitchCard`);
   - ações finais sem seção explícita e alinhadas à direita.
   - provider dedicado para persistência total das configurações de arquivos e refresh de estado ao navegar nas abas.
-  - sem obrigatoriedade de campos para salvar (badges de validação permanecem apenas informativos).
+  - salvamento condicionado às pré-condições de execução (path/jar/java válidos e RAM consistente).
   - salvamento silencioso (sem snackbar de sucesso).
 - Home:
   - inicialização do servidor bloqueada quando configurações essenciais não estiverem definidas.

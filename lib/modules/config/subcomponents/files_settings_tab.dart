@@ -9,7 +9,6 @@ import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/shared/app_variant.dart';
-import '../../../config/theme/app_colors.dart';
 import '../models/config_files_settings.dart';
 import '../providers/config_files_provider.dart';
 
@@ -31,9 +30,12 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
 
   Timer? _pathDebounce;
   Timer? _fileDebounce;
+  Timer? _javaDebounce;
 
   bool _pathExists = false;
   bool _fileExists = false;
+  bool? _javaAvailable;
+  bool _checkingJava = false;
   bool _isLoading = true;
   bool _isSaving = false;
   bool _autoRestartOnCrash = true;
@@ -46,6 +48,7 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     super.initState();
     _serverPathController.addListener(_onPathChanged);
     _jarFileController.addListener(_onJarChanged);
+    _javaCommandController.addListener(_onJavaCommandChanged);
     _ramMinController.addListener(_onRamChanged);
     _ramMaxController.addListener(_onRamChanged);
     _restartWaitController.addListener(_onRestartWaitChanged);
@@ -59,6 +62,7 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
   void dispose() {
     _pathDebounce?.cancel();
     _fileDebounce?.cancel();
+    _javaDebounce?.cancel();
     _serverPathController.dispose();
     _ramMinController.dispose();
     _ramMaxController.dispose();
@@ -79,6 +83,7 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     _applySettings(settings);
     await _validatePath();
     await _validateFile();
+    await _validateJavaCommand();
     _validateRam();
     _validateRestartWait();
     _initialSnapshot = _snapshot();
@@ -126,6 +131,44 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     }
   }
 
+  Future<void> _validateJavaCommand() async {
+    final javaCommand = _javaCommandController.text.trim();
+    if (javaCommand.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _javaAvailable = false;
+          _checkingJava = false;
+        });
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _checkingJava = true);
+    }
+    try {
+      final result = await Process.run(
+        javaCommand,
+        const ['-version'],
+        runInShell: true,
+      ).timeout(const Duration(seconds: 4));
+
+      if (mounted) {
+        setState(() {
+          _javaAvailable = result.exitCode == 0;
+          _checkingJava = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _javaAvailable = false;
+          _checkingJava = false;
+        });
+      }
+    }
+  }
+
   void _onPathChanged() {
     _pathDebounce?.cancel();
     _pathDebounce = Timer(const Duration(milliseconds: 320), () async {
@@ -141,6 +184,16 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     _fileDebounce?.cancel();
     _fileDebounce = Timer(const Duration(milliseconds: 320), () async {
       await _validateFile();
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  void _onJavaCommandChanged() {
+    _javaDebounce?.cancel();
+    _javaDebounce = Timer(const Duration(milliseconds: 350), () async {
+      await _validateJavaCommand();
       if (mounted) {
         setState(() {});
       }
@@ -212,6 +265,20 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
 
   bool get _isDirty => _initialSnapshot != null && _snapshot() != _initialSnapshot;
 
+  bool get _hasEssentialsFilled {
+    return _serverPathController.text.trim().isNotEmpty &&
+        _jarFileController.text.trim().isNotEmpty &&
+        _javaCommandController.text.trim().isNotEmpty;
+  }
+
+  bool get _hasValidPreconditions {
+    return _hasEssentialsFilled &&
+        _pathExists &&
+        _fileExists &&
+        _javaAvailable == true &&
+        _ramError == null;
+  }
+
   ConfigFilesSettings _toSettings() {
     final ramMin = _ramMinController.text.trim().isEmpty ? '2' : _ramMinController.text.trim();
     final ramMax = _ramMaxController.text.trim().isEmpty ? '8' : _ramMaxController.text.trim();
@@ -230,7 +297,7 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
   }
 
   Future<void> _save() async {
-    if (!_isDirty) return;
+    if (!_isDirty || !_hasValidPreconditions || _checkingJava) return;
     setState(() => _isSaving = true);
     try {
       final settings = _toSettings();
@@ -306,6 +373,7 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
 
     final showPathBadge = _serverPathController.text.trim().isNotEmpty;
     final showFileBadge = _serverPathController.text.trim().isNotEmpty && _jarFileController.text.trim().isNotEmpty;
+    final showJavaBadge = _javaCommandController.text.trim().isNotEmpty;
 
     return SingleChildScrollView(
       child: Column(
@@ -358,6 +426,18 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
             prefixIcon: const Icon(Icons.terminal_rounded),
             onChanged: (_) => setState(() {}),
           ),
+          if (showJavaBadge)
+            _validationBadge(
+              text: _checkingJava
+                  ? 'VALIDANDO...'
+                  : (_javaAvailable == true ? 'JAVA DISPONIVEL' : 'JAVA NAO ENCONTRADO'),
+              variant: _checkingJava
+                  ? AppVariant.info
+                  : (_javaAvailable == true ? AppVariant.success : AppVariant.danger),
+              icon: _checkingJava
+                  ? Icons.hourglass_top_rounded
+                  : (_javaAvailable == true ? Icons.check_circle_outline_rounded : Icons.close_rounded),
+            ),
           const SizedBox(height: 14),
           _fieldLabel('JVM args:'),
           AppTextInput(
@@ -455,19 +535,21 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
                 label: 'Salvar',
                 onPressed: _save,
                 isLoading: _isSaving,
-                isDisabled: !_isDirty || _isSaving,
+                isDisabled: !_isDirty || !_hasValidPreconditions || _checkingJava || _isSaving,
                 variant: AppVariant.success,
                 icon: Icons.save_rounded,
               ),
             ],
           ),
           const SizedBox(height: 12),
-          if ((_ramError != null || _restartError != null) && _isDirty)
+          if (_isDirty && !_hasValidPreconditions)
             Align(
               alignment: Alignment.centerRight,
               child: Text(
-                'Existem avisos de validacao, mas o salvamento continua permitido.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.warning),
+                'Para salvar: preencha Path, File Server e Java; valide path/jar/java; e mantenha RAM valida (min <= max).',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
               ),
             ),
         ],

@@ -37,7 +37,12 @@ Status da base implementada:
   - refresh ao entrar/sair da aba Arquivos (troca de aba + dispose).
 - validadores de caminho baseados em `serverPath`:
   - validação de `fileServerName` sempre usa `join(serverPath, fileServerName)`;
-  - estados de badge informativos não bloqueiam salvamento.
+  - validação de `javaCommand` via `java -version` para garantir disponibilidade.
+- pré-condições de salvamento em `Config > Arquivos`:
+  - `serverPath`, `fileServerName` e `javaCommand` devem estar preenchidos;
+  - path e jar devem existir;
+  - Java deve estar disponível;
+  - RAM deve estar válida (`min <= max`), incluindo no momento de salvar.
 - inputs com estados ativos menos saturados:
   - tokens `inputHoverBackground` e `inputActiveBackground` substituem o destaque azulado intenso.
 - Home:
