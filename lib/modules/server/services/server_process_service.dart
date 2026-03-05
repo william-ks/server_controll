@@ -16,6 +16,7 @@ abstract class ServerProcessService {
   Future<void> stop();
   Future<void> restart();
   Future<void> sendCommand(String command);
+  Future<int?> getActiveServerMemoryMb();
   Future<void> shutdownForAppExit();
   Future<void> dispose();
 }
@@ -156,6 +157,23 @@ class LocalServerProcessService implements ServerProcessService {
   }
 
   @override
+  Future<int?> getActiveServerMemoryMb() async {
+    final config = await _loadLaunchConfig();
+    final pids = await _findMatchingServerProcessIds(config.jarFile);
+    if (pids.isEmpty) return null;
+
+    var highest = 0;
+    for (final pid in pids.toSet()) {
+      final mb = await _getPidMemoryMb(pid);
+      if (mb != null && mb > highest) {
+        highest = mb;
+      }
+    }
+    if (highest <= 0) return null;
+    return highest;
+  }
+
+  @override
   Future<void> shutdownForAppExit() async {
     await stop();
   }
@@ -172,7 +190,7 @@ class LocalServerProcessService implements ServerProcessService {
     await process.stdin.flush();
 
     var exited = false;
-    for (var i = 0; i < 120; i++) {
+    for (var i = 0; i < 60; i++) {
       final running = await _isPidRunning(process.pid);
       if (!running) {
         exited = true;
@@ -239,6 +257,26 @@ class LocalServerProcessService implements ServerProcessService {
     }
     final result = await Process.run('kill', ['-0', '$pid']);
     return result.exitCode == 0;
+  }
+
+  Future<int?> _getPidMemoryMb(int pid) async {
+    if (pid <= 0) return null;
+    if (Platform.isWindows) {
+      final result = await Process.run('powershell', [
+        '-NoProfile',
+        '-Command',
+        r'$p=Get-Process -Id $args[0] -ErrorAction SilentlyContinue; if($null -eq $p){exit 1}; [int]([math]::Round($p.WorkingSet64/1MB))',
+        '$pid',
+      ]);
+      if (result.exitCode != 0) return null;
+      return int.tryParse(result.stdout.toString().trim());
+    }
+
+    final result = await Process.run('ps', ['-o', 'rss=', '-p', '$pid']);
+    if (result.exitCode != 0) return null;
+    final rssKb = int.tryParse(result.stdout.toString().trim());
+    if (rssKb == null || rssKb <= 0) return null;
+    return (rssKb / 1024).round();
   }
 
   Future<List<int>> _findMatchingServerProcessIds(String jarFile) async {

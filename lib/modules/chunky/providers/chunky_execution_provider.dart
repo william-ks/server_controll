@@ -12,7 +12,9 @@ import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../config/services/server_properties_service.dart';
 import '../../server/providers/server_runtime_provider.dart';
+import '../../server/services/server_process_service.dart';
 import '../models/chunky_config_settings.dart';
+import '../models/chunky_execution_log_entry.dart';
 import '../models/chunky_execution_status.dart';
 import '../providers/chunky_config_provider.dart';
 
@@ -29,6 +31,7 @@ class ChunkyExecutionState {
     required this.tasksPending,
     required this.backupBeforeStart,
     required this.hasRecoverableCheckpoint,
+    required this.logs,
     this.errorMessage,
     this.statusMessage,
   });
@@ -44,6 +47,7 @@ class ChunkyExecutionState {
   final bool tasksPending;
   final bool backupBeforeStart;
   final bool hasRecoverableCheckpoint;
+  final List<ChunkyExecutionLogEntry> logs;
   final String? errorMessage;
   final String? statusMessage;
 
@@ -59,6 +63,7 @@ class ChunkyExecutionState {
     bool? tasksPending,
     bool? backupBeforeStart,
     bool? hasRecoverableCheckpoint,
+    List<ChunkyExecutionLogEntry>? logs,
     String? errorMessage,
     String? statusMessage,
     bool clearError = false,
@@ -77,6 +82,7 @@ class ChunkyExecutionState {
       backupBeforeStart: backupBeforeStart ?? this.backupBeforeStart,
       hasRecoverableCheckpoint:
           hasRecoverableCheckpoint ?? this.hasRecoverableCheckpoint,
+      logs: logs ?? this.logs,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       statusMessage: clearStatusMessage
           ? null
@@ -97,6 +103,7 @@ class ChunkyExecutionState {
       tasksPending: false,
       backupBeforeStart: false,
       hasRecoverableCheckpoint: false,
+      logs: [],
     );
   }
 }
@@ -107,15 +114,23 @@ final chunkyExecutionProvider =
     );
 
 class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
+  static const int _gcPauseSeconds = 20;
+  static const int _saveAllAckTimeoutSeconds = 20;
+  static const int _memoryObserveSeconds = 60;
+  static const int _memoryObserveStepSeconds = 5;
+  static const int _memoryStableThresholdMb = 5 * 1024;
+
   final ServerPropertiesService _propertiesService = ServerPropertiesService();
   StreamSubscription<String>? _stdoutSub;
   Timer? _elapsedTimer;
   Completer<void>? _runCompleter;
+  Completer<bool>? _saveAllCompleter;
   bool _cancelRequested = false;
   bool _paused = false;
   bool _pauseAfterCurrentCycleRequested = false;
   bool _resumeOnNextOnline = false;
   int _completedRuns = 0;
+  Duration _runElapsedStart = Duration.zero;
 
   @override
   ChunkyExecutionState build() {
@@ -143,6 +158,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   Future<void> _bootstrap() async {
     final backupBeforeStart = ref.read(chunkyConfigProvider).backupBeforeStart;
     await refreshTasksPending();
+    await _loadLogsFromDb();
 
     final checkpoint = await _loadCheckpoint();
     if (checkpoint != null && checkpoint.plan.isNotEmpty) {
@@ -165,6 +181,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         statusMessage: state.tasksPending
             ? 'Execução anterior detectada. Existem tarefas do Chunky pendentes em disco.'
             : 'Execução anterior detectada. Sem arquivos pendentes; ao continuar, a execução atual será recriada.',
+      );
+      await _appendLog(
+        'Checkpoint carregado: execução $currentRun/${checkpoint.totalRuns}, radius $currentRadius.',
       );
       return;
     }
@@ -192,6 +211,27 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     );
     await ref.read(chunkyConfigProvider.notifier).save(next);
     state = state.copyWith(backupBeforeStart: enabled);
+    await _appendLog(
+      'Backup antes de iniciar: ${enabled ? 'ATIVO' : 'DESATIVADO'}.',
+    );
+  }
+
+  String buildLogsAsPlainText() {
+    final buffer = StringBuffer();
+    for (final entry in state.logs) {
+      final hh = entry.timestamp.hour.toString().padLeft(2, '0');
+      final mm = entry.timestamp.minute.toString().padLeft(2, '0');
+      final ss = entry.timestamp.second.toString().padLeft(2, '0');
+      final runLabel = entry.totalRuns > 0
+          ? ' run ${entry.runIndex}/${entry.totalRuns}'
+          : '';
+      final radiusLabel = entry.radius > 0 ? ' radius ${entry.radius}' : '';
+      final elapsedLabel = _formatDuration(entry.elapsed);
+      buffer.writeln(
+        '[$hh:$mm:$ss] [${entry.level}] [elapsed $elapsedLabel]$runLabel$radiusLabel ${entry.message}',
+      );
+    }
+    return buffer.toString();
   }
 
   List<int> buildRunPlan({required int radius, required int maxPerRun}) {
@@ -223,6 +263,10 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         status: ChunkyExecutionStatus.error,
         errorMessage: 'Servidor precisa estar online para iniciar o Chunky.',
       );
+      await _appendLog(
+        'Falha ao iniciar execução: servidor não está online.',
+        level: 'ERROR',
+      );
       return;
     }
 
@@ -235,6 +279,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         status: ChunkyExecutionStatus.error,
         errorMessage: 'Plano de execução inválido.',
       );
+      await _appendLog('Plano de execução inválido.', level: 'ERROR');
       return;
     }
 
@@ -258,6 +303,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     );
     _startElapsedTimer();
     await _persistCheckpoint();
+    await _appendLog(
+      'Execução iniciada. Plano: ${plan.length} execuções, radius final $radius.',
+    );
 
     Future<void>(
       () => _runExecutionLoop(
@@ -281,6 +329,10 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         status: ChunkyExecutionStatus.error,
         errorMessage: 'Servidor precisa estar online para continuar o Chunky.',
       );
+      await _appendLog(
+        'Falha ao continuar execução: servidor não está online.',
+        level: 'ERROR',
+      );
       return;
     }
 
@@ -296,6 +348,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         status: ChunkyExecutionStatus.error,
         errorMessage: 'Sem plano recuperável para continuar.',
       );
+      await _appendLog('Sem plano recuperável para continuar.', level: 'ERROR');
       return;
     }
 
@@ -319,6 +372,9 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     );
     _startElapsedTimer();
     await _persistCheckpoint();
+    await _appendLog(
+      'Continuando execução em ${startIndex + 1}/${plan.length}, radius ${plan[startIndex]}.',
+    );
 
     Future<void>(
       () => _runExecutionLoop(
@@ -336,6 +392,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     await ref
         .read(serverRuntimeProvider.notifier)
         .sendCommand('chunky progress');
+    await _appendLog('Solicitado chunky progress no servidor.');
   }
 
   Future<void> clearChunkyState() async {
@@ -353,6 +410,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     } catch (_) {}
     await _clearTasksDirs(serverPath);
     await _clearCheckpoint();
+    await _clearLogs();
     _elapsedTimer?.cancel();
     _completedRuns = 0;
     _pauseAfterCurrentCycleRequested = false;
@@ -367,6 +425,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       elapsed: Duration.zero,
       plan: const [],
       hasRecoverableCheckpoint: false,
+      logs: const [],
       clearError: true,
       clearStatusMessage: true,
     );
@@ -378,6 +437,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     _paused = true;
     state = state.copyWith(status: ChunkyExecutionStatus.paused);
     await _persistCheckpoint();
+    await _appendLog('Execução pausada manualmente.', level: 'WARN');
   }
 
   Future<void> resume() async {
@@ -385,6 +445,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     _paused = false;
     state = state.copyWith(status: ChunkyExecutionStatus.running);
     await _persistCheckpoint();
+    await _appendLog('Execução retomada manualmente.');
   }
 
   Future<void> cancel() async {
@@ -398,6 +459,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     _resumeOnNextOnline = false;
     state = state.copyWith(status: ChunkyExecutionStatus.cancelling);
     await _persistCheckpoint();
+    await _appendLog('Cancelamento solicitado.', level: 'WARN');
   }
 
   Future<void> pauseForScheduleConflict() async {
@@ -407,6 +469,10 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     }
     _pauseAfterCurrentCycleRequested = true;
     _resumeOnNextOnline = true;
+    await _appendLog(
+      'Pausa solicitada por conflito de agendamento.',
+      level: 'WARN',
+    );
   }
 
   Future<void> resumeAfterScheduleIfOnline() async {
@@ -416,6 +482,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     _paused = false;
     state = state.copyWith(status: ChunkyExecutionStatus.running);
     await _persistCheckpoint();
+    await _appendLog('Execução retomada após agendamento.');
   }
 
   Future<void> _runExecutionLoop({
@@ -425,6 +492,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     required bool freshStart,
   }) async {
     final runtimeNotifier = ref.read(serverRuntimeProvider.notifier);
+    final processService = ref.read(serverProcessServiceProvider);
     final serverPath = ref.read(configFilesProvider).serverPath.trim();
     final backupConfig = ref.read(backupConfigProvider);
     String? previousMaxPlayers;
@@ -432,6 +500,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     try {
       if (freshStart) {
         await _clearTasksDirs(serverPath);
+        await _appendLog('Estado antigo de tarefas do Chunky removido.');
       }
       await refreshTasksPending();
 
@@ -446,6 +515,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
             serverPath: serverPath,
             settings: props.copyWith(maxPlayers: '0'),
           );
+          await _appendLog('max-players ajustado para 0 durante pregen.');
         } else if (savedPrevMaxPlayers != null &&
             savedPrevMaxPlayers.trim().isNotEmpty) {
           previousMaxPlayers = savedPrevMaxPlayers;
@@ -456,11 +526,16 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
       final lifecycleBefore = ref.read(serverRuntimeProvider).lifecycle;
       if (lifecycleBefore == ServerLifecycleState.online) {
+        await _appendLog('Parando servidor para preparação inicial.');
         await runtimeNotifier.stopServer();
-        await _waitForOffline();
+        final offline = await _waitForOffline();
+        if (!offline) {
+          throw StateError('Timeout aguardando servidor offline.');
+        }
       }
 
       if (freshStart && state.backupBeforeStart) {
+        await _appendLog('Criando backup antes da execução.');
         await ref
             .read(backupServiceProvider)
             .createBackup(
@@ -470,6 +545,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
             );
       }
 
+      await _appendLog('Iniciando servidor para execução do Chunky.');
       await runtimeNotifier.startServer();
       await _waitForOnline();
 
@@ -498,7 +574,16 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
           plan: plan,
           clearStatusMessage: true,
         );
+        _runElapsedStart = state.elapsed;
         await _persistCheckpoint();
+        await _appendLog(
+          continueCurrentRun
+              ? 'Retomando execução ${index + 1}/${plan.length} (radius $runRadius).'
+              : 'Iniciando execução ${index + 1}/${plan.length} (radius $runRadius).',
+          runIndex: index + 1,
+          totalRuns: plan.length,
+          radius: runRadius,
+        );
 
         _runCompleter = Completer<void>();
         if (continueCurrentRun) {
@@ -517,22 +602,40 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
           totalProgress: totalProgress,
         );
         await _persistCheckpoint();
+        final runElapsed = state.elapsed - _runElapsedStart;
+        await _appendLog(
+          'Execução ${index + 1}/${plan.length} concluída em ${_formatDuration(runElapsed)}.',
+          runIndex: index + 1,
+          totalRuns: plan.length,
+          radius: runRadius,
+        );
 
         if (_pauseAfterCurrentCycleRequested) {
           _pauseAfterCurrentCycleRequested = false;
           _paused = true;
           state = state.copyWith(status: ChunkyExecutionStatus.paused);
           await _persistCheckpoint();
+          await _appendLog(
+            'Execução pausada na fronteira de ciclo.',
+            level: 'WARN',
+          );
           continue;
         }
 
         if (_completedRuns < plan.length) {
-          await runtimeNotifier.sendCommand('stop');
-          await _waitForOffline();
-          await Future<void>.delayed(const Duration(seconds: 5));
-          if (_cancelRequested) break;
-          await runtimeNotifier.startServer();
-          await _waitForOnline();
+          final keepServerOnline =
+              await _prepareForNextRunWithoutRestartIfPossible(
+                processService: processService,
+                runtimeNotifier: runtimeNotifier,
+                runIndex: index + 1,
+                totalRuns: plan.length,
+              );
+          if (!keepServerOnline) {
+            if (_cancelRequested) break;
+            await _appendLog(
+              'Iniciando próxima execução após reinício do servidor.',
+            );
+          }
         }
       }
 
@@ -545,8 +648,12 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
             serverPath: serverPath,
             settings: propsAfter.copyWith(maxPlayers: previousMaxPlayers),
           );
+          await _appendLog('max-players restaurado para $previousMaxPlayers.');
           final lifecycle = ref.read(serverRuntimeProvider).lifecycle;
           if (lifecycle == ServerLifecycleState.online) {
+            await _appendLog(
+              'Reiniciando servidor para aplicar max-players restaurado.',
+            );
             await runtimeNotifier.restartServer();
             await _waitForOnline();
           }
@@ -567,6 +674,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
           clearStatusMessage: true,
         );
         await _clearCheckpoint();
+        await _appendLog('Execução cancelada.');
       } else {
         await _clearTasksDirs(serverPath);
         state = state.copyWith(
@@ -577,6 +685,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
           statusMessage: 'Execução concluída com sucesso.',
         );
         await _clearCheckpoint();
+        await _appendLog('Plano concluído com sucesso.');
       }
     } catch (error) {
       state = state.copyWith(
@@ -587,6 +696,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
             'Execução interrompida. Revise o status do servidor e escolha Continuar ou Reiniciar.',
       );
       await _persistCheckpoint();
+      await _appendLog('Erro durante execução: $error', level: 'ERROR');
     } finally {
       _elapsedTimer?.cancel();
       _runCompleter = null;
@@ -596,6 +706,157 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       }
       await refreshTasksPending();
     }
+  }
+
+  Future<bool> _prepareForNextRunWithoutRestartIfPossible({
+    required ServerProcessService processService,
+    required ServerRuntimeNotifier runtimeNotifier,
+    required int runIndex,
+    required int totalRuns,
+  }) async {
+    await _appendLog(
+      'Execução $runIndex/$totalRuns atingiu 100%. Aguardando $_gcPauseSeconds segundos para GC.',
+      runIndex: runIndex,
+      totalRuns: totalRuns,
+      radius: state.currentRadius,
+    );
+    await Future<void>.delayed(const Duration(seconds: _gcPauseSeconds));
+
+    final saveAck = await _sendSaveAllAndAwaitAck(
+      runtimeNotifier,
+      timeout: const Duration(seconds: _saveAllAckTimeoutSeconds),
+    );
+    if (!saveAck) {
+      await _appendLog(
+        'save-all sem confirmação explícita no timeout. Continuando fluxo com cautela.',
+        level: 'WARN',
+        runIndex: runIndex,
+        totalRuns: totalRuns,
+        radius: state.currentRadius,
+      );
+    }
+
+    final initialRamMb = await processService.getActiveServerMemoryMb();
+    if (initialRamMb == null) {
+      await _appendLog(
+        'Não foi possível ler RAM do servidor. Reinício será aplicado por segurança.',
+        level: 'WARN',
+        runIndex: runIndex,
+        totalRuns: totalRuns,
+        radius: state.currentRadius,
+      );
+      await _restartServerBetweenRuns(runtimeNotifier);
+      return false;
+    }
+
+    await _appendLog(
+      'RAM inicial após save-all: ${_formatMb(initialRamMb)}. Observando por $_memoryObserveSeconds segundos.',
+      runIndex: runIndex,
+      totalRuns: totalRuns,
+      radius: state.currentRadius,
+    );
+
+    var safeToContinue = false;
+    for (
+      var elapsed = _memoryObserveStepSeconds;
+      elapsed <= _memoryObserveSeconds;
+      elapsed += _memoryObserveStepSeconds
+    ) {
+      await Future<void>.delayed(
+        const Duration(seconds: _memoryObserveStepSeconds),
+      );
+      final current = await processService.getActiveServerMemoryMb();
+      if (current == null) {
+        continue;
+      }
+      await _appendLog(
+        'RAM monitorada em ${elapsed}s: ${_formatMb(current)}.',
+        runIndex: runIndex,
+        totalRuns: totalRuns,
+        radius: state.currentRadius,
+      );
+
+      if (current < initialRamMb && current <= _memoryStableThresholdMb) {
+        safeToContinue = true;
+        await _appendLog(
+          'RAM abaixo do limite (${_formatMb(_memoryStableThresholdMb)}). Próxima task seguirá sem reinício.',
+          runIndex: runIndex,
+          totalRuns: totalRuns,
+          radius: state.currentRadius,
+        );
+        break;
+      }
+    }
+
+    if (safeToContinue) {
+      return true;
+    }
+
+    await _appendLog(
+      'RAM não reduziu o suficiente em $_memoryObserveSeconds segundos. Reiniciando servidor.',
+      level: 'WARN',
+      runIndex: runIndex,
+      totalRuns: totalRuns,
+      radius: state.currentRadius,
+    );
+    await _restartServerBetweenRuns(runtimeNotifier);
+    return false;
+  }
+
+  Future<void> _restartServerBetweenRuns(
+    ServerRuntimeNotifier runtimeNotifier,
+  ) async {
+    await runtimeNotifier.sendCommand('stop');
+    final graceful = await _waitForOffline(
+      timeout: const Duration(seconds: 15),
+    );
+    if (!graceful) {
+      await _appendLog(
+        'Timeout no stop gracioso. Forçando encerramento do processo.',
+        level: 'WARN',
+      );
+      await runtimeNotifier.stopServer();
+      final offline = await _waitForOffline();
+      if (!offline) {
+        throw StateError(
+          'Timeout aguardando servidor offline após forçar stop.',
+        );
+      }
+    }
+
+    final waitSecRaw = ref.read(configFilesProvider).restartWaitSeconds.trim();
+    final waitSec = int.tryParse(waitSecRaw) ?? 10;
+    final boundedWait = waitSec.clamp(0, 300);
+    if (boundedWait > 0) {
+      await _appendLog(
+        'Aguardando $boundedWait segundos antes de subir o servidor novamente.',
+      );
+      await Future<void>.delayed(Duration(seconds: boundedWait));
+    }
+
+    if (_cancelRequested) return;
+    await runtimeNotifier.startServer();
+    await _waitForOnline();
+    await _appendLog('Servidor reiniciado e pronto para próxima execução.');
+  }
+
+  Future<bool> _sendSaveAllAndAwaitAck(
+    ServerRuntimeNotifier runtimeNotifier, {
+    required Duration timeout,
+  }) async {
+    _saveAllCompleter = Completer<bool>();
+    await _appendLog('Executando comando save-all e aguardando confirmação.');
+    await runtimeNotifier.sendCommand('save-all');
+
+    final result = await Future.any<bool>([
+      _saveAllCompleter!.future,
+      Future<bool>.delayed(timeout, () => false),
+    ]);
+    _saveAllCompleter = null;
+    if (result) {
+      await _appendLog('save-all confirmado pelo servidor.');
+    }
+    return result;
   }
 
   Future<void> _waitWhilePaused() async {
@@ -650,16 +911,19 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     throw StateError('Timeout aguardando servidor online.');
   }
 
-  Future<void> _waitForOffline() async {
-    for (var i = 0; i < 400; i++) {
+  Future<bool> _waitForOffline({
+    Duration timeout = const Duration(seconds: 100),
+  }) async {
+    final attempts = (timeout.inMilliseconds / 250).ceil();
+    for (var i = 0; i < attempts; i++) {
       final lifecycle = ref.read(serverRuntimeProvider).lifecycle;
       if (lifecycle == ServerLifecycleState.offline ||
           lifecycle == ServerLifecycleState.error) {
-        return;
+        return true;
       }
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }
-    throw StateError('Timeout aguardando servidor offline.');
+    return false;
   }
 
   Future<bool> _hasPendingTasks(String serverPath) async {
@@ -691,15 +955,22 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   }
 
   void _handleStdoutLine(String line) {
+    final lowerLine = line.toLowerCase();
+    if (_saveAllCompleter != null && _looksLikeSaveAllAck(lowerLine)) {
+      if (!(_saveAllCompleter?.isCompleted ?? true)) {
+        _saveAllCompleter?.complete(true);
+      }
+    }
+
     if (state.status != ChunkyExecutionStatus.running &&
         state.status != ChunkyExecutionStatus.paused) {
       return;
     }
-    if (!line.toLowerCase().contains('chunk')) {
+    if (!lowerLine.contains('chunk')) {
       return;
     }
 
-    if (line.toLowerCase().contains('task finished')) {
+    if (lowerLine.contains('task finished')) {
       state = state.copyWith(currentRunProgress: 100);
       _runCompleter?.complete();
       _runCompleter = null;
@@ -728,6 +999,13 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     }
   }
 
+  bool _looksLikeSaveAllAck(String line) {
+    if (line.contains('saved the game')) return true;
+    if (line.contains('saved the world')) return true;
+    if (line.contains('saved') && line.contains('game')) return true;
+    return false;
+  }
+
   void _startElapsedTimer() {
     _elapsedTimer?.cancel();
     _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -737,6 +1015,75 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         );
       }
     });
+  }
+
+  Future<void> _appendLog(
+    String message, {
+    String level = 'INFO',
+    int? runIndex,
+    int? totalRuns,
+    int? radius,
+  }) async {
+    final db = await AppDatabase.instance.database;
+    final now = DateTime.now();
+    final resolvedRun = runIndex ?? state.currentRun;
+    final resolvedTotal = totalRuns ?? state.totalRuns;
+    final resolvedRadius = radius ?? state.currentRadius;
+    final elapsedSeconds = state.elapsed.inSeconds;
+
+    final insertedId = await db.insert('chunky_logs', {
+      'level': level,
+      'message': message,
+      'run_index': resolvedRun,
+      'total_runs': resolvedTotal,
+      'radius': resolvedRadius,
+      'elapsed_seconds': elapsedSeconds,
+      'created_at': now.toIso8601String(),
+    });
+
+    final entry = ChunkyExecutionLogEntry(
+      id: insertedId,
+      timestamp: now,
+      level: level,
+      message: message,
+      runIndex: resolvedRun,
+      totalRuns: resolvedTotal,
+      radius: resolvedRadius,
+      elapsed: Duration(seconds: elapsedSeconds),
+    );
+
+    final next = <ChunkyExecutionLogEntry>[...state.logs, entry];
+    if (next.length > 1000) {
+      next.removeRange(0, next.length - 1000);
+    }
+    state = state.copyWith(logs: next);
+  }
+
+  Future<void> _loadLogsFromDb() async {
+    final db = await AppDatabase.instance.database;
+    final rows = await db.query('chunky_logs', orderBy: 'id ASC', limit: 1000);
+
+    final logs = rows.map((row) {
+      return ChunkyExecutionLogEntry(
+        id: row['id'] as int,
+        timestamp:
+            DateTime.tryParse(row['created_at'] as String? ?? '') ??
+            DateTime.now(),
+        level: (row['level'] as String? ?? 'INFO').toUpperCase(),
+        message: row['message'] as String? ?? '',
+        runIndex: row['run_index'] as int? ?? 0,
+        totalRuns: row['total_runs'] as int? ?? 0,
+        radius: row['radius'] as int? ?? 0,
+        elapsed: Duration(seconds: row['elapsed_seconds'] as int? ?? 0),
+      );
+    }).toList();
+
+    state = state.copyWith(logs: logs);
+  }
+
+  Future<void> _clearLogs() async {
+    final db = await AppDatabase.instance.database;
+    await db.delete('chunky_logs');
   }
 
   Future<void> _persistCheckpoint() async {
@@ -830,6 +1177,18 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     await db.setSetting('chunk_exec_total_progress', '0');
     await db.setSetting('chunk_exec_elapsed_seconds', '0');
     await db.setSetting('chunk_exec_plan', '');
+  }
+
+  String _formatMb(int mb) {
+    final gb = mb / 1024;
+    return '${gb.toStringAsFixed(2)} GB';
+  }
+
+  String _formatDuration(Duration duration) {
+    final hh = duration.inHours.toString().padLeft(2, '0');
+    final mm = (duration.inMinutes % 60).toString().padLeft(2, '0');
+    final ss = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hh:$mm:$ss';
   }
 }
 
