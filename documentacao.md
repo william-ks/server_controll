@@ -57,6 +57,24 @@ Status da base implementada:
   - nova aba com badge de alerta e ação de limpeza total de dados;
   - limpeza com dupla confirmação;
   - reset completo do banco local + remoção de ícones de whitelist no diretório de suporte.
+- Backup:
+  - nova aba `Config > Backup` com persistência em SQLite para:
+    - `backup_path`
+    - `backup_enabled`
+    - `backup_max_count`
+  - validações de pasta de backup existente e limite mínimo de retenção (`>= 1`);
+  - serviço de backup em zip da pasta do servidor com nomenclatura:
+    - `Manual_<timestamp>.zip`
+    - `Agendamento_<timestamp>.zip`
+    - `Chunk_<timestamp>.zip`
+  - retenção automática: ao criar novo backup acima do limite, remove os mais antigos;
+  - backup manual integrado ao botão `Backup` na Home (somente com servidor offline e backups ativos);
+  - nova tela `Backups` com:
+    - busca local por nome;
+    - ordenação do mais recente para o mais antigo;
+    - métricas de quantidade total e peso total;
+    - tamanho por backup no card;
+    - remoção de backup com confirmação.
 
 Regra:
 - qualquer mudança relevante de arquitetura, fluxo ou comportamento deve manter este arquivo e `docs/minecontrol_documentacao_v2.md` sincronizados.

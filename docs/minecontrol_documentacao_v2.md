@@ -75,6 +75,24 @@ A aplicação centraliza:
 - Configurações > Avançado:
   - aba de administração avançada com badge de alerta para operação destrutiva;
   - botão para limpeza total dos dados locais com dupla confirmação.
+- Configurações > Backup:
+  - aba funcional com persistência no SQLite para pasta de backup, backups ativos e máximo de retenção;
+  - validação de pasta existente e validação de máximo (`min = 1`);
+  - regras de nome de arquivo aplicadas:
+    - `Manual_<timestamp>.zip`
+    - `Agendamento_<timestamp>.zip`
+    - `Chunk_<timestamp>.zip`
+  - retenção automática removendo backups mais antigos quando excede o limite configurado.
+- Tela `Backups`:
+  - nova rota dedicada para listar backups gerados;
+  - ordenação do mais recente para o mais antigo;
+  - cards com nome, tipo, data/hora e tamanho do backup;
+  - métricas de topo: total de backups e peso total;
+  - busca local por nome;
+  - exclusão de backup com confirmação.
+- Home:
+  - botão `Backup` integrado ao fluxo real de backup manual;
+  - execução permitida apenas com servidor offline e backups ativos/configurados.
 - Home:
   - inicialização do servidor bloqueada quando configurações essenciais não estiverem definidas.
 - Whitelist:
