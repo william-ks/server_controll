@@ -1,0 +1,70 @@
+name: "✨ Solicitação de Funcionalidade"
+description: "Sugira uma nova funcionalidade ou melhoria para o MineControl"
+title: "[Feature]: "
+labels: ["melhoria", "precisa de triagem"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tem uma ideia para melhorar o MineControl? Adoramos receber sugestões! Descreva sua proposta abaixo.
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: "🔍 Qual problema esta funcionalidade resolve?"
+      description: "Descreva a necessidade ou limitação atual que motivou esta sugestão."
+      placeholder: "Ex: Atualmente não é possível filtrar os logs do console por nível (INFO, WARN, ERROR), o que torna difícil identificar erros rapidamente."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solucao
+    attributes:
+      label: "💡 Solução Proposta"
+      description: "Descreva como você imagina que essa funcionalidade deveria funcionar."
+      placeholder: "Ex: Adicionar filtros de nível de log no console com botões de toggle para INFO, WARN e ERROR."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: "🔄 Alternativas Consideradas"
+      description: "Você considerou outras abordagens para resolver este problema?"
+      placeholder: "Ex: Atualmente uso o console externo para filtrar os logs, mas seria mais prático ter isso integrado."
+
+  - type: dropdown
+    id: modulo
+    attributes:
+      label: "📦 Módulo Relacionado"
+      description: "A qual módulo/tela esta funcionalidade está mais relacionada?"
+      options:
+        - Home (Controle do Servidor)
+        - Console
+        - Configurações > Servidor
+        - Configurações > Propriedades
+        - Configurações > Backups
+        - Configurações > Admin (OP)
+        - Configurações > Agendamentos
+        - Configurações > Avançado
+        - Whitelist
+        - Tela de Backups
+        - Design System / UI
+        - Infraestrutura / Arquitetura
+        - Outro
+
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: "🎯 Prioridade Sugerida"
+      description: "Na sua opinião, qual a prioridade desta funcionalidade?"
+      options:
+        - Alta (bloqueia uso)
+        - Média (melhoria significativa)
+        - Baixa (seria legal ter)
+
+  - type: textarea
+    id: contexto
+    attributes:
+      label: "ℹ️ Contexto Adicional"
+      description: "Capturas de tela, exemplos de outros apps, referências ou qualquer informação adicional."
