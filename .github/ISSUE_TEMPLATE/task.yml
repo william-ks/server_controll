@@ -1,0 +1,75 @@
+name: "📌 Tarefa de Desenvolvimento"
+description: "Crie uma tarefa de desenvolvimento, refatoração ou melhoria técnica"
+title: "[Task]: "
+labels: ["tarefa"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use este template para criar tarefas de desenvolvimento, como implementação de novas funcionalidades planejadas, refatorações, melhorias de performance ou qualquer trabalho técnico.
+
+  - type: textarea
+    id: descricao
+    attributes:
+      label: "📋 Descrição da Tarefa"
+      description: "Descreva o que precisa ser feito."
+      placeholder: "Ex: Refatorar o ServerProcessService para extrair os comandos por SO em providers dedicados, melhorando o suporte cross-platform."
+    validations:
+      required: true
+
+  - type: textarea
+    id: criterios
+    attributes:
+      label: "✅ Critérios de Aceite"
+      description: "Liste os critérios que definem quando esta tarefa está concluída."
+      placeholder: |
+        - [ ] Criar provider abstrato OsCommandProvider
+        - [ ] Implementar WindowsCommandProvider com taskkill e powershell
+        - [ ] Implementar LinuxCommandProvider com ps
+        - [ ] Remover acoplamento de SO do ServerProcessService
+        - [ ] Testar no Windows e Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: contexto
+    attributes:
+      label: "🔗 Contexto Técnico"
+      description: "Informações técnicas relevantes, links para código, documentação ou issues relacionadas."
+      placeholder: "Relacionado ao levantamento de compatibilidade em docs/compatibilidade_so_levantamento.md"
+
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: "🏷️ Tipo de Tarefa"
+      options:
+        - Implementação de funcionalidade
+        - Refatoração
+        - Melhoria de performance
+        - Melhoria de UI/UX
+        - Documentação
+        - Testes
+        - Infraestrutura / CI
+        - Outro
+    validations:
+      required: true
+
+  - type: dropdown
+    id: modulo
+    attributes:
+      label: "📦 Módulo Relacionado"
+      options:
+        - Home (Controle do Servidor)
+        - Console
+        - Configurações > Servidor
+        - Configurações > Propriedades
+        - Configurações > Backups
+        - Configurações > Admin (OP)
+        - Configurações > Agendamentos
+        - Configurações > Avançado
+        - Whitelist
+        - Tela de Backups
+        - Design System / UI
+        - Infraestrutura / Arquitetura
+        - Transversal / Múltiplos módulos
+        - Outro
