@@ -10,12 +10,22 @@ class WhitelistPlayerCard extends StatelessWidget {
     super.key,
     required this.player,
     required this.isOnline,
+    required this.isAppAdmin,
+    required this.isOp,
+    required this.pendingOpsCount,
+    required this.onToggleAppAdmin,
+    required this.onToggleOp,
     required this.onEdit,
     required this.onDelete,
   });
 
   final WhitelistPlayer player;
   final bool isOnline;
+  final bool isAppAdmin;
+  final bool isOp;
+  final int pendingOpsCount;
+  final Future<void> Function(bool value) onToggleAppAdmin;
+  final Future<void> Function(bool value) onToggleOp;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -24,7 +34,9 @@ class WhitelistPlayerCard extends StatelessWidget {
     final noUuid = player.uuid == null || player.uuid!.trim().isEmpty;
     final scheme = Theme.of(context).colorScheme;
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final statusColor = isOnline ? AppColors.success : scheme.onSurfaceVariant.withValues(alpha: 0.86);
+    final statusColor = isOnline
+        ? AppColors.success
+        : scheme.onSurfaceVariant.withValues(alpha: 0.86);
 
     return Stack(
       children: [
@@ -62,17 +74,74 @@ class WhitelistPlayerCard extends StatelessWidget {
                   children: [
                     Text(
                       player.nickname,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'UUID: ${player.uuid?.trim().isNotEmpty == true ? player.uuid! : 'vazio'}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: ext.mutedText,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: ext.mutedText),
                     ),
                     const SizedBox(height: 8),
-                    _StatusChip(label: isOnline ? 'ONLINE' : 'OFFLINE', color: statusColor),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _StatusChip(
+                          label: isOnline ? 'ONLINE' : 'OFFLINE',
+                          color: statusColor,
+                        ),
+                        if (isAppAdmin)
+                          _StatusChip(
+                            label: 'ADMIN APP',
+                            color: AppColors.info.withValues(alpha: 0.95),
+                          ),
+                        if (isOp)
+                          _StatusChip(
+                            label: 'OP',
+                            color: AppColors.warning.withValues(alpha: 0.95),
+                          ),
+                        if (pendingOpsCount > 0)
+                          _StatusChip(
+                            label: 'PEND OP: $pendingOpsCount',
+                            color: AppColors.warning.withValues(alpha: 0.95),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => onToggleAppAdmin(!isAppAdmin),
+                          icon: Icon(
+                            isAppAdmin
+                                ? Icons.shield_outlined
+                                : Icons.shield_moon_outlined,
+                            size: 16,
+                          ),
+                          label: Text(
+                            isAppAdmin ? 'Remover admin' : 'Tornar admin',
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: isAppAdmin
+                              ? () => onToggleOp(!isOp)
+                              : null,
+                          icon: Icon(
+                            isOp
+                                ? Icons.star_border_rounded
+                                : Icons.star_rounded,
+                            size: 16,
+                          ),
+                          label: Text(isOp ? 'Remover OP' : 'Tornar OP'),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -82,11 +151,17 @@ class WhitelistPlayerCard extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: onEdit,
-                    icon: Icon(Icons.edit_rounded, color: AppColors.info.withValues(alpha: 0.9)),
+                    icon: Icon(
+                      Icons.edit_rounded,
+                      color: AppColors.info.withValues(alpha: 0.9),
+                    ),
                   ),
                   IconButton(
                     onPressed: onDelete,
-                    icon: Icon(Icons.delete_outline_rounded, color: AppColors.danger.withValues(alpha: 0.72)),
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.danger.withValues(alpha: 0.72),
+                    ),
                   ),
                 ],
               ),
@@ -102,7 +177,9 @@ class WhitelistPlayerCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.warning.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.28)),
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.28),
+                ),
               ),
               child: Text(
                 'PENDENTE',
@@ -145,7 +222,11 @@ class _StatusChip extends StatelessWidget {
           ),
           Text(
             label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 10.5),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 10.5,
+            ),
           ),
         ],
       ),

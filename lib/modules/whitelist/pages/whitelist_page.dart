@@ -8,6 +8,7 @@ import '../../../components/shared/app_variant.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
+import '../../players/providers/player_permissions_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
 import '../../players/providers/player_playtime_provider.dart';
 import '../../../layout/default_layout.dart';
@@ -28,6 +29,7 @@ class WhitelistPage extends ConsumerStatefulWidget {
 class _WhitelistPageState extends ConsumerState<WhitelistPage> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
+  String _permissionsSyncKey = '';
 
   @override
   void dispose() {
@@ -44,6 +46,8 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
     final requirements = ref.watch(whitelistRequirementsProvider);
     final playtimeState = ref.watch(playerPlaytimeProvider);
     final playtimeNotifier = ref.read(playerPlaytimeProvider.notifier);
+    final permissionsState = ref.watch(playerPermissionsProvider);
+    final permissionsNotifier = ref.read(playerPermissionsProvider.notifier);
 
     Future<void> openModal({int? id}) async {
       final player = id == null
@@ -164,6 +168,22 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
           (player.uuid ?? '').toLowerCase().contains(q);
     }).toList();
 
+    final syncNicknames = [...state.players]
+      ..sort(
+        (a, b) => a.nickname.toLowerCase().compareTo(b.nickname.toLowerCase()),
+      );
+    final syncKey = syncNicknames
+        .map((item) => item.nickname.trim().toLowerCase())
+        .join('|');
+    if (syncKey != _permissionsSyncKey) {
+      _permissionsSyncKey = syncKey;
+      Future<void>(() async {
+        await permissionsNotifier.loadForNicknames(
+          state.players.map((item) => item.nickname).toList(),
+        );
+      });
+    }
+
     return DefaultLayout(
       title: 'MineControl',
       currentRoute: AppRoutes.whitelist,
@@ -251,6 +271,16 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                     ),
                   ),
                 ),
+              if (permissionsState.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    permissionsState.error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 8),
               Expanded(
                 child: filtered.isEmpty
@@ -265,9 +295,56 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                         separatorBuilder: (_, _) => const SizedBox(height: 14),
                         itemBuilder: (_, index) {
                           final player = filtered[index];
+                          final permissions =
+                              permissionsState.statusByNickname[player.nickname
+                                  .trim()
+                                  .toLowerCase()];
                           return WhitelistPlayerCard(
                             player: player,
                             isOnline: onlinePlayers.contains(player.nickname),
+                            isAppAdmin: permissions?.isAppAdmin ?? false,
+                            isOp: permissions?.isOp ?? false,
+                            pendingOpsCount: permissions?.pendingOpsCount ?? 0,
+                            onToggleAppAdmin: (value) async {
+                              try {
+                                await permissionsNotifier.toggleAppAdmin(
+                                  player.nickname,
+                                  value,
+                                );
+                              } catch (error) {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      error.toString().replaceFirst(
+                                        'Bad state: ',
+                                        '',
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            onToggleOp: (value) async {
+                              try {
+                                await permissionsNotifier.toggleOp(
+                                  player.nickname,
+                                  value,
+                                );
+                              } catch (error) {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      error.toString().replaceFirst(
+                                        'Bad state: ',
+                                        '',
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
                             onEdit: () => openModal(id: player.id),
                             onDelete: () =>
                                 confirmDelete(player.id!, player.nickname),

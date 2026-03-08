@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 11;
+  static const int _schemaVersion = 12;
 
   Database? _db;
 
@@ -164,6 +164,7 @@ class AppDatabase {
     await _createPlayersDomainTables(db);
     await _createMaintenanceTables(db);
     await _createBackupMetadataTables(db);
+    await _createPermissionTables(db);
   }
 
   Future<void> _upgradeToDefinitiveSchema(
@@ -197,6 +198,38 @@ class AppDatabase {
     await _createPlayersDomainTables(db);
     await _createMaintenanceTables(db);
     await _createBackupMetadataTables(db);
+    await _createPermissionTables(db);
+
+    await _addColumnIfMissing(
+      db,
+      table: 'players',
+      column: 'is_player',
+      definition: 'INTEGER NOT NULL DEFAULT 1',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'players',
+      column: 'is_whitelisted',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'players',
+      column: 'is_app_admin',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'players',
+      column: 'is_op',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'players',
+      column: 'is_banned',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
   }
 
   Future<void> _createPlayersDomainTables(dynamic db) async {
@@ -205,8 +238,14 @@ class AppDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nickname TEXT NOT NULL,
         uuid TEXT,
+        is_player INTEGER NOT NULL DEFAULT 1,
+        is_whitelisted INTEGER NOT NULL DEFAULT 0,
+        is_app_admin INTEGER NOT NULL DEFAULT 0,
+        is_op INTEGER NOT NULL DEFAULT 0,
+        is_banned INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        CHECK (is_op = 0 OR is_app_admin = 1)
       )
     ''');
 
@@ -296,6 +335,26 @@ class AppDatabase {
         created_at TEXT NOT NULL
       )
     ''');
+  }
+
+  Future<void> _createPermissionTables(dynamic db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS permission_pending_actions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        nickname TEXT NOT NULL,
+        action_type TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        error_message TEXT,
+        created_at TEXT NOT NULL,
+        applied_at TEXT,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute(
+      "CREATE INDEX IF NOT EXISTS idx_permission_pending_status ON permission_pending_actions(status, created_at)",
+    );
   }
 
   Future<void> _addColumnIfMissing(

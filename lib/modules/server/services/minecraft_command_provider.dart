@@ -10,6 +10,8 @@ abstract class MinecraftCommandProvider {
   String say(String message, {String? prefix});
   String kick(String target, String message);
   String whitelistAdd(String nickname);
+  String op(String nickname);
+  String deop(String nickname);
   String gamerulePvp(bool enabled);
   String timeSetDay();
 
@@ -65,6 +67,12 @@ class _VanillaMinecraftCommandProvider extends MinecraftCommandProvider {
 
   @override
   String whitelistAdd(String nickname) => 'whitelist add ${nickname.trim()}';
+
+  @override
+  String op(String nickname) => 'op ${nickname.trim()}';
+
+  @override
+  String deop(String nickname) => 'deop ${nickname.trim()}';
 
   @override
   String gamerulePvp(bool enabled) =>
