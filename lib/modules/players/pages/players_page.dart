@@ -277,7 +277,7 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
               Row(
                 children: [
                   CircleAvatar(
-                    radius: 20,
+                    radius: 26,
                     backgroundColor: Theme.of(
                       context,
                     ).colorScheme.primary.withValues(alpha: 0.12),
@@ -289,8 +289,8 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
                         : ClipOval(
                             child: Image.file(
                               avatarFile,
-                              width: 40,
-                              height: 40,
+                              width: 52,
+                              height: 52,
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -309,7 +309,13 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
               const SizedBox(height: 4),
               Text(
                 'UUID: ${item.uuid?.trim().isNotEmpty == true ? item.uuid : 'vazio'}',
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.58)
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 8),
               Wrap(
