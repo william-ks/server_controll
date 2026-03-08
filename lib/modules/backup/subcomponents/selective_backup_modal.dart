@@ -50,14 +50,21 @@ class _SelectiveBackupModalState extends ConsumerState<SelectiveBackupModal> {
         throw StateError('Pasta do servidor não encontrada.');
       }
 
+      final entities = serverDir.listSync(recursive: false, followLinks: false);
       final entries = <_RootEntry>[];
-      await for (final entity in serverDir.list(
-        recursive: false,
-        followLinks: false,
-      )) {
-        final name = p.basename(entity.path);
+      for (final entity in entities) {
+        final name = p.basename(entity.path).trim();
         if (name.isEmpty) continue;
-        entries.add(_RootEntry(name: name, isDirectory: entity is Directory));
+        final type = FileSystemEntity.typeSync(entity.path, followLinks: false);
+        if (type == FileSystemEntityType.notFound) {
+          continue;
+        }
+        entries.add(
+          _RootEntry(
+            name: name,
+            isDirectory: type == FileSystemEntityType.directory,
+          ),
+        );
       }
       entries.sort(
         (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
@@ -113,6 +120,13 @@ class _SelectiveBackupModalState extends ConsumerState<SelectiveBackupModal> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
+          Text(
+            _entries.isEmpty
+                ? 'Itens encontrados: 0'
+                : 'Itens encontrados: ${_entries.length}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
           if (_loading)
             const Center(child: CircularProgressIndicator())
           else if (_error != null)
