@@ -1,4 +1,5 @@
 import '../../../database/app_database.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/player_permission_status.dart';
 
 class PendingPermissionAction {
@@ -43,10 +44,16 @@ class PlayerPermissionsRepository {
         where: 'id = ?',
         whereArgs: [id],
       );
+      await _upsertPrimaryIdentity(
+        db,
+        playerId: id,
+        nickname: trimmed,
+        uuid: uuid,
+      );
       return id;
     }
 
-    return db.insert('players', {
+    final id = await db.insert('players', {
       'nickname': trimmed,
       'uuid': uuid?.trim().isNotEmpty == true ? uuid!.trim() : null,
       'is_player': 1,
@@ -57,6 +64,13 @@ class PlayerPermissionsRepository {
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
     });
+    await _upsertPrimaryIdentity(
+      db,
+      playerId: id,
+      nickname: trimmed,
+      uuid: uuid,
+    );
+    return id;
   }
 
   Future<void> syncWhitelistFlags(List<String> whitelistedNicknames) async {
@@ -71,15 +85,34 @@ class PlayerPermissionsRepository {
       final id = row['id'] as int? ?? 0;
       final nickname = (row['nickname'] as String? ?? '').trim().toLowerCase();
       if (id <= 0 || nickname.isEmpty) continue;
+      final currentRows = await db.query(
+        'players',
+        columns: ['is_whitelisted'],
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+      final oldValue = (currentRows.first['is_whitelisted'] as int? ?? 0) == 1;
+      final newValue = target.contains(nickname);
       await db.update(
         'players',
         {
-          'is_whitelisted': target.contains(nickname) ? 1 : 0,
+          'is_whitelisted': newValue ? 1 : 0,
           'updated_at': DateTime.now().toIso8601String(),
         },
         where: 'id = ?',
         whereArgs: [id],
       );
+      if (oldValue != newValue) {
+        await _appendStatusHistory(
+          db,
+          playerId: id,
+          statusType: 'whitelist',
+          oldValue: oldValue ? '1' : '0',
+          newValue: newValue ? '1' : '0',
+          changedBy: 'system_sync',
+        );
+      }
     }
 
     for (final nickname in target) {
@@ -96,6 +129,15 @@ class PlayerPermissionsRepository {
   Future<void> setAppAdmin(String nickname, bool enabled) async {
     final playerId = await ensurePlayer(nickname);
     final db = await _db.database;
+    final rows = await db.query(
+      'players',
+      columns: ['is_app_admin', 'is_op'],
+      where: 'id = ?',
+      whereArgs: [playerId],
+      limit: 1,
+    );
+    final oldAdmin = (rows.first['is_app_admin'] as int? ?? 0) == 1;
+    final oldOp = (rows.first['is_op'] as int? ?? 0) == 1;
     await db.update(
       'players',
       {
@@ -106,6 +148,24 @@ class PlayerPermissionsRepository {
       where: 'id = ?',
       whereArgs: [playerId],
     );
+    if (oldAdmin != enabled) {
+      await _appendStatusHistory(
+        db,
+        playerId: playerId,
+        statusType: 'app_admin',
+        oldValue: oldAdmin ? '1' : '0',
+        newValue: enabled ? '1' : '0',
+      );
+    }
+    if (oldOp && !enabled) {
+      await _appendStatusHistory(
+        db,
+        playerId: playerId,
+        statusType: 'op',
+        oldValue: '1',
+        newValue: '0',
+      );
+    }
   }
 
   Future<void> setOpStatus(String nickname, bool enabled) async {
@@ -127,6 +187,15 @@ class PlayerPermissionsRepository {
       }
     }
 
+    final previousRows = await db.query(
+      'players',
+      columns: ['is_op'],
+      where: 'id = ?',
+      whereArgs: [playerId],
+      limit: 1,
+    );
+    final oldValue = (previousRows.first['is_op'] as int? ?? 0) == 1;
+
     await db.update(
       'players',
       {
@@ -136,6 +205,15 @@ class PlayerPermissionsRepository {
       where: 'id = ?',
       whereArgs: [playerId],
     );
+    if (oldValue != enabled) {
+      await _appendStatusHistory(
+        db,
+        playerId: playerId,
+        statusType: 'op',
+        oldValue: oldValue ? '1' : '0',
+        newValue: enabled ? '1' : '0',
+      );
+    }
   }
 
   Future<void> enqueuePendingOpAction({
@@ -262,5 +340,63 @@ class PlayerPermissionsRepository {
     }
 
     return result;
+  }
+
+  Future<void> _appendStatusHistory(
+    dynamic db, {
+    required int playerId,
+    required String statusType,
+    required String oldValue,
+    required String newValue,
+    String changedBy = 'app_operator',
+  }) async {
+    await db.insert('player_status_history', {
+      'player_id': playerId,
+      'status_type': statusType,
+      'old_value': oldValue,
+      'new_value': newValue,
+      'changed_by': changedBy,
+      'note': null,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> _upsertPrimaryIdentity(
+    dynamic db, {
+    required int playerId,
+    required String nickname,
+    String? uuid,
+  }) async {
+    final now = DateTime.now().toIso8601String();
+    final existing = await db.query(
+      'player_identities',
+      columns: ['id'],
+      where: 'player_id = ? AND is_primary = 1',
+      whereArgs: [playerId],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      await db.update(
+        'player_identities',
+        {
+          'nickname': nickname,
+          'uuid': uuid?.trim().isNotEmpty == true ? uuid!.trim() : null,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [existing.first['id']],
+      );
+      return;
+    }
+
+    await db.insert('player_identities', {
+      'player_id': playerId,
+      'nickname': nickname,
+      'uuid': uuid?.trim().isNotEmpty == true ? uuid!.trim() : null,
+      'is_primary': 1,
+      'conflict_pending_manual_review': 0,
+      'created_at': now,
+      'updated_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 }

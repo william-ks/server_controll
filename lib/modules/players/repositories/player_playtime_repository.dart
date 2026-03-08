@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../../database/app_database.dart';
 import '../models/player_playtime_summary.dart';
@@ -333,10 +334,16 @@ class PlayerPlaytimeRepository {
           whereArgs: [existingId],
         );
       }
+      await _upsertPrimaryIdentity(
+        db,
+        playerId: existingId,
+        nickname: normalizedNickname,
+        uuid: normalizedUuid,
+      );
       return existingId;
     }
 
-    return db.insert('players', {
+    final insertedId = await db.insert('players', {
       'nickname': normalizedNickname,
       'uuid': normalizedUuid == null || normalizedUuid.isEmpty
           ? null
@@ -344,6 +351,13 @@ class PlayerPlaytimeRepository {
       'created_at': now.toIso8601String(),
       'updated_at': now.toIso8601String(),
     });
+    await _upsertPrimaryIdentity(
+      db,
+      playerId: insertedId,
+      nickname: normalizedNickname,
+      uuid: normalizedUuid,
+    );
+    return insertedId;
   }
 
   Future<int?> _findOpenSessionId(dynamic db, int playerId) async {
@@ -470,5 +484,43 @@ class PlayerPlaytimeRepository {
     final yearStart = DateTime(thursday.year, 1, 1);
     final week = ((thursday.difference(yearStart).inDays) / 7).floor() + 1;
     return '${thursday.year}-W${week.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _upsertPrimaryIdentity(
+    dynamic db, {
+    required int playerId,
+    required String nickname,
+    String? uuid,
+  }) async {
+    final now = DateTime.now().toIso8601String();
+    final rows = await db.query(
+      'player_identities',
+      columns: ['id'],
+      where: 'player_id = ? AND is_primary = 1',
+      whereArgs: [playerId],
+      limit: 1,
+    );
+    if (rows.isNotEmpty) {
+      await db.update(
+        'player_identities',
+        {
+          'nickname': nickname,
+          'uuid': uuid?.trim().isNotEmpty == true ? uuid!.trim() : null,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [rows.first['id']],
+      );
+      return;
+    }
+    await db.insert('player_identities', {
+      'player_id': playerId,
+      'nickname': nickname,
+      'uuid': uuid?.trim().isNotEmpty == true ? uuid!.trim() : null,
+      'is_primary': 1,
+      'conflict_pending_manual_review': 0,
+      'created_at': now,
+      'updated_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 }

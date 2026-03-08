@@ -6,6 +6,7 @@ import '../../modules/console/pages/console_page.dart';
 import '../../modules/home/pages/home_page.dart';
 import '../../modules/backup/pages/backups_page.dart';
 import '../../modules/schedules/pages/schedules_page.dart';
+import '../../modules/players/pages/players_page.dart';
 import '../../modules/whitelist/pages/whitelist_page.dart';
 
 class RouteDefinition {
@@ -29,6 +30,7 @@ class AppRoutes {
 
   static const home = '/home';
   static const console = '/console';
+  static const players = '/players';
   static const whitelist = '/whitelist';
   static const schedules = '/schedules';
   static const backups = '/backups';
@@ -49,10 +51,17 @@ class AppRoutes {
       builder: (_) => const ConsolePage(),
     ),
     RouteDefinition(
+      path: players,
+      label: 'Players',
+      icon: Icons.groups_rounded,
+      builder: (_) => const PlayersPage(),
+    ),
+    RouteDefinition(
       path: whitelist,
-      label: 'Whitelist',
+      label: 'Whitelist (legado)',
       icon: Icons.verified_user_rounded,
       builder: (_) => const WhitelistPage(),
+      showInSidebar: false,
     ),
     RouteDefinition(
       path: schedules,

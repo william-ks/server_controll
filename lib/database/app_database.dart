@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 12;
+  static const int _schemaVersion = 13;
 
   Database? _db;
 
@@ -165,6 +165,9 @@ class AppDatabase {
     await _createMaintenanceTables(db);
     await _createBackupMetadataTables(db);
     await _createPermissionTables(db);
+    await _createPlayerIdentityTables(db);
+    await _migrateWhitelistIntoPlayers(db);
+    await _syncPrimaryIdentityFromPlayers(db);
   }
 
   Future<void> _upgradeToDefinitiveSchema(
@@ -199,6 +202,7 @@ class AppDatabase {
     await _createMaintenanceTables(db);
     await _createBackupMetadataTables(db);
     await _createPermissionTables(db);
+    await _createPlayerIdentityTables(db);
 
     await _addColumnIfMissing(
       db,
@@ -230,6 +234,9 @@ class AppDatabase {
       column: 'is_banned',
       definition: 'INTEGER NOT NULL DEFAULT 0',
     );
+
+    await _migrateWhitelistIntoPlayers(db);
+    await _syncPrimaryIdentityFromPlayers(db);
   }
 
   Future<void> _createPlayersDomainTables(dynamic db) async {
@@ -355,6 +362,112 @@ class AppDatabase {
     await db.execute(
       "CREATE INDEX IF NOT EXISTS idx_permission_pending_status ON permission_pending_actions(status, created_at)",
     );
+  }
+
+  Future<void> _createPlayerIdentityTables(dynamic db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS player_identities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        nickname TEXT NOT NULL,
+        uuid TEXT,
+        is_primary INTEGER NOT NULL DEFAULT 1,
+        conflict_pending_manual_review INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute(
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_player_identities_uuid_unique_non_empty ON player_identities(uuid) WHERE uuid IS NOT NULL AND uuid <> ''",
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_player_identities_player ON player_identities(player_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_player_identities_nickname ON player_identities(LOWER(nickname))',
+    );
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS player_status_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        status_type TEXT NOT NULL,
+        old_value TEXT,
+        new_value TEXT,
+        changed_by TEXT NOT NULL DEFAULT 'system',
+        note TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_player_status_history_player ON player_status_history(player_id, created_at DESC)',
+    );
+  }
+
+  Future<void> _migrateWhitelistIntoPlayers(dynamic db) async {
+    await db.execute('''
+      INSERT OR IGNORE INTO players (
+        nickname,
+        uuid,
+        is_player,
+        is_whitelisted,
+        created_at,
+        updated_at
+      )
+      SELECT
+        w.nickname,
+        w.uuid,
+        1,
+        1,
+        w.created_at,
+        w.updated_at
+      FROM whitelist_players w
+      WHERE TRIM(w.nickname) <> ''
+    ''');
+
+    await db.execute('''
+      UPDATE players
+      SET
+        is_whitelisted = CASE
+          WHEN LOWER(nickname) IN (
+            SELECT LOWER(nickname) FROM whitelist_players WHERE TRIM(nickname) <> ''
+          ) THEN 1
+          ELSE is_whitelisted
+        END,
+        updated_at = updated_at
+    ''');
+  }
+
+  Future<void> _syncPrimaryIdentityFromPlayers(dynamic db) async {
+    final rows = await db.query(
+      'players',
+      columns: ['id', 'nickname', 'uuid', 'created_at', 'updated_at'],
+    );
+
+    for (final row in rows) {
+      final playerId = row['id'] as int? ?? 0;
+      final nickname = (row['nickname'] as String? ?? '').trim();
+      if (playerId <= 0 || nickname.isEmpty) continue;
+
+      final createdAt =
+          (row['created_at'] as String?) ?? DateTime.now().toIso8601String();
+      final updatedAt =
+          (row['updated_at'] as String?) ?? DateTime.now().toIso8601String();
+      final uuid = (row['uuid'] as String?)?.trim();
+
+      await db.insert('player_identities', {
+        'player_id': playerId,
+        'nickname': nickname,
+        'uuid': uuid == null || uuid.isEmpty ? null : uuid,
+        'is_primary': 1,
+        'conflict_pending_manual_review': 0,
+        'created_at': createdAt,
+        'updated_at': updatedAt,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
   }
 
   Future<void> _addColumnIfMissing(
