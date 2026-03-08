@@ -1,0 +1,96 @@
+name: "🐛 Relatório de Bug"
+description: "Reporte um comportamento inesperado ou erro no MineControl"
+title: "[Bug]: "
+labels: ["bug", "precisa de triagem"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar um bug! Preencha as informações abaixo com o máximo de detalhes possível para nos ajudar a reproduzir e corrigir o problema.
+
+  - type: textarea
+    id: descricao
+    attributes:
+      label: "📋 Descrição do Bug"
+      description: "Uma descrição clara e objetiva do que está acontecendo."
+      placeholder: "Ex: Ao clicar em 'Iniciar Servidor', a aplicação trava e fecha inesperadamente."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproducao
+    attributes:
+      label: "🔁 Passos para Reproduzir"
+      description: "Descreva o passo a passo para reproduzir o problema."
+      placeholder: |
+        1. Abra o MineControl
+        2. Vá para Configurações > Servidor
+        3. Configure o path do servidor
+        4. Clique em 'Iniciar'
+        5. Observe o erro
+    validations:
+      required: true
+
+  - type: textarea
+    id: comportamento_esperado
+    attributes:
+      label: "✅ Comportamento Esperado"
+      description: "O que você esperava que acontecesse?"
+      placeholder: "O servidor deveria iniciar normalmente e o console exibir os logs."
+    validations:
+      required: true
+
+  - type: textarea
+    id: comportamento_atual
+    attributes:
+      label: "❌ Comportamento Atual"
+      description: "O que realmente aconteceu?"
+      placeholder: "A aplicação fecha abruptamente sem exibir nenhuma mensagem de erro."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "📄 Logs / Stack Trace"
+      description: "Cole aqui qualquer log de erro ou stack trace relevante."
+      render: text
+      placeholder: "Cole os logs aqui..."
+
+  - type: dropdown
+    id: sistema_operacional
+    attributes:
+      label: "💻 Sistema Operacional"
+      description: "Em qual sistema operacional o bug ocorre?"
+      options:
+        - Windows 10
+        - Windows 11
+        - Linux (Ubuntu)
+        - Linux (Debian)
+        - Linux (Arch)
+        - Linux (outro)
+        - Outro
+    validations:
+      required: true
+
+  - type: input
+    id: versao
+    attributes:
+      label: "📦 Versão do MineControl"
+      description: "Qual versão do MineControl você está usando?"
+      placeholder: "Ex: 0.1.0-alpha"
+    validations:
+      required: true
+
+  - type: input
+    id: flutter_version
+    attributes:
+      label: "🐦 Versão do Flutter"
+      description: "Execute `flutter --version` e cole o resultado."
+      placeholder: "Ex: Flutter 3.27.0"
+
+  - type: textarea
+    id: contexto_adicional
+    attributes:
+      label: "ℹ️ Contexto Adicional"
+      description: "Qualquer outra informação relevante (capturas de tela, configurações específicas, etc.)."
