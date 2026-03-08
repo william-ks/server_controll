@@ -170,7 +170,7 @@ class _ManualServerBackupWizardModalState
     return [
       AppButton(
         label: 'Cancelar',
-        onPressed: () => Navigator.of(context).pop(false),
+        onPressed: () => Navigator.of(context).pop(),
         type: AppButtonType.textButton,
         variant: AppVariant.danger,
       ),
