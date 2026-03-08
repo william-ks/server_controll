@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/modal/app_confirm_dialog.dart';
@@ -9,6 +10,7 @@ import '../../../components/shared/app_variant.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
+import '../../players/providers/player_ban_provider.dart';
 import '../../players/providers/player_permissions_provider.dart';
 import '../../players/providers/players_registry_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
@@ -83,11 +85,11 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
       );
     }
 
-    Future<void> confirmDelete(int id, String nickname) async {
+    Future<void> confirmRemoveWhitelist(int id, String nickname) async {
       final confirmed = await showAppConfirmDialog(
         context,
         icon: Icons.delete_outline_rounded,
-        title: 'Remover jogador',
+        title: 'Remover da whitelist',
         width: 600,
         showFooterDivider: false,
         actionsAlignment: Alignment.center,
@@ -97,7 +99,7 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Você está prestes a remover o jogador $nickname da whitelist local impedindo o jogador de se conectar ao servidor, você tem certeza ?',
+              'Você está prestes a remover $nickname da whitelist do servidor. Ele perderá acesso via whitelist.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 fontWeight: FontWeight.w700,
                 fontSize: 16,
@@ -129,7 +131,7 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Pode ser necessário reiniciar o servidor para ter efeito.',
+                      'Este fluxo exige o servidor online para sincronizar a remoção com segurança.',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w600,
@@ -145,7 +147,56 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
         ),
       );
       if (confirmed) {
-        await notifier.removePlayer(id);
+        await notifier.removeFromWhitelist(id: id, nickname: nickname);
+      }
+    }
+
+    Future<void> confirmBanAndDelete(int id, String nickname) async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AppModal(
+          icon: Icons.gpp_bad_rounded,
+          title: 'Banir e apagar dados do jogador',
+          width: 640,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppBadge(
+                icon: Icons.warning_amber_rounded,
+                variant: AppVariant.danger,
+                title: 'Ação irreversível',
+                description:
+                    'Ao banir $nickname, ele será removido da whitelist, terá todo o histórico de ranking/sessões apagado e será removido da lista local de players. Tudo será perdido.',
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'O servidor precisa estar online para que o banimento seja aplicado corretamente antes da limpeza local.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+          actions: [
+            AppButton(
+              label: 'Cancelar',
+              onPressed: () => Navigator.of(context).pop(false),
+              type: AppButtonType.textButton,
+              variant: AppVariant.danger,
+            ),
+            AppButton(
+              label: 'Banir e excluir',
+              icon: Icons.delete_forever_rounded,
+              variant: AppVariant.danger,
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        ),
+      );
+      if (confirmed == true) {
+        await ref.read(playerBanProvider.notifier).banPlayer(
+              nickname: nickname,
+              reason: 'Banido pelo operador do app',
+            );
+        await notifier.purgePlayerData(id: id, nickname: nickname);
       }
     }
 
@@ -262,16 +313,6 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                 onAdd: () => openModal(),
                 onRefresh: notifier.refreshAndSyncFromFile,
                 onSyncPending: notifier.syncPending,
-                extraActions: [
-                  AppButton(
-                    label: 'Ranking',
-                    icon: Icons.emoji_events_rounded,
-                    variant: AppVariant.secondary,
-                    transparent: true,
-                    onPressed: () =>
-                        Navigator.of(context).pushNamed(AppRoutes.playersRanking),
-                  ),
-                ],
                 addEnabled: requirements.maybeWhen(
                   data: (data) => data.canManagePlayers,
                   orElse: () => false,
@@ -403,8 +444,12 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                                 }
                               },
                               onEdit: () => openModal(id: player.id),
-                              onDelete: () =>
-                                  confirmDelete(player.id!, player.nickname),
+                              onBan: () =>
+                                  confirmBanAndDelete(player.id!, player.nickname),
+                              onRemoveWhitelist: () => confirmRemoveWhitelist(
+                                player.id!,
+                                player.nickname,
+                              ),
                             );
                           },
                         ),

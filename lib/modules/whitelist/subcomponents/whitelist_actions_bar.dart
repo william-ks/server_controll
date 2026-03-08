@@ -9,7 +9,6 @@ class WhitelistActionsBar extends StatelessWidget {
     required this.onAdd,
     required this.onRefresh,
     required this.onSyncPending,
-    this.extraActions = const [],
     this.addEnabled = true,
     this.syncEnabled = true,
   });
@@ -17,16 +16,34 @@ class WhitelistActionsBar extends StatelessWidget {
   final VoidCallback onAdd;
   final VoidCallback onRefresh;
   final VoidCallback onSyncPending;
-  final List<Widget> extraActions;
   final bool addEnabled;
   final bool syncEnabled;
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Row(
       children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            AppButton(
+              label: 'Refresh',
+              icon: Icons.refresh_rounded,
+              onPressed: onRefresh,
+              variant: AppVariant.info,
+              transparent: true,
+            ),
+            AppButton(
+              label: 'Adicionar jogador',
+              icon: Icons.person_add_alt_1_rounded,
+              onPressed: addEnabled ? onAdd : null,
+              isDisabled: !addEnabled,
+              variant: AppVariant.primary,
+            ),
+          ],
+        ),
+        const Spacer(),
         AppButton(
           label: 'Sincronizar',
           icon: Icons.sync_rounded,
@@ -35,21 +52,6 @@ class WhitelistActionsBar extends StatelessWidget {
           variant: AppVariant.warning,
           transparent: true,
         ),
-        AppButton(
-          label: 'Refresh',
-          icon: Icons.refresh_rounded,
-          onPressed: onRefresh,
-          variant: AppVariant.info,
-          transparent: true,
-        ),
-        AppButton(
-          label: 'Adicionar jogador',
-          icon: Icons.person_add_alt_1_rounded,
-          onPressed: addEnabled ? onAdd : null,
-          isDisabled: !addEnabled,
-          variant: AppVariant.primary,
-        ),
-        ...extraActions,
       ],
     );
   }

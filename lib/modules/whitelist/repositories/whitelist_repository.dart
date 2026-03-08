@@ -51,6 +51,15 @@ class WhitelistRepository {
     await db.delete('whitelist_players', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void> deleteByNickname(String nickname) async {
+    final db = await AppDatabase.instance.database;
+    await db.delete(
+      'whitelist_players',
+      where: 'LOWER(nickname) = ?',
+      whereArgs: [nickname.trim().toLowerCase()],
+    );
+  }
+
   Future<List<WhitelistPlayer>> pending() async {
     final db = await AppDatabase.instance.database;
     final rows = await db.query('whitelist_players', where: 'is_pending = 1');

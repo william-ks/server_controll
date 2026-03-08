@@ -10,6 +10,7 @@ abstract class MinecraftCommandProvider {
   String say(String message, {String? prefix});
   String kick(String target, String message);
   String whitelistAdd(String nickname);
+  String whitelistRemove(String nickname);
   String op(String nickname);
   String deop(String nickname);
   String ban(String nickname, {String? reason});
@@ -69,6 +70,9 @@ class _VanillaMinecraftCommandProvider extends MinecraftCommandProvider {
 
   @override
   String whitelistAdd(String nickname) => 'whitelist add ${nickname.trim()}';
+
+  @override
+  String whitelistRemove(String nickname) => 'whitelist remove ${nickname.trim()}';
 
   @override
   String op(String nickname) => 'op ${nickname.trim()}';

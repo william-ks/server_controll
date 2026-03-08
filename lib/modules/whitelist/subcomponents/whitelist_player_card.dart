@@ -17,7 +17,8 @@ class WhitelistPlayerCard extends StatelessWidget {
     required this.onToggleAppAdmin,
     required this.onToggleOp,
     required this.onEdit,
-    required this.onDelete,
+    required this.onBan,
+    required this.onRemoveWhitelist,
   });
 
   final WhitelistPlayer player;
@@ -29,7 +30,8 @@ class WhitelistPlayerCard extends StatelessWidget {
   final Future<void> Function(bool value) onToggleAppAdmin;
   final Future<void> Function(bool value) onToggleOp;
   final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback onBan;
+  final VoidCallback onRemoveWhitelist;
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +103,11 @@ class WhitelistPlayerCard extends StatelessWidget {
                           label: isOnline ? 'ONLINE' : 'OFFLINE',
                           color: statusColor,
                         ),
+                        if (player.isAdded)
+                          _StatusChip(
+                            label: 'WHITELIST',
+                            color: AppColors.success.withValues(alpha: 0.95),
+                          ),
                         if (isAppAdmin)
                           _StatusChip(
                             label: 'ADMIN APP',
@@ -115,11 +122,6 @@ class WhitelistPlayerCard extends StatelessWidget {
                           _StatusChip(
                             label: 'BANIDO',
                             color: AppColors.danger.withValues(alpha: 0.95),
-                          ),
-                        if (pendingOpsCount > 0)
-                          _StatusChip(
-                            label: 'PEND OP: $pendingOpsCount',
-                            color: AppColors.warning.withValues(alpha: 0.95),
                           ),
                       ],
                     ),
@@ -158,24 +160,37 @@ class WhitelistPlayerCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Wrap(
-                spacing: 2,
-                children: [
-                  IconButton(
-                    onPressed: onEdit,
-                    icon: Icon(
-                      Icons.edit_rounded,
-                      color: AppColors.info.withValues(alpha: 0.9),
-                    ),
+              PopupMenuButton<_PlayerCardAction>(
+                tooltip: 'Ações',
+                onSelected: (value) {
+                  switch (value) {
+                    case _PlayerCardAction.edit:
+                      onEdit();
+                    case _PlayerCardAction.ban:
+                      onBan();
+                    case _PlayerCardAction.removeWhitelist:
+                      onRemoveWhitelist();
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: _PlayerCardAction.edit,
+                    child: Text('Editar'),
                   ),
-                  IconButton(
-                    onPressed: onDelete,
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      color: AppColors.danger.withValues(alpha: 0.72),
-                    ),
+                  PopupMenuItem(
+                    value: _PlayerCardAction.ban,
+                    enabled: !isBanned,
+                    child: Text(isBanned ? 'Já banido' : 'Banir'),
+                  ),
+                  const PopupMenuItem(
+                    value: _PlayerCardAction.removeWhitelist,
+                    child: Text('Remover da whitelist'),
                   ),
                 ],
+                child: Icon(
+                  Icons.more_vert_rounded,
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -207,6 +222,8 @@ class WhitelistPlayerCard extends StatelessWidget {
     );
   }
 }
+
+enum _PlayerCardAction { edit, ban, removeWhitelist }
 
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.label, required this.color});

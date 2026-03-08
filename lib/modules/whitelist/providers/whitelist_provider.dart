@@ -10,6 +10,7 @@ import '../../config/providers/config_files_provider.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../../models/server_runtime_state.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
+import '../../server/services/minecraft_command_provider.dart';
 import '../../players/providers/player_permissions_provider.dart';
 import '../models/whitelist_player.dart';
 import '../repositories/whitelist_repository.dart';
@@ -95,6 +96,8 @@ final whitelistRequirementsProvider = FutureProvider<WhitelistRequirements>((
 });
 
 class WhitelistNotifier extends Notifier<WhitelistState> {
+  static const _commands = MinecraftCommandProvider.vanilla;
+
   WhitelistRepository get _repository => ref.read(whitelistRepositoryProvider);
   WhitelistSyncService get _syncService =>
       ref.read(whitelistSyncServiceProvider);
@@ -213,6 +216,73 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
       }
     }
     await _repository.delete(id);
+    await load();
+  }
+
+  Future<void> removeFromWhitelist({
+    required int id,
+    required String nickname,
+  }) async {
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.online) {
+      throw StateError(
+        'Para remover da whitelist com segurança, o servidor precisa estar online.',
+      );
+    }
+
+    await ref
+        .read(serverRuntimeProvider.notifier)
+        .sendCommand(_commands.whitelistRemove(nickname));
+    await _repository.delete(id);
+    await load();
+  }
+
+  Future<void> purgePlayerData({
+    required int id,
+    required String nickname,
+  }) async {
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.online) {
+      throw StateError(
+        'Para banir e remover completamente o jogador, o servidor precisa estar online.',
+      );
+    }
+
+    final db = await AppDatabase.instance.database;
+    final rows = await db.query(
+      'players',
+      columns: ['id', 'icon_path'],
+      where: 'LOWER(nickname) = ?',
+      whereArgs: [nickname.trim().toLowerCase()],
+      limit: 1,
+    );
+    final playerId = rows.isEmpty ? null : rows.first['id'] as int?;
+    final iconPath =
+        rows.isEmpty ? null : (rows.first['icon_path'] as String?)?.trim();
+
+    await ref
+        .read(serverRuntimeProvider.notifier)
+        .sendCommand(_commands.whitelistRemove(nickname));
+
+    await _repository.delete(id);
+
+    if (playerId != null) {
+      await db.delete('players', where: 'id = ?', whereArgs: [playerId]);
+    }
+
+    if (iconPath != null && iconPath.isNotEmpty) {
+      final file = File(iconPath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
+
+    await ref.read(playerPermissionsProvider.notifier).loadForNicknames(
+      state.players
+          .where((item) => item.nickname.trim().toLowerCase() != nickname.trim().toLowerCase())
+          .map((item) => item.nickname)
+          .toList(),
+    );
     await load();
   }
 
