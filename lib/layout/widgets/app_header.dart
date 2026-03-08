@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../config/theme/app_theme_extension.dart';
+import '../../modules/server/providers/server_runtime_provider.dart';
+import 'server_status_badge.dart';
 
-class AppHeader extends StatelessWidget {
+class AppHeader extends ConsumerWidget {
   const AppHeader({
     super.key,
     required this.title,
@@ -19,8 +22,10 @@ class AppHeader extends StatelessWidget {
   final bool isDarkMode;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final runtime = ref.watch(serverRuntimeProvider);
+    final canShowInlineStatus = MediaQuery.sizeOf(context).width >= 920;
 
     return Container(
       height: 60,
@@ -41,6 +46,21 @@ class AppHeader extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge,
             ),
+          ),
+          if (canShowInlineStatus) ...[
+            ServerStatusBadge(lifecycle: runtime.lifecycle, compact: true),
+            const SizedBox(width: 6),
+          ],
+          IconButton(
+            tooltip: 'Notificações',
+            icon: const Icon(Icons.notifications_none_rounded),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Funcionalidade em desenvolvimento.'),
+                ),
+              );
+            },
           ),
           IconButton(
             tooltip: 'Alternar tema',

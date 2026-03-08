@@ -9,6 +9,17 @@ class StatusCard extends StatelessWidget {
 
   final ServerLifecycleState lifecycle;
 
+  Color _valueColor() {
+    return switch (lifecycle) {
+      ServerLifecycleState.offline => AppColors.neutral,
+      ServerLifecycleState.starting => AppColors.primary,
+      ServerLifecycleState.online => AppColors.success,
+      ServerLifecycleState.stopping => AppColors.danger,
+      ServerLifecycleState.restarting => AppColors.primary,
+      ServerLifecycleState.error => AppColors.danger,
+    };
+  }
+
   String _label(ServerLifecycleState state) {
     return switch (state) {
       ServerLifecycleState.offline => 'OFFLINE',
@@ -22,12 +33,11 @@ class StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOnline = lifecycle == ServerLifecycleState.online;
     return _MetricCard(
       title: 'STATUS',
       value: _label(lifecycle).toUpperCase(),
       icon: Icons.offline_bolt_rounded,
-      valueColor: isOnline ? AppColors.primary : AppColors.neutral,
+      valueColor: _valueColor(),
     );
   }
 }
