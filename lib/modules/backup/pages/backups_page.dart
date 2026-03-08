@@ -11,10 +11,12 @@ import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
 import '../../../config/theme/app_theme_extension.dart';
 import '../../../layout/default_layout.dart';
+import '../../../models/server_lifecycle_state.dart';
 import '../models/backup_capacity_status.dart';
 import '../models/backup_entry.dart';
 import '../providers/backup_config_provider.dart';
 import '../providers/backups_provider.dart';
+import '../../server/providers/server_runtime_provider.dart';
 import '../subcomponents/selective_backup_modal.dart';
 
 class BackupsPage extends ConsumerStatefulWidget {
@@ -39,6 +41,7 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
     final state = ref.watch(backupsProvider);
     final notifier = ref.read(backupsProvider.notifier);
     final backupConfig = ref.watch(backupConfigProvider);
+    final runtime = ref.watch(serverRuntimeProvider);
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final capacity = state.capacity;
 
@@ -166,6 +169,14 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
                       final entry = filtered[index];
                       return _BackupCard(
                         entry: entry,
+                        restoreEnabled:
+                            runtime.lifecycle == ServerLifecycleState.offline &&
+                            runtime.activePlayers == 0 &&
+                            !state.creating,
+                        onRestoreWorld: () =>
+                            _runRestoreFlow(ref, entry, fullRestore: false),
+                        onRestoreFull: () =>
+                            _runRestoreFlow(ref, entry, fullRestore: true),
                         onDelete: () async {
                           final confirmed = await showDialog<bool>(
                             context: context,
@@ -215,6 +226,86 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
       return '${gigaBytes.toStringAsFixed(2)} GB';
     }
     return '${megaBytes.toStringAsFixed(2)} MB';
+  }
+
+  Future<void> _runRestoreFlow(
+    WidgetRef ref,
+    BackupEntry entry, {
+    required bool fullRestore,
+  }) async {
+    final label = fullRestore ? 'completa' : 'de mundo';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AppModal(
+        icon: Icons.restore_page_rounded,
+        title: 'Confirmar restauração $label',
+        body: Text(
+          fullRestore
+              ? 'A restauração completa sobrescreve toda a raiz do servidor. Um backup de segurança será criado antes da operação. Deseja continuar?'
+              : 'A restauração de mundo sobrescreve apenas a pasta do mundo atual. Um backup de segurança será criado antes da operação. Deseja continuar?',
+        ),
+        actions: [
+          AppButton(
+            label: 'Cancelar',
+            onPressed: () => Navigator.of(context).pop(false),
+            type: AppButtonType.textButton,
+            variant: AppVariant.danger,
+          ),
+          AppButton(
+            label: 'Confirmar restauração',
+            onPressed: () => Navigator.of(context).pop(true),
+            variant: AppVariant.warning,
+            icon: Icons.check_rounded,
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    try {
+      if (fullRestore) {
+        await ref.read(backupsProvider.notifier).restoreFullBackup(entry.path);
+      } else {
+        await ref.read(backupsProvider.notifier).restoreWorldBackup(entry.path);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      final msg = error.toString().replaceFirst('Bad state: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      return;
+    }
+
+    if (!mounted) return;
+    final startNow = await showDialog<bool>(
+      context: context,
+      builder: (_) => AppModal(
+        icon: Icons.play_arrow_rounded,
+        title: 'Restauração concluída',
+        body: const Text(
+          'Deseja iniciar o servidor agora ou manter desligado?',
+        ),
+        actions: [
+          AppButton(
+            label: 'Manter desligado',
+            onPressed: () => Navigator.of(context).pop(false),
+            type: AppButtonType.textButton,
+            variant: AppVariant.info,
+          ),
+          AppButton(
+            label: 'Iniciar servidor',
+            onPressed: () => Navigator.of(context).pop(true),
+            variant: AppVariant.success,
+            icon: Icons.play_arrow_rounded,
+          ),
+        ],
+      ),
+    );
+
+    if (startNow == true) {
+      await ref.read(serverRuntimeProvider.notifier).startServer();
+    }
   }
 }
 
@@ -297,9 +388,18 @@ class _BackupsEmptyState extends StatelessWidget {
 }
 
 class _BackupCard extends StatelessWidget {
-  const _BackupCard({required this.entry, required this.onDelete});
+  const _BackupCard({
+    required this.entry,
+    required this.restoreEnabled,
+    required this.onRestoreWorld,
+    required this.onRestoreFull,
+    required this.onDelete,
+  });
 
   final BackupEntry entry;
+  final bool restoreEnabled;
+  final VoidCallback onRestoreWorld;
+  final VoidCallback onRestoreFull;
   final VoidCallback onDelete;
 
   @override
@@ -369,12 +469,34 @@ class _BackupCard extends StatelessWidget {
               ],
             ),
           ),
-          AppButton(
-            label: 'Apagar',
-            icon: Icons.delete_outline_rounded,
-            variant: AppVariant.danger,
-            transparent: true,
-            onPressed: onDelete,
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              AppButton(
+                label: 'Restaurar mundo',
+                icon: Icons.public_rounded,
+                variant: AppVariant.info,
+                transparent: true,
+                isDisabled: !restoreEnabled,
+                onPressed: restoreEnabled ? onRestoreWorld : null,
+              ),
+              AppButton(
+                label: 'Restaurar completo',
+                icon: Icons.restart_alt_rounded,
+                variant: AppVariant.warning,
+                transparent: true,
+                isDisabled: !restoreEnabled,
+                onPressed: restoreEnabled ? onRestoreFull : null,
+              ),
+              AppButton(
+                label: 'Apagar',
+                icon: Icons.delete_outline_rounded,
+                variant: AppVariant.danger,
+                transparent: true,
+                onPressed: onDelete,
+              ),
+            ],
           ),
         ],
       ),

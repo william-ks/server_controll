@@ -6,6 +6,7 @@ import '../../../models/server_lifecycle_state.dart';
 import '../models/backup_capacity_status.dart';
 import '../models/backup_entry.dart';
 import '../services/backup_service.dart';
+import '../services/backup_restore_service.dart';
 import 'backup_config_provider.dart';
 
 class BackupsState {
@@ -51,6 +52,9 @@ class BackupsState {
 }
 
 final backupServiceProvider = Provider<BackupService>((_) => BackupService());
+final backupRestoreServiceProvider = Provider<BackupRestoreService>((ref) {
+  return BackupRestoreService(backupService: ref.read(backupServiceProvider));
+});
 
 final backupsProvider = NotifierProvider<BackupsNotifier, BackupsState>(
   BackupsNotifier.new,
@@ -58,6 +62,8 @@ final backupsProvider = NotifierProvider<BackupsNotifier, BackupsState>(
 
 class BackupsNotifier extends Notifier<BackupsState> {
   BackupService get _service => ref.read(backupServiceProvider);
+  BackupRestoreService get _restoreService =>
+      ref.read(backupRestoreServiceProvider);
 
   @override
   BackupsState build() {
@@ -209,5 +215,65 @@ class BackupsNotifier extends Notifier<BackupsState> {
   Future<void> deleteBackup(String filePath) async {
     await _service.deleteBackup(filePath);
     await load();
+  }
+
+  Future<void> restoreWorldBackup(String filePath) async {
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.offline) {
+      throw StateError('Restauração exige servidor OFFLINE.');
+    }
+    if (runtime.activePlayers > 0) {
+      throw StateError(
+        'Existem players ativos. Pare o servidor corretamente antes de restaurar.',
+      );
+    }
+
+    state = state.copyWith(creating: true, clearError: true);
+    try {
+      final configFiles = ref.read(configFilesProvider);
+      final backupConfig = ref.read(backupConfigProvider);
+      await _restoreService.restoreWorld(
+        backupZipPath: filePath,
+        serverPath: configFiles.serverPath.trim(),
+        backupConfig: backupConfig,
+        isServerOffline: runtime.lifecycle == ServerLifecycleState.offline,
+        activePlayers: runtime.activePlayers,
+      );
+      await load();
+      state = state.copyWith(creating: false);
+    } catch (error) {
+      state = state.copyWith(creating: false, error: error.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> restoreFullBackup(String filePath) async {
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.offline) {
+      throw StateError('Restauração exige servidor OFFLINE.');
+    }
+    if (runtime.activePlayers > 0) {
+      throw StateError(
+        'Existem players ativos. Pare o servidor corretamente antes de restaurar.',
+      );
+    }
+
+    state = state.copyWith(creating: true, clearError: true);
+    try {
+      final configFiles = ref.read(configFilesProvider);
+      final backupConfig = ref.read(backupConfigProvider);
+      await _restoreService.restoreFull(
+        backupZipPath: filePath,
+        serverPath: configFiles.serverPath.trim(),
+        backupConfig: backupConfig,
+        isServerOffline: runtime.lifecycle == ServerLifecycleState.offline,
+        activePlayers: runtime.activePlayers,
+      );
+      await load();
+      state = state.copyWith(creating: false);
+    } catch (error) {
+      state = state.copyWith(creating: false, error: error.toString());
+      rethrow;
+    }
   }
 }

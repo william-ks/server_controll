@@ -6,7 +6,7 @@
 - [x] [Task 03 - Protecao Durante Geracao de Chunks](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_03.md)
 - [x] [Task 04 - Politica de Backup do Servidor](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_04.md)
 - [x] [Task 05 - Backup Manual Seletivo](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_05.md)
-- [ ] [Task 06 - Sistema de Restauracao de Backup do Servidor](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_06.md)
+- [x] [Task 06 - Sistema de Restauracao de Backup do Servidor](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_06.md)
 - [ ] [Task 07 - Gerenciamento de Permissoes](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_07.md)
 - [ ] [Task 08 - Refatoracao de Players/Whitelist/Historia](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_08.md)
 - [ ] [Task 09 - Sistema de Banimento de Jogadores](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_09.md)
