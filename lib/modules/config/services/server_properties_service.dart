@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../models/config_properties_settings.dart';
+import '../models/server_properties_field_catalog.dart';
 
 class ServerPropertiesService {
   static const String _fileName = 'server.properties';
@@ -42,22 +43,8 @@ class ServerPropertiesService {
   }
 
   Future<ConfigPropertiesSettings?> loadFromFile(String serverPath) async {
-    if (!await fileExists(serverPath)) {
-      return null;
-    }
-
-    final file = fileForServerPath(serverPath.trim());
-    final lines = await file.readAsLines();
-    final map = <String, String>{};
-    for (final raw in lines) {
-      final line = raw.trim();
-      if (line.isEmpty || line.startsWith('#')) continue;
-      final index = line.indexOf('=');
-      if (index <= 0) continue;
-      final key = line.substring(0, index).trim();
-      final value = line.substring(index + 1);
-      map[key] = value;
-    }
+    final map = await loadRawProperties(serverPath);
+    if (map == null) return null;
 
     final defaults = ConfigPropertiesSettings.defaults();
     return ConfigPropertiesSettings(
@@ -79,13 +66,39 @@ class ServerPropertiesService {
     required String serverPath,
     required ConfigPropertiesSettings settings,
   }) async {
+    final targetMap = _toMap(settings);
+    await saveManagedProperties(serverPath: serverPath, managed: targetMap);
+  }
+
+  Future<Map<String, String>?> loadRawProperties(String serverPath) async {
+    if (!await fileExists(serverPath)) {
+      return null;
+    }
+    final file = fileForServerPath(serverPath.trim());
+    final lines = await file.readAsLines();
+    final map = <String, String>{};
+    for (final raw in lines) {
+      final line = raw.trim();
+      if (line.isEmpty || line.startsWith('#')) continue;
+      final index = line.indexOf('=');
+      if (index <= 0) continue;
+      final key = line.substring(0, index).trim();
+      final value = line.substring(index + 1);
+      map[key] = value;
+    }
+    return map;
+  }
+
+  Future<void> saveManagedProperties({
+    required String serverPath,
+    required Map<String, String> managed,
+  }) async {
     final file = fileForServerPath(serverPath.trim());
     if (!await file.exists()) {
       throw StateError('Arquivo server.properties não encontrado.');
     }
 
     final lines = await file.readAsLines();
-    final targetMap = _toMap(settings);
     final seen = <String>{};
     final output = <String>[];
 
@@ -97,17 +110,17 @@ class ServerPropertiesService {
       }
       final index = trimmed.indexOf('=');
       final key = trimmed.substring(0, index).trim();
-      if (targetMap.containsKey(key)) {
-        output.add('$key=${targetMap[key]}');
+      if (managed.containsKey(key)) {
+        output.add('$key=${managed[key]}');
         seen.add(key);
       } else {
         output.add(line);
       }
     }
 
-    for (final key in managedKeys) {
+    for (final key in managed.keys) {
       if (!seen.contains(key)) {
-        output.add('$key=${targetMap[key] ?? ''}');
+        output.add('$key=${managed[key] ?? ''}');
       }
     }
 
@@ -147,5 +160,34 @@ class ServerPropertiesService {
     if (normalized == 'true') return true;
     if (normalized == 'false') return false;
     return fallback;
+  }
+
+  String? validateByCatalog(ServerPropertyFieldDefinition field, String value) {
+    final trimmed = value.trim();
+    switch (field.type) {
+      case ServerPropertyFieldType.boolean:
+        final v = trimmed.toLowerCase();
+        if (v == 'true' || v == 'false') return null;
+        return 'Use true ou false.';
+      case ServerPropertyFieldType.integer:
+        final parsed = int.tryParse(trimmed);
+        if (parsed == null) {
+          return 'Informe um número inteiro válido.';
+        }
+        if (field.minValue != null && parsed < field.minValue!) {
+          return 'Valor mínimo: ${field.minValue}.';
+        }
+        if (field.maxValue != null && parsed > field.maxValue!) {
+          return 'Valor máximo: ${field.maxValue}.';
+        }
+        return null;
+      case ServerPropertyFieldType.enumeration:
+        if (!field.options.contains(trimmed)) {
+          return 'Escolha um valor válido para ${field.label}.';
+        }
+        return null;
+      case ServerPropertyFieldType.string:
+        return null;
+    }
   }
 }

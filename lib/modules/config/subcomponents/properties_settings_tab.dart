@@ -12,8 +12,10 @@ import '../../../components/inputs/app_text_input.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
 import '../models/config_properties_settings.dart';
+import '../models/server_properties_field_catalog.dart';
 import '../providers/config_files_provider.dart';
 import '../providers/config_properties_provider.dart';
+import '../services/server_properties_service.dart';
 
 class PropertiesSettingsTab extends ConsumerStatefulWidget {
   const PropertiesSettingsTab({super.key});
@@ -32,26 +34,27 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
     'server-icon.webp',
   ];
 
-  final TextEditingController _serverNameController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _seedController = TextEditingController();
-  final TextEditingController _maxPlayersController = TextEditingController();
-  final TextEditingController _viewDistanceController = TextEditingController();
-  final TextEditingController _simulationDistanceController =
-      TextEditingController();
+  final ServerPropertiesService _service = ServerPropertiesService();
+  final Map<String, String> _values = <String, String>{};
+  final Map<String, String?> _errors = <String, String?>{};
+  final Map<String, TextEditingController> _controllers =
+      <String, TextEditingController>{};
 
-  String _gameMode = 'survival';
-  bool _hardcore = false;
-  bool _pvp = true;
-  bool _whitelist = false;
   bool _isLoading = true;
   bool _isSaving = false;
-  String? _initialSnapshot;
-  String? _numbersError;
+  bool _isHandlingIcon = false;
   String _serverPath = '';
   bool _serverPropertiesFound = false;
+  String? _initialSnapshot;
   File? _serverIconFile;
-  bool _isHandlingIcon = false;
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -59,17 +62,6 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load();
     });
-  }
-
-  @override
-  void dispose() {
-    _serverNameController.dispose();
-    _descriptionController.dispose();
-    _seedController.dispose();
-    _maxPlayersController.dispose();
-    _viewDistanceController.dispose();
-    _simulationDistanceController.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -80,13 +72,15 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
         _serverPath.isNotEmpty &&
         File(p.join(_serverPath, 'server.properties')).existsSync();
 
-    await ref
-        .read(configPropertiesProvider.notifier)
-        .loadFromSources(_serverPath);
-    final settings = ref.read(configPropertiesProvider);
-    _applySettings(settings);
+    final raw = await _service.loadRawProperties(_serverPath) ?? {};
+    _values.clear();
+    for (final field in serverPropertiesCatalog) {
+      _values[field.key] = raw[field.key] ?? field.defaultValue;
+    }
+    _resetControllers();
+
     _loadServerIconFromDisk();
-    _validateNumbers();
+    _validateAll();
     _initialSnapshot = _snapshot();
 
     if (mounted) {
@@ -94,85 +88,70 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
     }
   }
 
-  void _applySettings(ConfigPropertiesSettings settings) {
-    _serverNameController.text = settings.serverName;
-    _descriptionController.text = settings.description;
-    _seedController.text = settings.seed;
-    _hardcore = settings.hardcore;
-    _gameMode = settings.gameMode;
-    _maxPlayersController.text = settings.maxPlayers;
-    _pvp = settings.pvp;
-    _whitelist = settings.whitelist;
-    _viewDistanceController.text = settings.viewDistance;
-    _simulationDistanceController.text = settings.simulationDistance;
-  }
-
-  void _validateNumbers() {
-    final maxPlayers = int.tryParse(_maxPlayersController.text.trim());
-    final viewDistance = int.tryParse(_viewDistanceController.text.trim());
-    final simulationDistance = int.tryParse(
-      _simulationDistanceController.text.trim(),
-    );
-
-    if (maxPlayers == null || maxPlayers < 1) {
-      _numbersError = 'Max players deve ser numerico e >= 1.';
-      return;
-    }
-    if (viewDistance == null || viewDistance < 2) {
-      _numbersError = 'View distance deve ser numerico e >= 2.';
-      return;
-    }
-    if (simulationDistance == null || simulationDistance < 2) {
-      _numbersError = 'Simulation distance deve ser numerico e >= 2.';
-      return;
-    }
-    _numbersError = null;
-  }
-
-  String _snapshot() {
-    return [
-      _serverNameController.text.trim(),
-      _descriptionController.text.trim(),
-      _seedController.text.trim(),
-      _hardcore ? '1' : '0',
-      _gameMode,
-      _maxPlayersController.text.trim(),
-      _pvp ? '1' : '0',
-      _whitelist ? '1' : '0',
-      _viewDistanceController.text.trim(),
-      _simulationDistanceController.text.trim(),
-    ].join('|');
-  }
-
   bool get _isDirty =>
       _initialSnapshot != null && _snapshot() != _initialSnapshot;
 
-  bool get _canSave => _serverPropertiesFound && _numbersError == null;
+  bool get _canSave =>
+      _serverPropertiesFound &&
+      _errors.values.every((error) => error == null) &&
+      _isDirty;
 
-  ConfigPropertiesSettings _toSettings() {
-    return ConfigPropertiesSettings(
-      serverName: _serverNameController.text.trim(),
-      description: _descriptionController.text.trim(),
-      seed: _seedController.text.trim(),
-      hardcore: _hardcore,
-      gameMode: _gameMode,
-      maxPlayers: _maxPlayersController.text.trim(),
-      pvp: _pvp,
-      whitelist: _whitelist,
-      viewDistance: _viewDistanceController.text.trim(),
-      simulationDistance: _simulationDistanceController.text.trim(),
-    );
+  String _snapshot() {
+    final keys = _values.keys.toList()..sort();
+    return keys.map((key) => '$key=${_values[key] ?? ''}').join('|');
+  }
+
+  void _validateAll() {
+    _errors.clear();
+    for (final field in serverPropertiesCatalog) {
+      final value = _values[field.key] ?? field.defaultValue;
+      _errors[field.key] = _service.validateByCatalog(field, value);
+    }
+  }
+
+  void _resetControllers() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    _controllers.clear();
+    for (final field in serverPropertiesCatalog) {
+      if (field.type == ServerPropertyFieldType.string ||
+          field.type == ServerPropertyFieldType.integer) {
+        _controllers[field.key] = TextEditingController(
+          text: _values[field.key] ?? field.defaultValue,
+        );
+      }
+    }
   }
 
   Future<void> _save() async {
-    _validateNumbers();
-    if (!_isDirty || !_canSave || _isSaving) return;
+    _validateAll();
+    if (!_canSave || _isSaving) return;
     setState(() => _isSaving = true);
     try {
-      final settings = _toSettings();
-      await ref
-          .read(configPropertiesProvider.notifier)
-          .saveEverywhere(serverPath: _serverPath, settings: settings);
+      await _service.saveManagedProperties(
+        serverPath: _serverPath,
+        managed: _values,
+      );
+
+      final mapped = ConfigPropertiesSettings(
+        serverName: _values[ServerPropertiesService.keyLevelName] ?? 'world',
+        description:
+            _values[ServerPropertiesService.keyMotd] ?? 'A Minecraft Server',
+        seed: _values[ServerPropertiesService.keyLevelSeed] ?? '',
+        hardcore:
+            (_values[ServerPropertiesService.keyHardcore] ?? 'false') == 'true',
+        gameMode: _values[ServerPropertiesService.keyGamemode] ?? 'survival',
+        maxPlayers: _values[ServerPropertiesService.keyMaxPlayers] ?? '20',
+        pvp: (_values[ServerPropertiesService.keyPvp] ?? 'true') == 'true',
+        whitelist:
+            (_values[ServerPropertiesService.keyWhitelist] ?? 'false') ==
+            'true',
+        viewDistance: _values[ServerPropertiesService.keyViewDistance] ?? '10',
+        simulationDistance:
+            _values[ServerPropertiesService.keySimulationDistance] ?? '10',
+      );
+      await ref.read(configPropertiesProvider.notifier).saveToDb(mapped);
       _initialSnapshot = _snapshot();
     } finally {
       if (mounted) {
@@ -214,7 +193,7 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
     }
     final serverDir = Directory(_serverPath);
     if (!serverDir.existsSync()) {
-      _showMessage('Diretorio do servidor nao encontrado.');
+      _showMessage('Diretório do servidor não encontrado.');
       return;
     }
 
@@ -225,7 +204,6 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
         type: FileType.custom,
         allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
       );
-
       if (picked == null ||
           picked.files.isEmpty ||
           picked.files.single.path == null) {
@@ -236,7 +214,7 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
       final targetPath = p.join(_serverPath, _serverIconFileName);
       final sourceFile = File(sourcePath);
       if (!sourceFile.existsSync()) {
-        _showMessage('Arquivo selecionado nao foi encontrado.');
+        _showMessage('Arquivo selecionado não foi encontrado.');
         return;
       }
 
@@ -255,7 +233,7 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
       setState(() => _serverIconFile = File(targetPath));
       _showMessage('Imagem do servidor atualizada.');
     } catch (_) {
-      _showMessage('Nao foi possivel atualizar a imagem do servidor.');
+      _showMessage('Não foi possível atualizar a imagem do servidor.');
     } finally {
       if (mounted) {
         setState(() => _isHandlingIcon = false);
@@ -265,7 +243,6 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
 
   Future<void> _removeServerIcon() async {
     if (_serverPath.isEmpty || _isHandlingIcon) return;
-
     setState(() => _isHandlingIcon = true);
     try {
       for (final fileName in _serverIconCandidates) {
@@ -277,7 +254,7 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
       setState(() => _serverIconFile = null);
       _showMessage('Imagem do servidor removida.');
     } catch (_) {
-      _showMessage('Nao foi possivel remover a imagem do servidor.');
+      _showMessage('Não foi possível remover a imagem do servidor.');
     } finally {
       if (mounted) {
         setState(() => _isHandlingIcon = false);
@@ -285,35 +262,15 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
     }
   }
 
-  Widget _sectionTitle(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: Theme.of(context).colorScheme.secondary,
-        ),
-      ),
-    );
-  }
-
-  Widget _fieldLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        text,
-        style: Theme.of(
-          context,
-        ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w400),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    final grouped = <String, List<ServerPropertyFieldDefinition>>{};
+    for (final field in serverPropertiesCatalog) {
+      grouped.putIfAbsent(field.group, () => []).add(field);
     }
 
     return SingleChildScrollView(
@@ -324,7 +281,7 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
             AppBadge(
               icon: Icons.error_outline_rounded,
               variant: AppVariant.danger,
-              title: 'server.properties nao encontrado',
+              title: 'server.properties não encontrado',
               description: _serverPath.isEmpty
                   ? 'Defina o path do servidor em Config > Arquivos.'
                   : 'Caminho esperado: ${p.join(_serverPath, 'server.properties')}',
@@ -334,11 +291,17 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
             icon: Icons.info_outline_rounded,
             variant: AppVariant.info,
             title:
-                'As propriedades exigem reinicio do servidor para ter efeito.',
+                'As propriedades exigem reinício do servidor para ter efeito.',
           ),
           const SizedBox(height: 14),
-          _sectionTitle('Servidor'),
-          _fieldLabel('Imagem do servidor'),
+          Text(
+            'Visual do servidor',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.secondary,
+            ),
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Container(
@@ -364,7 +327,7 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
                       : Image.file(
                           _serverIconFile!,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
+                          errorBuilder: (_, error, stackTrace) {
                             return Icon(
                               Icons.broken_image_rounded,
                               size: 30,
@@ -402,129 +365,47 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Arquivo salvo como $_serverIconFileName no diretorio do servidor.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          const SizedBox(height: 16),
+          for (final group in grouped.entries) ...[
+            Text(
+              group.key,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _fieldLabel('Nome do servidor'),
-          AppTextInput(
-            controller: _serverNameController,
-            hint: 'Ex.: Meu servidor',
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          _fieldLabel('Descricao'),
-          AppTextInput(
-            controller: _descriptionController,
-            hint: 'Ex.: Servidor survival vanilla',
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          _fieldLabel('Seed'),
-          AppTextInput(
-            controller: _seedController,
-            hint: 'Ex.: 123456789',
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          AppSwitchCard(
-            label: 'Hardcore',
-            value: _hardcore,
-            onChanged: (value) => setState(() => _hardcore = value),
-          ),
-          const SizedBox(height: 12),
-          _fieldLabel('Modo de jogo'),
-          AppSelect<String>(
-            value: _gameMode,
-            items: const [
-              AppSelectItem(value: 'survival', label: 'Survival'),
-              AppSelectItem(value: 'creative', label: 'Creative'),
-              AppSelectItem(value: 'adventure', label: 'Adventure'),
-              AppSelectItem(value: 'spectator', label: 'Spectator'),
+            const SizedBox(height: 8),
+            for (final field in group.value) ...[
+              Text(
+                field.label,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                field.description,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _buildField(field),
+              if (_errors[field.key] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    _errors[field.key]!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
             ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _gameMode = value);
-              }
-            },
-          ),
-          const SizedBox(height: 12),
-          _fieldLabel('Max players'),
-          AppTextInput(
-            controller: _maxPlayersController,
-            hint: 'Ex.: 20',
-            keyboardType: TextInputType.number,
-            onChanged: (_) {
-              _validateNumbers();
-              setState(() {});
-            },
-          ),
-          const SizedBox(height: 12),
-          AppSwitchCard(
-            label: 'PVP',
-            value: _pvp,
-            onChanged: (value) => setState(() => _pvp = value),
-          ),
-          const SizedBox(height: 12),
-          AppSwitchCard(
-            label: 'Whitelist',
-            value: _whitelist,
-            onChanged: (value) => setState(() => _whitelist = value),
-          ),
+            const SizedBox(height: 8),
+          ],
           const SizedBox(height: 18),
-          _sectionTitle('Distancias'),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _fieldLabel('View distance'),
-                    AppTextInput(
-                      controller: _viewDistanceController,
-                      hint: 'Ex.: 10',
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) {
-                        _validateNumbers();
-                        setState(() {});
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _fieldLabel('Simulation distance'),
-                    AppTextInput(
-                      controller: _simulationDistanceController,
-                      hint: 'Ex.: 10',
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) {
-                        _validateNumbers();
-                        setState(() {});
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (_numbersError != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                _numbersError!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
-          const SizedBox(height: 22),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -541,7 +422,7 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
                 label: 'Salvar',
                 onPressed: _save,
                 isLoading: _isSaving,
-                isDisabled: !_isDirty || !_canSave || _isSaving,
+                isDisabled: !_canSave || _isSaving,
                 variant: AppVariant.success,
                 icon: Icons.save_rounded,
               ),
@@ -550,5 +431,61 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
         ],
       ),
     );
+  }
+
+  Widget _buildField(ServerPropertyFieldDefinition field) {
+    final value = _values[field.key] ?? field.defaultValue;
+    switch (field.type) {
+      case ServerPropertyFieldType.boolean:
+        return AppSwitchCard(
+          label: field.label,
+          value: value.toLowerCase() == 'true',
+          onChanged: (next) {
+            setState(() {
+              _values[field.key] = next ? 'true' : 'false';
+              _errors[field.key] = _service.validateByCatalog(
+                field,
+                _values[field.key]!,
+              );
+            });
+          },
+        );
+      case ServerPropertyFieldType.enumeration:
+        final options = field.options.isEmpty
+            ? <String>[field.defaultValue]
+            : field.options;
+        final selected = options.contains(value) ? value : options.first;
+        if (!options.contains(value)) {
+          _values[field.key] = selected;
+        }
+        return AppSelect<String>(
+          value: selected,
+          items: options
+              .map((option) => AppSelectItem(value: option, label: option))
+              .toList(),
+          onChanged: (next) {
+            if (next == null) return;
+            setState(() {
+              _values[field.key] = next;
+              _errors[field.key] = _service.validateByCatalog(field, next);
+            });
+          },
+        );
+      case ServerPropertyFieldType.integer:
+      case ServerPropertyFieldType.string:
+        final controller = _controllers[field.key]!;
+        return AppTextInput(
+          controller: controller,
+          keyboardType: field.type == ServerPropertyFieldType.integer
+              ? TextInputType.number
+              : TextInputType.text,
+          onChanged: (next) {
+            setState(() {
+              _values[field.key] = next;
+              _errors[field.key] = _service.validateByCatalog(field, next);
+            });
+          },
+        );
+    }
   }
 }
