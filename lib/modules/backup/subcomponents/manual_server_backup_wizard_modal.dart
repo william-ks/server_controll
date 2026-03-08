@@ -6,18 +6,13 @@ import '../../../components/modal/app_modal.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
 import '../models/backup_entry.dart';
+import 'manual_server_backup_flow.dart';
 import 'selective_backup_modal.dart';
 
 enum ManualServerBackupKind { fullServer, worldOnly, selective }
 
 class ManualServerBackupWizardModal extends ConsumerStatefulWidget {
-  const ManualServerBackupWizardModal({super.key, required this.onConfirm});
-
-  final Future<void> Function({
-    required BackupContentKind kind,
-    required List<String> selectiveRootEntries,
-  })
-  onConfirm;
+  const ManualServerBackupWizardModal({super.key});
 
   @override
   ConsumerState<ManualServerBackupWizardModal> createState() =>
@@ -27,7 +22,6 @@ class ManualServerBackupWizardModal extends ConsumerStatefulWidget {
 class _ManualServerBackupWizardModalState
     extends ConsumerState<ManualServerBackupWizardModal> {
   int _step = 1;
-  bool _saving = false;
   String? _error;
 
   ManualServerBackupKind _kind = ManualServerBackupKind.fullServer;
@@ -41,34 +35,20 @@ class _ManualServerBackupWizardModalState
   }
 
   Future<void> _submit() async {
-    if (_saving) return;
     if (_kind == ManualServerBackupKind.selective && _selectedRoots.isEmpty) {
       setState(() => _error = 'Selecione ao menos um item da raiz.');
       return;
     }
-
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-    try {
-      await widget.onConfirm(
+    Navigator.of(context).pop(
+      ManualBackupRequest(
         kind: switch (_kind) {
           ManualServerBackupKind.fullServer => BackupContentKind.full,
           ManualServerBackupKind.worldOnly => BackupContentKind.world,
           ManualServerBackupKind.selective => BackupContentKind.selective,
         },
         selectiveRootEntries: _selectedRoots.toList()..sort(),
-      );
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-        _error = error.toString().replaceFirst('Bad state: ', '');
-      });
-    }
+      ),
+    );
   }
 
   @override
@@ -207,14 +187,12 @@ class _ManualServerBackupWizardModalState
     return [
       AppButton(
         label: 'Voltar',
-        onPressed: _saving
-            ? null
-            : () {
-                setState(() {
-                  _step = 1;
-                  _error = null;
-                });
-              },
+        onPressed: () {
+          setState(() {
+            _step = 1;
+            _error = null;
+          });
+        },
         type: AppButtonType.textButton,
         variant: AppVariant.info,
       ),
@@ -225,8 +203,6 @@ class _ManualServerBackupWizardModalState
                   ? 'Criar backup de mundo'
                   : 'Criar backup do servidor'),
         onPressed: _submit,
-        isLoading: _saving,
-        isDisabled: _saving,
         variant: AppVariant.success,
         icon: Icons.archive_rounded,
       ),

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../backup/subcomponents/manual_server_backup_flow.dart';
 import '../../../../components/buttons/app_button.dart';
 import '../../../../components/shared/app_variant.dart';
 import '../../../../models/server_lifecycle_state.dart';
 
-class ServerActionsBar extends StatelessWidget {
+class ServerActionsBar extends ConsumerWidget {
   const ServerActionsBar({
     super.key,
     required this.lifecycle,
@@ -13,7 +15,6 @@ class ServerActionsBar extends StatelessWidget {
     required this.onStart,
     required this.onStop,
     required this.onRestart,
-    required this.onBackup,
     required this.onKickPlayers,
     required this.onMaintenance,
   });
@@ -24,12 +25,11 @@ class ServerActionsBar extends StatelessWidget {
   final VoidCallback onStart;
   final VoidCallback onStop;
   final VoidCallback onRestart;
-  final VoidCallback onBackup;
   final VoidCallback onKickPlayers;
   final VoidCallback onMaintenance;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isOnline = lifecycle == ServerLifecycleState.online;
     final isStarting =
         lifecycle == ServerLifecycleState.starting ||
@@ -64,13 +64,7 @@ class ServerActionsBar extends StatelessWidget {
             variant: AppVariant.warning,
             icon: Icons.restart_alt_rounded,
           ),
-        AppButton(
-          label: 'Backup',
-          onPressed: isOffline ? onBackup : null,
-          isDisabled: !isOffline,
-          variant: AppVariant.secondary,
-          icon: Icons.backup_rounded,
-        ),
+        ManualServerBackupButton(enabled: isOffline),
         AppButton(
           label: 'Desconectar Jogadores',
           onPressed: isOnline ? onKickPlayers : null,

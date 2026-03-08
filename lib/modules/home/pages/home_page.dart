@@ -6,16 +6,12 @@ import '../../../config/theme/app_theme_extension.dart';
 import '../../../layout/default_layout.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
-import '../../backup/providers/backups_provider.dart';
-import '../../backup/subcomponents/manual_server_backup_wizard_modal.dart';
-import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../maintenance/providers/maintenance_provider.dart';
 import '../providers/home_provider.dart';
 import '../providers/pvp_control_provider.dart';
 import '../subcomponents/active_players_card.dart';
 import '../subcomponents/kick_players_modal.dart';
-import '../subcomponents/manual_backup_modal.dart';
 import '../subcomponents/maintenance_mode_modal.dart';
 import '../subcomponents/online_players_strip_card.dart';
 import '../subcomponents/pvp_control_card.dart';
@@ -151,9 +147,6 @@ class HomePage extends ConsumerWidget {
                         onStart: actions.startServer,
                         onStop: actions.stopServer,
                         onRestart: actions.restartServer,
-                        onBackup: () {
-                          _runManualBackup(context, ref);
-                        },
                         onKickPlayers: () {
                           showDialog<void>(
                             context: context,
@@ -207,42 +200,5 @@ class HomePage extends ConsumerWidget {
       ),
       child: SizedBox(height: 104, child: child),
     );
-  }
-
-  Future<void> _runManualBackup(BuildContext context, WidgetRef ref) async {
-    ManualBackupRequest? request;
-    final configured = await showDialog<bool>(
-      context: context,
-      builder: (_) => ManualServerBackupWizardModal(
-        onConfirm: ({required kind, required selectiveRootEntries}) async {
-          request = ManualBackupRequest(
-            kind: kind,
-            selectiveRootEntries: selectiveRootEntries,
-          );
-        },
-      ),
-    );
-    if (configured != true || request == null || !context.mounted) return;
-
-    final controller = BackupTaskController();
-    final result = await showDialog<ManualBackupResult>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => ManualBackupProgressModal(
-        controller: controller,
-        request: request!,
-      ),
-    );
-
-    if (!context.mounted || result == null) return;
-    final message = result.message;
-    if (message == null || message.trim().isEmpty) return;
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-    if (result.type == ManualBackupResultType.success) {
-      await ref.read(backupsProvider.notifier).load();
-    }
   }
 }

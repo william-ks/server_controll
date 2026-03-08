@@ -26,7 +26,7 @@ import '../providers/app_backup_settings_provider.dart';
 import '../providers/backup_config_provider.dart';
 import '../providers/backups_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
-import '../subcomponents/manual_server_backup_wizard_modal.dart';
+import '../subcomponents/manual_server_backup_flow.dart';
 
 class BackupsPage extends ConsumerStatefulWidget {
   const BackupsPage({super.key});
@@ -151,12 +151,9 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
                       variant: AppVariant.info,
                       onPressed: notifier.load,
                     ),
-                    AppButton(
-                      label: 'Novo backup',
-                      icon: Icons.backup_rounded,
+                    ManualServerBackupButton(
                       variant: AppVariant.primary,
-                      isDisabled: state.creating,
-                      onPressed: () => _openManualBackupWizard(notifier),
+                      enabled: !state.creating,
                     ),
                   ],
                 ),
@@ -236,33 +233,6 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
           ),
         ),
       ),
-    );
-  }
-
-  Future<void> _openManualBackupWizard(BackupsNotifier notifier) async {
-    final created = await showDialog<bool>(
-      context: context,
-      builder: (_) => ManualServerBackupWizardModal(
-        onConfirm: ({required kind, required selectiveRootEntries}) async {
-          switch (kind) {
-            case BackupContentKind.full:
-              await notifier.createManualBackup();
-            case BackupContentKind.world:
-              await notifier.createManualWorldBackup();
-            case BackupContentKind.selective:
-              await notifier.createManualSelectiveBackup(selectiveRootEntries);
-            case BackupContentKind.app:
-            case BackupContentKind.unknown:
-              throw StateError('Tipo de backup manual não suportado na tela.');
-          }
-        },
-      ),
-    );
-    if (created != true || !mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Backup manual concluído com sucesso.')),
     );
   }
 
