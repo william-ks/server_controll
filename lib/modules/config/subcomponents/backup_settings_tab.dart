@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../components/badges/app_badge.dart';
-import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/shared/app_variant.dart';
@@ -13,6 +12,7 @@ import '../../../modules/backup/models/backup_capacity_status.dart';
 import '../../../modules/backup/models/backup_config_settings.dart';
 import '../../../modules/backup/providers/backup_config_provider.dart';
 import '../../../modules/backup/providers/backups_provider.dart';
+import 'sticky_form_actions_bar.dart';
 
 class BackupSettingsTab extends ConsumerStatefulWidget {
   const BackupSettingsTab({super.key});
@@ -241,112 +241,111 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
 
     final showPathBadge = _backupPathController.text.trim().isNotEmpty;
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('Backups'),
-          _fieldLabel('Pasta para backup:'),
-          AppTextInput(
-            controller: _backupPathController,
-            hint: r'Ex.: D:\MineControl\backups',
-            prefixIcon: const Icon(Icons.folder_copy_rounded),
-            onChanged: (_) => setState(() {}),
-          ),
-          if (showPathBadge)
-            _validationBadge(
-              text: _pathExists ? 'PASTA ENCONTRADA' : 'PASTA NÃO ENCONTRADA',
-              variant: _pathExists ? AppVariant.success : AppVariant.danger,
-              icon: _pathExists
-                  ? Icons.check_circle_outline_rounded
-                  : Icons.close_rounded,
-            ),
-          if (!showPathBadge)
-            _validationBadge(
-              text: 'INFORME UMA PASTA',
-              variant: AppVariant.info,
-              icon: Icons.info_outline_rounded,
-            ),
-          if (capacity != null && capacity.hasLimit)
-            _validationBadge(
-              text: _capacityText(capacity),
-              variant: switch (capacity.level) {
-                BackupCapacityLevel.normal => AppVariant.success,
-                BackupCapacityLevel.warning => AppVariant.warning,
-                BackupCapacityLevel.reached => AppVariant.warning,
-                BackupCapacityLevel.exceeded => AppVariant.danger,
-              },
-              icon: Icons.storage_rounded,
-            ),
-          const SizedBox(height: 14),
-          AppSwitchCard(
-            label: 'Backups ativos:',
-            value: _backupsEnabled,
-            onChanged: (value) => setState(() => _backupsEnabled = value),
-          ),
-          const SizedBox(height: 14),
-          _fieldLabel('Limite de retenção (GB):'),
-          AppTextInput(
-            controller: _retentionMaxGbController,
-            hint: 'Ex.: 0 (ilimitado), 10, 25.5',
-            keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
-          ),
-          if (_retentionError != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                _retentionError!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
-          const SizedBox(height: 14),
-          AppSwitchCard(
-            label: 'Limpeza automática quando exceder limite',
-            value: _autoCleanupEnabled,
-            onChanged: (value) => setState(() => _autoCleanupEnabled = value),
-          ),
-          const SizedBox(height: 14),
-          _fieldLabel('Alerta de capacidade (%)'),
-          AppTextInput(
-            controller: _warnPercentController,
-            hint: 'Ex.: 80',
-            keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
-          ),
-          if (_warnPercentError != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                _warnPercentError!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
-          const SizedBox(height: 22),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (_isDirty)
-                AppButton(
-                  label: 'Cancelar',
-                  onPressed: _cancelChanges,
-                  variant: AppVariant.danger,
-                  transparent: true,
-                  icon: Icons.close_rounded,
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _sectionTitle('Backups'),
+                _fieldLabel('Pasta para backup:'),
+                AppTextInput(
+                  controller: _backupPathController,
+                  hint: r'Ex.: D:\MineControl\backups',
+                  prefixIcon: const Icon(Icons.folder_copy_rounded),
+                  onChanged: (_) => setState(() {}),
                 ),
-              if (_isDirty) const SizedBox(width: 10),
-              AppButton(
-                label: 'Salvar',
-                onPressed: _save,
-                isLoading: _isSaving,
-                isDisabled: !_isDirty || !_isValid || _isSaving,
-                variant: AppVariant.success,
-                icon: Icons.save_rounded,
-              ),
-            ],
+                if (showPathBadge)
+                  _validationBadge(
+                    text: _pathExists
+                        ? 'PASTA ENCONTRADA'
+                        : 'PASTA NÃO ENCONTRADA',
+                    variant: _pathExists
+                        ? AppVariant.success
+                        : AppVariant.danger,
+                    icon: _pathExists
+                        ? Icons.check_circle_outline_rounded
+                        : Icons.close_rounded,
+                  ),
+                if (!showPathBadge)
+                  _validationBadge(
+                    text: 'INFORME UMA PASTA',
+                    variant: AppVariant.info,
+                    icon: Icons.info_outline_rounded,
+                  ),
+                if (capacity != null && capacity.hasLimit)
+                  _validationBadge(
+                    text: _capacityText(capacity),
+                    variant: switch (capacity.level) {
+                      BackupCapacityLevel.normal => AppVariant.success,
+                      BackupCapacityLevel.warning => AppVariant.warning,
+                      BackupCapacityLevel.reached => AppVariant.warning,
+                      BackupCapacityLevel.exceeded => AppVariant.danger,
+                    },
+                    icon: Icons.storage_rounded,
+                  ),
+                const SizedBox(height: 14),
+                AppSwitchCard(
+                  label: 'Backups ativos:',
+                  value: _backupsEnabled,
+                  onChanged: (value) => setState(() => _backupsEnabled = value),
+                ),
+                const SizedBox(height: 14),
+                _fieldLabel('Limite de retenção (GB):'),
+                AppTextInput(
+                  controller: _retentionMaxGbController,
+                  hint: 'Ex.: 0 (ilimitado), 10, 25.5',
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                ),
+                if (_retentionError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      _retentionError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 14),
+                AppSwitchCard(
+                  label: 'Limpeza automática quando exceder limite',
+                  value: _autoCleanupEnabled,
+                  onChanged: (value) =>
+                      setState(() => _autoCleanupEnabled = value),
+                ),
+                const SizedBox(height: 14),
+                _fieldLabel('Alerta de capacidade (%)'),
+                AppTextInput(
+                  controller: _warnPercentController,
+                  hint: 'Ex.: 80',
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                ),
+                if (_warnPercentError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      _warnPercentError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
-        ],
-      ),
+        ),
+        StickyFormActionsBar(
+          onSave: _save,
+          onCancel: _isDirty ? _cancelChanges : null,
+          saveEnabled: _isDirty && _isValid && !_isSaving,
+          saveLoading: _isSaving,
+        ),
+      ],
     );
   }
 

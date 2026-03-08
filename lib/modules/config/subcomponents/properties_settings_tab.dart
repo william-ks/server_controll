@@ -16,6 +16,7 @@ import '../models/server_properties_field_catalog.dart';
 import '../providers/config_files_provider.dart';
 import '../providers/config_properties_provider.dart';
 import '../services/server_properties_service.dart';
+import 'sticky_form_actions_bar.dart';
 
 class PropertiesSettingsTab extends ConsumerStatefulWidget {
   const PropertiesSettingsTab({super.key});
@@ -273,163 +274,155 @@ class _PropertiesSettingsTabState extends ConsumerState<PropertiesSettingsTab> {
       grouped.putIfAbsent(field.group, () => []).add(field);
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!_serverPropertiesFound)
-            AppBadge(
-              icon: Icons.error_outline_rounded,
-              variant: AppVariant.danger,
-              title: 'server.properties não encontrado',
-              description: _serverPath.isEmpty
-                  ? 'Defina o path do servidor em Config > Arquivos.'
-                  : 'Caminho esperado: ${p.join(_serverPath, 'server.properties')}',
-            ),
-          if (!_serverPropertiesFound) const SizedBox(height: 12),
-          const AppBadge(
-            icon: Icons.info_outline_rounded,
-            variant: AppVariant.info,
-            title:
-                'As propriedades exigem reinício do servidor para ter efeito.',
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Visual do servidor',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.outline.withValues(alpha: 0.5),
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!_serverPropertiesFound)
+                  AppBadge(
+                    icon: Icons.error_outline_rounded,
+                    variant: AppVariant.danger,
+                    title: 'server.properties não encontrado',
+                    description: _serverPath.isEmpty
+                        ? 'Defina o path do servidor em Config > Arquivos.'
+                        : 'Caminho esperado: ${p.join(_serverPath, 'server.properties')}',
+                  ),
+                if (!_serverPropertiesFound) const SizedBox(height: 12),
+                const AppBadge(
+                  icon: Icons.info_outline_rounded,
+                  variant: AppVariant.info,
+                  title:
+                      'As propriedades exigem reinício do servidor para ter efeito.',
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Visual do servidor',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
-                child: ClipOval(
-                  child: _serverIconFile == null
-                      ? Icon(
-                          Icons.image_not_supported_rounded,
-                          size: 30,
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.45),
-                        )
-                      : Image.file(
-                          _serverIconFile!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, error, stackTrace) {
-                            return Icon(
-                              Icons.broken_image_rounded,
-                              size: 30,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.45),
-                            );
-                          },
+                          ).colorScheme.outline.withValues(alpha: 0.5),
                         ),
+                      ),
+                      child: ClipOval(
+                        child: _serverIconFile == null
+                            ? Icon(
+                                Icons.image_not_supported_rounded,
+                                size: 30,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.45),
+                              )
+                            : Image.file(
+                                _serverIconFile!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, error, stackTrace) {
+                                  return Icon(
+                                    Icons.broken_image_rounded,
+                                    size: 30,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.45),
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: [
+                        AppButton(
+                          label: _serverIconFile == null
+                              ? 'Escolher foto'
+                              : 'Editar foto',
+                          onPressed: _pickServerIcon,
+                          isLoading: _isHandlingIcon,
+                          isDisabled: _isHandlingIcon,
+                          icon: Icons.upload_rounded,
+                        ),
+                        AppButton(
+                          label: 'Remover',
+                          onPressed: _removeServerIcon,
+                          variant: AppVariant.danger,
+                          transparent: true,
+                          isDisabled:
+                              _serverIconFile == null || _isHandlingIcon,
+                          icon: Icons.delete_outline_rounded,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 8,
-                children: [
-                  AppButton(
-                    label: _serverIconFile == null
-                        ? 'Escolher foto'
-                        : 'Editar foto',
-                    onPressed: _pickServerIcon,
-                    isLoading: _isHandlingIcon,
-                    isDisabled: _isHandlingIcon,
-                    icon: Icons.upload_rounded,
-                  ),
-                  AppButton(
-                    label: 'Remover',
-                    onPressed: _removeServerIcon,
-                    variant: AppVariant.danger,
-                    transparent: true,
-                    isDisabled: _serverIconFile == null || _isHandlingIcon,
-                    icon: Icons.delete_outline_rounded,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          for (final group in grouped.entries) ...[
-            Text(
-              group.key,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            for (final field in group.value) ...[
-              Text(
-                field.label,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                field.description,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 6),
-              _buildField(field),
-              if (_errors[field.key] != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    _errors[field.key]!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                const SizedBox(height: 16),
+                for (final group in grouped.entries) ...[
+                  Text(
+                    group.key,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.secondary,
                     ),
                   ),
-                ),
-              const SizedBox(height: 12),
-            ],
-            const SizedBox(height: 8),
-          ],
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (_isDirty)
-                AppButton(
-                  label: 'Cancelar',
-                  onPressed: _cancel,
-                  variant: AppVariant.danger,
-                  transparent: true,
-                  icon: Icons.close_rounded,
-                ),
-              if (_isDirty) const SizedBox(width: 10),
-              AppButton(
-                label: 'Salvar',
-                onPressed: _save,
-                isLoading: _isSaving,
-                isDisabled: !_canSave || _isSaving,
-                variant: AppVariant.success,
-                icon: Icons.save_rounded,
-              ),
-            ],
+                  const SizedBox(height: 8),
+                  for (final field in group.value) ...[
+                    Text(
+                      field.label,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      field.description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildField(field),
+                    if (_errors[field.key] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          _errors[field.key]!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                  ],
+                  const SizedBox(height: 8),
+                ],
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
-        ],
-      ),
+        ),
+        StickyFormActionsBar(
+          onSave: _save,
+          onCancel: _isDirty ? _cancel : null,
+          saveEnabled: _canSave && !_isSaving,
+          saveLoading: _isSaving,
+        ),
+      ],
     );
   }
 

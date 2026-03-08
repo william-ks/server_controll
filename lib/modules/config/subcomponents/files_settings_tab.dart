@@ -6,12 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../components/badges/app_badge.dart';
-import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/shared/app_variant.dart';
 import '../models/config_files_settings.dart';
 import '../providers/config_files_provider.dart';
+import 'sticky_form_actions_bar.dart';
 
 class FilesSettingsTab extends ConsumerStatefulWidget {
   const FilesSettingsTab({super.key});
@@ -369,202 +369,193 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
         _jarFileController.text.trim().isNotEmpty;
     final showJavaBadge = _javaCommandController.text.trim().isNotEmpty;
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('Core'),
-          _fieldLabel('Path do servidor:'),
-          AppTextInput(
-            controller: _serverPathController,
-            hint: r'Ex.: C:\minecraft\meu-servidor',
-            prefixIcon: const Icon(Icons.folder_open_rounded),
-            onChanged: (_) => setState(() {}),
-          ),
-          if (showPathBadge)
-            _validationBadge(
-              text: _pathExists ? 'ENCONTRADO' : 'NAO ENCONTRADO',
-              variant: _pathExists ? AppVariant.success : AppVariant.danger,
-              icon: _pathExists
-                  ? Icons.check_circle_outline_rounded
-                  : Icons.close_rounded,
-            ),
-          if (!showPathBadge)
-            _validationBadge(
-              text: 'INFORME O PATH',
-              variant: AppVariant.info,
-              icon: Icons.info_outline_rounded,
-            ),
-          const SizedBox(height: 14),
-          _fieldLabel('Nome do file server:'),
-          AppTextInput(
-            controller: _jarFileController,
-            hint: 'Ex.: server.jar',
-            prefixIcon: const Icon(Icons.insert_drive_file_outlined),
-            onChanged: (_) => setState(() {}),
-          ),
-          if (showFileBadge)
-            _validationBadge(
-              text: _fileExists ? 'ENCONTRADO' : 'NAO ENCONTRADO',
-              variant: _fileExists ? AppVariant.success : AppVariant.danger,
-              icon: _fileExists
-                  ? Icons.check_circle_outline_rounded
-                  : Icons.close_rounded,
-            ),
-          const SizedBox(height: 14),
-          _fieldLabel('Comando do Java:'),
-          Text(
-            'Comando utilizado pelo sistema para executar o Java no terminal. Esse valor sera utilizado quando o servidor for iniciado.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 6),
-          AppTextInput(
-            controller: _javaCommandController,
-            hint: 'Ex.: java ou /usr/bin/java',
-            prefixIcon: const Icon(Icons.terminal_rounded),
-            onChanged: (_) => setState(() {}),
-          ),
-          if (showJavaBadge)
-            _validationBadge(
-              text: _checkingJava
-                  ? 'VALIDANDO...'
-                  : (_javaAvailable == true
-                        ? 'JAVA DISPONIVEL'
-                        : 'JAVA NAO ENCONTRADO'),
-              variant: _checkingJava
-                  ? AppVariant.info
-                  : (_javaAvailable == true
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _sectionTitle('Core'),
+                _fieldLabel('Path do servidor:'),
+                AppTextInput(
+                  controller: _serverPathController,
+                  hint: r'Ex.: C:\minecraft\meu-servidor',
+                  prefixIcon: const Icon(Icons.folder_open_rounded),
+                  onChanged: (_) => setState(() {}),
+                ),
+                if (showPathBadge)
+                  _validationBadge(
+                    text: _pathExists ? 'ENCONTRADO' : 'NAO ENCONTRADO',
+                    variant: _pathExists
                         ? AppVariant.success
-                        : AppVariant.danger),
-              icon: _checkingJava
-                  ? Icons.hourglass_top_rounded
-                  : (_javaAvailable == true
+                        : AppVariant.danger,
+                    icon: _pathExists
                         ? Icons.check_circle_outline_rounded
-                        : Icons.close_rounded),
-            ),
-          const SizedBox(height: 14),
-          _fieldLabel('JVM args:'),
-          AppTextInput(
-            controller: _jvmArgsController,
-            hint: 'Ex.: -Xms2G',
-            prefixIcon: const Icon(Icons.tune_rounded),
-            onChanged: (_) => setState(() {}),
-          ),
-          _validationBadge(
-            text:
-                'ATENCAO: Flags com -XX:+AlwaysPreTouch pre-alocam toda a RAM. Deixe vazio para o comportamento padrao.',
-            variant: AppVariant.warning,
-            icon: Icons.warning_amber_rounded,
-          ),
-          const SizedBox(height: 22),
-          _sectionTitle('Memória RAM'),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                        : Icons.close_rounded,
+                  ),
+                if (!showPathBadge)
+                  _validationBadge(
+                    text: 'INFORME O PATH',
+                    variant: AppVariant.info,
+                    icon: Icons.info_outline_rounded,
+                  ),
+                const SizedBox(height: 14),
+                _fieldLabel('Nome do file server:'),
+                AppTextInput(
+                  controller: _jarFileController,
+                  hint: 'Ex.: server.jar',
+                  prefixIcon: const Icon(Icons.insert_drive_file_outlined),
+                  onChanged: (_) => setState(() {}),
+                ),
+                if (showFileBadge)
+                  _validationBadge(
+                    text: _fileExists ? 'ENCONTRADO' : 'NAO ENCONTRADO',
+                    variant: _fileExists
+                        ? AppVariant.success
+                        : AppVariant.danger,
+                    icon: _fileExists
+                        ? Icons.check_circle_outline_rounded
+                        : Icons.close_rounded,
+                  ),
+                const SizedBox(height: 14),
+                _fieldLabel('Comando do Java:'),
+                Text(
+                  'Comando utilizado pelo sistema para executar o Java no terminal. Esse valor sera utilizado quando o servidor for iniciado.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                AppTextInput(
+                  controller: _javaCommandController,
+                  hint: 'Ex.: java ou /usr/bin/java',
+                  prefixIcon: const Icon(Icons.terminal_rounded),
+                  onChanged: (_) => setState(() {}),
+                ),
+                if (showJavaBadge)
+                  _validationBadge(
+                    text: _checkingJava
+                        ? 'VALIDANDO...'
+                        : (_javaAvailable == true
+                              ? 'JAVA DISPONIVEL'
+                              : 'JAVA NAO ENCONTRADO'),
+                    variant: _checkingJava
+                        ? AppVariant.info
+                        : (_javaAvailable == true
+                              ? AppVariant.success
+                              : AppVariant.danger),
+                    icon: _checkingJava
+                        ? Icons.hourglass_top_rounded
+                        : (_javaAvailable == true
+                              ? Icons.check_circle_outline_rounded
+                              : Icons.close_rounded),
+                  ),
+                const SizedBox(height: 14),
+                _fieldLabel('JVM args:'),
+                AppTextInput(
+                  controller: _jvmArgsController,
+                  hint: 'Ex.: -Xms2G',
+                  prefixIcon: const Icon(Icons.tune_rounded),
+                  onChanged: (_) => setState(() {}),
+                ),
+                _validationBadge(
+                  text:
+                      'ATENCAO: Flags com -XX:+AlwaysPreTouch pre-alocam toda a RAM. Deixe vazio para o comportamento padrao.',
+                  variant: AppVariant.warning,
+                  icon: Icons.warning_amber_rounded,
+                ),
+                const SizedBox(height: 22),
+                _sectionTitle('Memória RAM'),
+                Row(
                   children: [
-                    _fieldLabel('Minimo (GB):'),
-                    AppTextInput(
-                      controller: _ramMinController,
-                      hint: 'Ex.: 2',
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => setState(() {}),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _fieldLabel('Minimo (GB):'),
+                          AppTextInput(
+                            controller: _ramMinController,
+                            hint: 'Ex.: 2',
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _fieldLabel('Maximo (GB):'),
+                          AppTextInput(
+                            controller: _ramMaxController,
+                            hint: 'Ex.: 8',
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _fieldLabel('Maximo (GB):'),
-                    AppTextInput(
-                      controller: _ramMaxController,
-                      hint: 'Ex.: 8',
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => setState(() {}),
+                if (_ramError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      _ramError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
-                  ],
+                  ),
+                const SizedBox(height: 22),
+                _sectionTitle('Comportamento'),
+                AppSwitchCard(
+                  label: 'Auto restart em caso de crash:',
+                  value: _autoRestartOnCrash,
+                  onChanged: (value) =>
+                      setState(() => _autoRestartOnCrash = value),
                 ),
-              ),
-            ],
-          ),
-          if (_ramError != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                _ramError!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
-          const SizedBox(height: 22),
-          _sectionTitle('Comportamento'),
-          AppSwitchCard(
-            label: 'Auto restart em caso de crash:',
-            value: _autoRestartOnCrash,
-            onChanged: (value) => setState(() => _autoRestartOnCrash = value),
-          ),
-          const SizedBox(height: 10),
-          _fieldLabel('Tempo de espera para restart (segundos):'),
-          AppTextInput(
-            controller: _restartWaitController,
-            enabled: _autoRestartOnCrash,
-            hint: 'Ex.: 10',
-            keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
-          ),
-          if (_autoRestartOnCrash && _restartError != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                _restartError!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
-          const SizedBox(height: 22),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (_isDirty)
-                AppButton(
-                  label: 'Cancelar',
-                  onPressed: _cancelChanges,
-                  variant: AppVariant.danger,
-                  transparent: true,
-                  icon: Icons.close_rounded,
+                const SizedBox(height: 10),
+                _fieldLabel('Tempo de espera para restart (segundos):'),
+                AppTextInput(
+                  controller: _restartWaitController,
+                  enabled: _autoRestartOnCrash,
+                  hint: 'Ex.: 10',
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
                 ),
-              if (_isDirty) const SizedBox(width: 10),
-              AppButton(
-                label: 'Salvar',
-                onPressed: _save,
-                isLoading: _isSaving,
-                isDisabled:
-                    !_isDirty ||
-                    !_hasValidPreconditions ||
-                    _checkingJava ||
-                    _isSaving,
-                variant: AppVariant.success,
-                icon: Icons.save_rounded,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_isDirty && !_hasValidPreconditions)
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                'Para salvar: preencha Path, File Server e Java; valide path/jar/java; e mantenha RAM valida (min <= max).',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ),
+                if (_autoRestartOnCrash && _restartError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      _restartError!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+              ],
             ),
-        ],
-      ),
+          ),
+        ),
+        StickyFormActionsBar(
+          onSave: _save,
+          onCancel: _isDirty ? _cancelChanges : null,
+          saveEnabled:
+              _isDirty &&
+              _hasValidPreconditions &&
+              !_checkingJava &&
+              !_isSaving,
+          saveLoading: _isSaving,
+          helperText: _isDirty && !_hasValidPreconditions
+              ? 'Para salvar: preencha Path, File Server e Java; valide path/jar/java; e mantenha RAM valida (min <= max).'
+              : null,
+        ),
+      ],
     );
   }
 }

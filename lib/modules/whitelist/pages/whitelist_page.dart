@@ -283,74 +283,79 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                 ),
               const SizedBox(height: 8),
               Expanded(
-                child: filtered.isEmpty
-                    ? const WhitelistEmptyState()
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 6,
+                child: ClipRect(
+                  child: filtered.isEmpty
+                      ? const WhitelistEmptyState()
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 6,
+                          ),
+                          clipBehavior: Clip.hardEdge,
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 14),
+                          itemBuilder: (_, index) {
+                            final player = filtered[index];
+                            final permissions =
+                                permissionsState.statusByNickname[player
+                                    .nickname
+                                    .trim()
+                                    .toLowerCase()];
+                            return WhitelistPlayerCard(
+                              player: player,
+                              isOnline: onlinePlayers.contains(player.nickname),
+                              isAppAdmin: permissions?.isAppAdmin ?? false,
+                              isOp: permissions?.isOp ?? false,
+                              pendingOpsCount:
+                                  permissions?.pendingOpsCount ?? 0,
+                              onToggleAppAdmin: (value) async {
+                                try {
+                                  await permissionsNotifier.toggleAppAdmin(
+                                    player.nickname,
+                                    value,
+                                  );
+                                } catch (error) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        error.toString().replaceFirst(
+                                          'Bad state: ',
+                                          '',
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              onToggleOp: (value) async {
+                                try {
+                                  await permissionsNotifier.toggleOp(
+                                    player.nickname,
+                                    value,
+                                  );
+                                } catch (error) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        error.toString().replaceFirst(
+                                          'Bad state: ',
+                                          '',
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              onEdit: () => openModal(id: player.id),
+                              onDelete: () =>
+                                  confirmDelete(player.id!, player.nickname),
+                            );
+                          },
                         ),
-                        clipBehavior: Clip.none,
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 14),
-                        itemBuilder: (_, index) {
-                          final player = filtered[index];
-                          final permissions =
-                              permissionsState.statusByNickname[player.nickname
-                                  .trim()
-                                  .toLowerCase()];
-                          return WhitelistPlayerCard(
-                            player: player,
-                            isOnline: onlinePlayers.contains(player.nickname),
-                            isAppAdmin: permissions?.isAppAdmin ?? false,
-                            isOp: permissions?.isOp ?? false,
-                            pendingOpsCount: permissions?.pendingOpsCount ?? 0,
-                            onToggleAppAdmin: (value) async {
-                              try {
-                                await permissionsNotifier.toggleAppAdmin(
-                                  player.nickname,
-                                  value,
-                                );
-                              } catch (error) {
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      error.toString().replaceFirst(
-                                        'Bad state: ',
-                                        '',
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            onToggleOp: (value) async {
-                              try {
-                                await permissionsNotifier.toggleOp(
-                                  player.nickname,
-                                  value,
-                                );
-                              } catch (error) {
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      error.toString().replaceFirst(
-                                        'Bad state: ',
-                                        '',
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            onEdit: () => openModal(id: player.id),
-                            onDelete: () =>
-                                confirmDelete(player.id!, player.nickname),
-                          );
-                        },
-                      ),
+                ),
               ),
             ],
           ),

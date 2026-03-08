@@ -39,6 +39,7 @@ class WhitelistPlayerCard extends StatelessWidget {
         : scheme.onSurfaceVariant.withValues(alpha: 0.86);
 
     return Stack(
+      clipBehavior: Clip.hardEdge,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -74,6 +75,8 @@ class WhitelistPlayerCard extends StatelessWidget {
                   children: [
                     Text(
                       player.nickname,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -81,6 +84,8 @@ class WhitelistPlayerCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'UUID: ${player.uuid?.trim().isNotEmpty == true ? player.uuid! : 'vazio'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: ext.mutedText),
@@ -146,8 +151,8 @@ class WhitelistPlayerCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              Wrap(
+                spacing: 2,
                 children: [
                   IconButton(
                     onPressed: onEdit,
