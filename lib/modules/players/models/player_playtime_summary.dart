@@ -4,6 +4,7 @@ class PlayerPlaytimeSummary {
     required this.nickname,
     required this.dailySeconds,
     required this.weeklySeconds,
+    required this.monthlySeconds,
     required this.totalSeconds,
   });
 
@@ -11,5 +12,6 @@ class PlayerPlaytimeSummary {
   final String nickname;
   final int dailySeconds;
   final int weeklySeconds;
+  final int monthlySeconds;
   final int totalSeconds;
 }

@@ -18,6 +18,7 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.39
   archive: ^3.6.1
   url_launcher: ^6.3.2
+  fl_chart: ^0.71.0
 
 dev_dependencies:
   flutter_test:

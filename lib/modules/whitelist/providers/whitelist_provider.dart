@@ -210,25 +210,6 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
     await load();
   }
 
-  Future<void> removePlayer(int id) async {
-    WhitelistPlayer? player;
-    for (final item in state.players) {
-      if (item.id == id) {
-        player = item;
-        break;
-      }
-    }
-    final iconPath = player?.iconPath;
-    if (iconPath != null && iconPath.trim().isNotEmpty) {
-      final file = File(iconPath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-    }
-    await _repository.delete(id);
-    await load();
-  }
-
   Future<void> removeFromWhitelist({
     required int id,
     required String nickname,

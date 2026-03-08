@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
 import '../../../layout/default_layout.dart';
-import '../../whitelist/subcomponents/player_playtime_panel.dart';
 import '../providers/player_playtime_provider.dart';
+import '../subcomponents/player_ranking_dashboard.dart';
 
 class PlayerRankingPage extends ConsumerWidget {
   const PlayerRankingPage({super.key});
@@ -29,12 +29,11 @@ class PlayerRankingPage extends ConsumerWidget {
             boxShadow: AppStyles.softShadow(opacity: 0.18),
           ),
           padding: const EdgeInsets.all(16),
-          child: PlayerPlaytimePanel(
+          child: PlayerRankingDashboard(
             state: playtimeState,
             onRefresh: playtimeNotifier.refresh,
-            onSelectPlayer: (playerId) {
-              playtimeNotifier.selectPlayer(playerId);
-            },
+            onToggleShowAll: playtimeNotifier.toggleShowFullRanking,
+            onPeriodChanged: playtimeNotifier.setRankingPeriod,
           ),
         ),
       ),

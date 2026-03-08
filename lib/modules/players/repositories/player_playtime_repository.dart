@@ -215,6 +215,7 @@ class PlayerPlaytimeRepository {
         p.nickname AS nickname,
         COALESCE(d.total_seconds, 0) AS daily_seconds,
         COALESCE(w.total_seconds, 0) AS weekly_seconds,
+        COALESCE(m.total_seconds, 0) AS monthly_seconds,
         COALESCE(t.total_seconds, 0) AS total_seconds
       FROM players p
       LEFT JOIN player_playtime_aggregates d
@@ -225,13 +226,20 @@ class PlayerPlaytimeRepository {
         ON w.player_id = p.id
        AND w.period_type = 'weekly'
        AND w.period_key = ?
+      LEFT JOIN player_playtime_aggregates m
+        ON m.player_id = p.id
+       AND m.period_type = 'monthly'
+       AND m.period_key = ?
       LEFT JOIN player_playtime_aggregates t
         ON t.player_id = p.id
        AND t.period_type = 'total'
        AND t.period_key = 'all'
+      WHERE p.is_player = 1
+        AND p.is_whitelisted = 1
+        AND p.is_banned = 0
       ORDER BY total_seconds DESC, LOWER(p.nickname) ASC
     ''',
-      [todayKey, weekKey],
+      [todayKey, weekKey, _toMonthKey(DateTime.now())],
     );
 
     return rows.map((row) {
@@ -240,6 +248,7 @@ class PlayerPlaytimeRepository {
         nickname: row['nickname'] as String? ?? '',
         dailySeconds: row['daily_seconds'] as int? ?? 0,
         weeklySeconds: row['weekly_seconds'] as int? ?? 0,
+        monthlySeconds: row['monthly_seconds'] as int? ?? 0,
         totalSeconds: row['total_seconds'] as int? ?? 0,
       );
     }).toList();
@@ -411,6 +420,7 @@ class PlayerPlaytimeRepository {
 
     final byDay = <String, int>{};
     final byWeek = <String, int>{};
+    final byMonth = <String, int>{};
     var totalSeconds = 0;
     for (final row in rows) {
       final start = DateTime.tryParse((row['start_at'] as String?) ?? '');
@@ -439,6 +449,9 @@ class PlayerPlaytimeRepository {
 
       final weekKey = _toWeekKey(start.toLocal());
       byWeek[weekKey] = (byWeek[weekKey] ?? 0) + durationSeconds;
+
+      final monthKey = _toMonthKey(start.toLocal());
+      byMonth[monthKey] = (byMonth[monthKey] ?? 0) + durationSeconds;
     }
 
     final nowIso = DateTime.now().toIso8601String();
@@ -477,6 +490,16 @@ class PlayerPlaytimeRepository {
         'updated_at': nowIso,
       });
     }
+
+    for (final entry in byMonth.entries) {
+      await db.insert('player_playtime_aggregates', {
+        'player_id': playerId,
+        'period_type': 'monthly',
+        'period_key': entry.key,
+        'total_seconds': entry.value,
+        'updated_at': nowIso,
+      });
+    }
   }
 
   String _toWeekKey(DateTime date) {
@@ -484,6 +507,10 @@ class PlayerPlaytimeRepository {
     final yearStart = DateTime(thursday.year, 1, 1);
     final week = ((thursday.difference(yearStart).inDays) / 7).floor() + 1;
     return '${thursday.year}-W${week.toString().padLeft(2, '0')}';
+  }
+
+  String _toMonthKey(DateTime date) {
+    return DateFormat('yyyy-MM').format(date);
   }
 
   Future<void> _upsertPrimaryIdentity(

@@ -6,8 +6,8 @@ import '../../../models/server_lifecycle_state.dart';
 import '../../../models/server_runtime_state.dart';
 import '../../server/providers/server_runtime_provider.dart';
 import '../../server/services/server_log_parser.dart';
+import '../models/player_ranking_period.dart';
 import '../models/player_playtime_summary.dart';
-import '../models/player_session_entry.dart';
 import '../repositories/player_playtime_repository.dart';
 
 class PlayerPlaytimeState {
@@ -15,8 +15,8 @@ class PlayerPlaytimeState {
     required this.loading,
     required this.syncing,
     required this.ranking,
-    required this.selectedPlayerId,
-    required this.selectedHistory,
+    required this.selectedPeriod,
+    required this.showFullRanking,
     this.lastTickAt,
     this.error,
   });
@@ -24,8 +24,8 @@ class PlayerPlaytimeState {
   final bool loading;
   final bool syncing;
   final List<PlayerPlaytimeSummary> ranking;
-  final int? selectedPlayerId;
-  final List<PlayerSessionEntry> selectedHistory;
+  final PlayerRankingPeriod selectedPeriod;
+  final bool showFullRanking;
   final DateTime? lastTickAt;
   final String? error;
 
@@ -33,8 +33,8 @@ class PlayerPlaytimeState {
     bool? loading,
     bool? syncing,
     List<PlayerPlaytimeSummary>? ranking,
-    int? selectedPlayerId,
-    List<PlayerSessionEntry>? selectedHistory,
+    PlayerRankingPeriod? selectedPeriod,
+    bool? showFullRanking,
     DateTime? lastTickAt,
     String? error,
     bool clearError = false,
@@ -43,8 +43,8 @@ class PlayerPlaytimeState {
       loading: loading ?? this.loading,
       syncing: syncing ?? this.syncing,
       ranking: ranking ?? this.ranking,
-      selectedPlayerId: selectedPlayerId ?? this.selectedPlayerId,
-      selectedHistory: selectedHistory ?? this.selectedHistory,
+      selectedPeriod: selectedPeriod ?? this.selectedPeriod,
+      showFullRanking: showFullRanking ?? this.showFullRanking,
       lastTickAt: lastTickAt ?? this.lastTickAt,
       error: clearError ? null : (error ?? this.error),
     );
@@ -55,8 +55,8 @@ class PlayerPlaytimeState {
       loading: false,
       syncing: false,
       ranking: [],
-      selectedPlayerId: null,
-      selectedHistory: [],
+      selectedPeriod: PlayerRankingPeriod.weekly,
+      showFullRanking: false,
     );
   }
 }
@@ -122,17 +122,12 @@ class PlayerPlaytimeNotifier extends Notifier<PlayerPlaytimeState> {
     return PlayerPlaytimeState.initial();
   }
 
-  Future<void> selectPlayer(int? playerId) async {
-    if (playerId == null) {
-      state = state.copyWith(selectedPlayerId: null, selectedHistory: []);
-      return;
-    }
-    final history = await _repository.fetchPlayerHistory(playerId);
-    state = state.copyWith(
-      selectedPlayerId: playerId,
-      selectedHistory: history,
-      clearError: true,
-    );
+  void setRankingPeriod(PlayerRankingPeriod period) {
+    state = state.copyWith(selectedPeriod: period, clearError: true);
+  }
+
+  void toggleShowFullRanking() {
+    state = state.copyWith(showFullRanking: !state.showFullRanking);
   }
 
   Future<void> refresh() async {
@@ -244,21 +239,8 @@ class PlayerPlaytimeNotifier extends Notifier<PlayerPlaytimeState> {
 
   Future<void> _refresh() async {
     final ranking = await _repository.fetchRanking();
-    var selectedPlayerId = state.selectedPlayerId;
-    if (selectedPlayerId == null ||
-        !ranking.any((item) => item.playerId == selectedPlayerId)) {
-      selectedPlayerId = ranking.isEmpty ? null : ranking.first.playerId;
-    }
-
-    List<PlayerSessionEntry> history = const [];
-    if (selectedPlayerId != null) {
-      history = await _repository.fetchPlayerHistory(selectedPlayerId);
-    }
-
     state = state.copyWith(
       ranking: ranking,
-      selectedPlayerId: selectedPlayerId,
-      selectedHistory: history,
       lastTickAt: DateTime.now(),
       clearError: true,
     );
