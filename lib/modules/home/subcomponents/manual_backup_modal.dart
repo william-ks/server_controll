@@ -27,7 +27,7 @@ class ManualBackupConfirmModal extends StatelessWidget {
       icon: Icons.backup_rounded,
       title: 'Backup manual',
       body: const Text(
-        'O backup manual será salvo como Manual_<timestamp>.zip. O servidor precisa estar OFFLINE para continuar.',
+        'O backup manual será salvo como <timestamp>__manual__full.zip. O servidor precisa estar OFFLINE para continuar.',
       ),
       actions: [
         AppButton(

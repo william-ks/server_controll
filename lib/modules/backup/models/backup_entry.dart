@@ -1,4 +1,6 @@
-enum BackupKind { manual, schedule, chunk, unknown }
+enum BackupOriginKind { manual, schedule, chunk, unknown }
+
+enum BackupContentKind { full, world, selective, app, unknown }
 
 class BackupEntry {
   const BackupEntry({
@@ -6,12 +8,16 @@ class BackupEntry {
     required this.path,
     required this.sizeBytes,
     required this.modifiedAt,
-    required this.kind,
+    required this.origin,
+    required this.contentKind,
+    required this.timestamp,
   });
 
   final String name;
   final String path;
   final int sizeBytes;
   final DateTime modifiedAt;
-  final BackupKind kind;
+  final BackupOriginKind origin;
+  final BackupContentKind contentKind;
+  final DateTime timestamp;
 }

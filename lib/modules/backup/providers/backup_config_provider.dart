@@ -33,8 +33,16 @@ class BackupConfigNotifier extends Notifier<BackupConfigSettings> {
       settings.backupsEnabled ? '1' : '0',
     );
     await AppDatabase.instance.setSetting(
-      'backup_max_count',
-      settings.maxBackups,
+      'backup_retention_max_gb',
+      settings.retentionMaxGb,
+    );
+    await AppDatabase.instance.setSetting(
+      'backup_auto_cleanup',
+      settings.autoCleanupEnabled ? '1' : '0',
+    );
+    await AppDatabase.instance.setSetting(
+      'backup_capacity_warn_percent',
+      '${settings.capacityWarnThresholdPercent}',
     );
     state = settings;
   }

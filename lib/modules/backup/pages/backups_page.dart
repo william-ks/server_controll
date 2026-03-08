@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/modal/app_modal.dart';
@@ -10,6 +11,7 @@ import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
 import '../../../config/theme/app_theme_extension.dart';
 import '../../../layout/default_layout.dart';
+import '../models/backup_capacity_status.dart';
 import '../models/backup_entry.dart';
 import '../providers/backup_config_provider.dart';
 import '../providers/backups_provider.dart';
@@ -37,6 +39,7 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
     final notifier = ref.read(backupsProvider.notifier);
     final backupConfig = ref.watch(backupConfigProvider);
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final capacity = state.capacity;
 
     final filtered = state.entries.where((entry) {
       final query = _query.trim().toLowerCase();
@@ -82,8 +85,22 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
                       icon: Icons.sd_storage_rounded,
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _SummaryCard(
+                      title: 'Limite (retenção)',
+                      value: capacity == null || !capacity.hasLimit
+                          ? 'Ilimitado'
+                          : _formatSize(capacity.limitBytes),
+                      icon: Icons.rule_folder_rounded,
+                    ),
+                  ),
                 ],
               ),
+              if (capacity != null && capacity.hasLimit) ...[
+                const SizedBox(height: 10),
+                _CapacityBadge(capacity: capacity),
+              ],
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -101,6 +118,15 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
                     icon: Icons.refresh_rounded,
                     variant: AppVariant.info,
                     onPressed: notifier.load,
+                  ),
+                  const SizedBox(width: 10),
+                  AppButton(
+                    label: 'Backup mundo',
+                    icon: Icons.public_rounded,
+                    variant: AppVariant.secondary,
+                    isDisabled: state.creating,
+                    isLoading: state.creating,
+                    onPressed: notifier.createManualWorldBackup,
                   ),
                 ],
               ),
@@ -265,11 +291,18 @@ class _BackupCard extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final dateLabel = DateFormat('dd/MM/yyyy HH:mm').format(entry.modifiedAt);
     final sizeLabel = _formatSize(entry.sizeBytes);
-    final kindLabel = switch (entry.kind) {
-      BackupKind.manual => 'Manual',
-      BackupKind.schedule => 'Agendamento',
-      BackupKind.chunk => 'Chunk',
-      BackupKind.unknown => 'Outro',
+    final kindLabel = switch (entry.origin) {
+      BackupOriginKind.manual => 'Manual',
+      BackupOriginKind.schedule => 'Agendamento',
+      BackupOriginKind.chunk => 'Chunk',
+      BackupOriginKind.unknown => 'Outro',
+    };
+    final contentLabel = switch (entry.contentKind) {
+      BackupContentKind.full => 'full',
+      BackupContentKind.world => 'world',
+      BackupContentKind.selective => 'selective',
+      BackupContentKind.app => 'app',
+      BackupContentKind.unknown => 'unknown',
     };
 
     return Container(
@@ -300,7 +333,7 @@ class _BackupCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$kindLabel • $dateLabel • $sizeLabel',
+                  '$kindLabel/$contentLabel • $dateLabel • $sizeLabel',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: ext.mutedText),
@@ -328,4 +361,43 @@ class _BackupCard extends StatelessWidget {
     }
     return '${megaBytes.toStringAsFixed(2)} MB';
   }
+}
+
+class _CapacityBadge extends StatelessWidget {
+  const _CapacityBadge({required this.capacity});
+
+  final BackupCapacityStatus capacity;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = capacity.level;
+    final variant = switch (level) {
+      BackupCapacityLevel.normal => AppVariant.success,
+      BackupCapacityLevel.warning => AppVariant.warning,
+      BackupCapacityLevel.reached => AppVariant.warning,
+      BackupCapacityLevel.exceeded => AppVariant.danger,
+    };
+    final title = switch (level) {
+      BackupCapacityLevel.normal => 'Capacidade normal',
+      BackupCapacityLevel.warning => 'Capacidade próxima do limite',
+      BackupCapacityLevel.reached => 'Limite de capacidade atingido',
+      BackupCapacityLevel.exceeded => 'Limite de capacidade excedido',
+    };
+
+    return AppBadge(
+      icon: Icons.storage_rounded,
+      variant: variant,
+      title:
+          '$title (${capacity.usedPercent.toStringAsFixed(1)}% • ${_formatSizeStatic(capacity.usedBytes)} de ${_formatSizeStatic(capacity.limitBytes)})',
+    );
+  }
+}
+
+String _formatSizeStatic(int sizeBytes) {
+  final megaBytes = sizeBytes / (1024 * 1024);
+  if (megaBytes > 24) {
+    final gigaBytes = sizeBytes / (1024 * 1024 * 1024);
+    return '${gigaBytes.toStringAsFixed(2)} GB';
+  }
+  return '${megaBytes.toStringAsFixed(2)} MB';
 }

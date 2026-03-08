@@ -9,8 +9,10 @@ import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../../modules/backup/models/backup_capacity_status.dart';
 import '../../../modules/backup/models/backup_config_settings.dart';
 import '../../../modules/backup/providers/backup_config_provider.dart';
+import '../../../modules/backup/providers/backups_provider.dart';
 
 class BackupSettingsTab extends ConsumerStatefulWidget {
   const BackupSettingsTab({super.key});
@@ -21,22 +23,27 @@ class BackupSettingsTab extends ConsumerStatefulWidget {
 
 class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
   final TextEditingController _backupPathController = TextEditingController();
-  final TextEditingController _maxBackupsController = TextEditingController();
+  final TextEditingController _retentionMaxGbController =
+      TextEditingController();
+  final TextEditingController _warnPercentController = TextEditingController();
 
   Timer? _pathDebounce;
 
   bool _backupsEnabled = false;
+  bool _autoCleanupEnabled = true;
   bool _isLoading = true;
   bool _isSaving = false;
   bool _pathExists = false;
-  String? _maxError;
+  String? _retentionError;
+  String? _warnPercentError;
   String? _initialSnapshot;
 
   @override
   void initState() {
     super.initState();
     _backupPathController.addListener(_onPathChanged);
-    _maxBackupsController.addListener(_onMaxChanged);
+    _retentionMaxGbController.addListener(_onRetentionChanged);
+    _warnPercentController.addListener(_onWarnChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadFromProvider(refresh: true);
@@ -47,7 +54,8 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
   void dispose() {
     _pathDebounce?.cancel();
     _backupPathController.dispose();
-    _maxBackupsController.dispose();
+    _retentionMaxGbController.dispose();
+    _warnPercentController.dispose();
     super.dispose();
   }
 
@@ -61,7 +69,8 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
     final settings = ref.read(backupConfigProvider);
     _applySettings(settings);
     await _validatePath();
-    _validateMaxBackups();
+    _validateRetention();
+    _validateWarnPercent();
     _initialSnapshot = _snapshot();
 
     if (mounted) {
@@ -71,8 +80,10 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
 
   void _applySettings(BackupConfigSettings settings) {
     _backupPathController.text = settings.backupPath;
-    _maxBackupsController.text = settings.maxBackups;
+    _retentionMaxGbController.text = settings.retentionMaxGb;
+    _warnPercentController.text = '${settings.capacityWarnThresholdPercent}';
     _backupsEnabled = settings.backupsEnabled;
+    _autoCleanupEnabled = settings.autoCleanupEnabled;
   }
 
   Future<void> _validatePath() async {
@@ -87,21 +98,39 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
     }
   }
 
-  void _validateMaxBackups() {
-    final value = int.tryParse(_maxBackupsController.text.trim());
-    if (_maxBackupsController.text.trim().isEmpty) {
-      _maxError = 'Informe o máximo de backups.';
+  void _validateRetention() {
+    final raw = _retentionMaxGbController.text.trim();
+    final value = double.tryParse(raw.replaceAll(',', '.'));
+    if (raw.isEmpty) {
+      _retentionError = 'Informe o limite em GB (0 para ilimitado).';
       return;
     }
     if (value == null) {
-      _maxError = 'Informe um valor numérico.';
+      _retentionError = 'Informe um valor numérico válido.';
       return;
     }
-    if (value < 1) {
-      _maxError = 'O mínimo permitido é 1.';
+    if (value < 0) {
+      _retentionError = 'O valor deve ser maior ou igual a zero.';
       return;
     }
-    _maxError = null;
+    _retentionError = null;
+  }
+
+  void _validateWarnPercent() {
+    final value = int.tryParse(_warnPercentController.text.trim());
+    if (_warnPercentController.text.trim().isEmpty) {
+      _warnPercentError = 'Informe o percentual de alerta.';
+      return;
+    }
+    if (value == null) {
+      _warnPercentError = 'Informe um valor numérico.';
+      return;
+    }
+    if (value < 1 || value > 99) {
+      _warnPercentError = 'Use um valor entre 1 e 99.';
+      return;
+    }
+    _warnPercentError = null;
   }
 
   void _onPathChanged() {
@@ -114,8 +143,13 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
     });
   }
 
-  void _onMaxChanged() {
-    _validateMaxBackups();
+  void _onRetentionChanged() {
+    _validateRetention();
+    setState(() {});
+  }
+
+  void _onWarnChanged() {
+    _validateWarnPercent();
     setState(() {});
   }
 
@@ -123,7 +157,9 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
     return [
       _backupPathController.text.trim(),
       _backupsEnabled ? '1' : '0',
-      _maxBackupsController.text.trim(),
+      _retentionMaxGbController.text.trim(),
+      _autoCleanupEnabled ? '1' : '0',
+      _warnPercentController.text.trim(),
     ].join('|');
   }
 
@@ -132,7 +168,7 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
 
   bool get _isValid {
     final hasValidPath = !_backupsEnabled || _pathExists;
-    return hasValidPath && _maxError == null;
+    return hasValidPath && _retentionError == null && _warnPercentError == null;
   }
 
   Future<void> _save() async {
@@ -142,7 +178,10 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
       final settings = BackupConfigSettings(
         backupPath: _backupPathController.text.trim(),
         backupsEnabled: _backupsEnabled,
-        maxBackups: _maxBackupsController.text.trim(),
+        retentionMaxGb: _retentionMaxGbController.text.trim(),
+        autoCleanupEnabled: _autoCleanupEnabled,
+        capacityWarnThresholdPercent:
+            int.tryParse(_warnPercentController.text.trim()) ?? 80,
       );
       await ref.read(backupConfigProvider.notifier).saveToDb(settings);
       _initialSnapshot = _snapshot();
@@ -195,6 +234,7 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final capacity = ref.watch(backupsProvider).capacity;
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -227,6 +267,17 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
               variant: AppVariant.info,
               icon: Icons.info_outline_rounded,
             ),
+          if (capacity != null && capacity.hasLimit)
+            _validationBadge(
+              text: _capacityText(capacity),
+              variant: switch (capacity.level) {
+                BackupCapacityLevel.normal => AppVariant.success,
+                BackupCapacityLevel.warning => AppVariant.warning,
+                BackupCapacityLevel.reached => AppVariant.warning,
+                BackupCapacityLevel.exceeded => AppVariant.danger,
+              },
+              icon: Icons.storage_rounded,
+            ),
           const SizedBox(height: 14),
           AppSwitchCard(
             label: 'Backups ativos:',
@@ -234,18 +285,40 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
             onChanged: (value) => setState(() => _backupsEnabled = value),
           ),
           const SizedBox(height: 14),
-          _fieldLabel('Máximo de backups:'),
+          _fieldLabel('Limite de retenção (GB):'),
           AppTextInput(
-            controller: _maxBackupsController,
-            hint: 'Ex.: 5',
+            controller: _retentionMaxGbController,
+            hint: 'Ex.: 0 (ilimitado), 10, 25.5',
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() {}),
           ),
-          if (_maxError != null)
+          if (_retentionError != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                _maxError!,
+                _retentionError!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          const SizedBox(height: 14),
+          AppSwitchCard(
+            label: 'Limpeza automática quando exceder limite',
+            value: _autoCleanupEnabled,
+            onChanged: (value) => setState(() => _autoCleanupEnabled = value),
+          ),
+          const SizedBox(height: 14),
+          _fieldLabel('Alerta de capacidade (%)'),
+          AppTextInput(
+            controller: _warnPercentController,
+            hint: 'Ex.: 80',
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+          ),
+          if (_warnPercentError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                _warnPercentError!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
@@ -275,5 +348,18 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
         ],
       ),
     );
+  }
+
+  String _capacityText(BackupCapacityStatus capacity) {
+    String format(int value) {
+      final megaBytes = value / (1024 * 1024);
+      if (megaBytes > 24) {
+        final gigaBytes = value / (1024 * 1024 * 1024);
+        return '${gigaBytes.toStringAsFixed(2)} GB';
+      }
+      return '${megaBytes.toStringAsFixed(2)} MB';
+    }
+
+    return 'Uso atual: ${format(capacity.usedBytes)} / ${format(capacity.limitBytes)} (${capacity.usedPercent.toStringAsFixed(1)}%)';
   }
 }

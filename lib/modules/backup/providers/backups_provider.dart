@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../modules/config/providers/config_files_provider.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../../../models/server_lifecycle_state.dart';
+import '../models/backup_capacity_status.dart';
 import '../models/backup_entry.dart';
 import '../services/backup_service.dart';
 import 'backup_config_provider.dart';
@@ -10,18 +11,21 @@ import 'backup_config_provider.dart';
 class BackupsState {
   const BackupsState({
     required this.entries,
+    required this.capacity,
     required this.loading,
     required this.creating,
     this.error,
   });
 
   final List<BackupEntry> entries;
+  final BackupCapacityStatus? capacity;
   final bool loading;
   final bool creating;
   final String? error;
 
   BackupsState copyWith({
     List<BackupEntry>? entries,
+    BackupCapacityStatus? capacity,
     bool? loading,
     bool? creating,
     String? error,
@@ -29,6 +33,7 @@ class BackupsState {
   }) {
     return BackupsState(
       entries: entries ?? this.entries,
+      capacity: capacity ?? this.capacity,
       loading: loading ?? this.loading,
       creating: creating ?? this.creating,
       error: clearError ? null : (error ?? this.error),
@@ -36,7 +41,12 @@ class BackupsState {
   }
 
   factory BackupsState.initial() {
-    return const BackupsState(entries: [], loading: false, creating: false);
+    return const BackupsState(
+      entries: [],
+      capacity: null,
+      loading: false,
+      creating: false,
+    );
   }
 }
 
@@ -60,7 +70,12 @@ class BackupsNotifier extends Notifier<BackupsState> {
     try {
       final config = ref.read(backupConfigProvider);
       final entries = await _service.listBackups(config);
-      state = state.copyWith(entries: entries, loading: false);
+      final capacity = await _service.evaluateCapacity(config);
+      state = state.copyWith(
+        entries: entries,
+        capacity: capacity,
+        loading: false,
+      );
     } catch (error) {
       state = state.copyWith(loading: false, error: error.toString());
     }
@@ -80,9 +95,15 @@ class BackupsNotifier extends Notifier<BackupsState> {
         serverPath: configFiles.serverPath.trim(),
         config: backupConfig,
         trigger: BackupTriggerType.manual,
+        kind: BackupContentKind.full,
       );
       final entries = await _service.listBackups(backupConfig);
-      state = state.copyWith(entries: entries, creating: false);
+      final capacity = await _service.evaluateCapacity(backupConfig);
+      state = state.copyWith(
+        entries: entries,
+        capacity: capacity,
+        creating: false,
+      );
     } catch (error) {
       state = state.copyWith(creating: false, error: error.toString());
       rethrow;
@@ -105,10 +126,45 @@ class BackupsNotifier extends Notifier<BackupsState> {
         serverPath: configFiles.serverPath.trim(),
         config: backupConfig,
         trigger: BackupTriggerType.manual,
+        kind: BackupContentKind.full,
         controller: controller,
       );
       final entries = await _service.listBackups(backupConfig);
-      state = state.copyWith(entries: entries, creating: false);
+      final capacity = await _service.evaluateCapacity(backupConfig);
+      state = state.copyWith(
+        entries: entries,
+        capacity: capacity,
+        creating: false,
+      );
+    } catch (error) {
+      state = state.copyWith(creating: false, error: error.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> createManualWorldBackup() async {
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.offline) {
+      throw StateError('Servidor precisa estar OFFLINE para executar backup.');
+    }
+
+    state = state.copyWith(creating: true, clearError: true);
+    try {
+      final configFiles = ref.read(configFilesProvider);
+      final backupConfig = ref.read(backupConfigProvider);
+      await _service.createBackup(
+        serverPath: configFiles.serverPath.trim(),
+        config: backupConfig,
+        trigger: BackupTriggerType.manual,
+        kind: BackupContentKind.world,
+      );
+      final entries = await _service.listBackups(backupConfig);
+      final capacity = await _service.evaluateCapacity(backupConfig);
+      state = state.copyWith(
+        entries: entries,
+        capacity: capacity,
+        creating: false,
+      );
     } catch (error) {
       state = state.copyWith(creating: false, error: error.toString());
       rethrow;
