@@ -261,7 +261,7 @@ class _MaintenanceSettingsTabState extends ConsumerState<MaintenanceSettingsTab>
                   title:
                       'Essas configurações são usadas quando o modo manutenção for ativado na Home.',
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 22),
                 Text(
                   'Visual do servidor em manutenção',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -352,7 +352,7 @@ class _MaintenanceSettingsTabState extends ConsumerState<MaintenanceSettingsTab>
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 30),
                 Text(
                   'Servidor',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -360,25 +360,30 @@ class _MaintenanceSettingsTabState extends ConsumerState<MaintenanceSettingsTab>
                     color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Text(
                   'Defina as mensagens que serão aplicadas ao servidor durante a manutenção.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.76)
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
+                _fieldTitle(context, 'Mensagem para manutenção total'),
                 AppTextInput(
                   controller: _motdTotalController,
-                  label: 'Mensagem para manutenção total',
-                  hint: 'Ex.: Servidor em manutenção',
+                  hint: 'Ex.: Servidor temporariamente indisponível para manutenção.',
                   onChanged: (_) => setState(() {}),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
+                _fieldTitle(context, 'Mensagem para modo somente admins'),
                 AppTextInput(
                   controller: _motdAdminsController,
-                  label: 'Mensagem para modo somente admins',
-                  hint: 'Ex.: Somente admins do app',
+                  hint:
+                      'Ex.: Manutenção em andamento. Acesso liberado apenas para admins.',
                   onChanged: (_) => setState(() {}),
                 ),
               ],
@@ -392,6 +397,18 @@ class _MaintenanceSettingsTabState extends ConsumerState<MaintenanceSettingsTab>
           saveLoading: _saving,
         ),
       ],
+    );
+  }
+
+  Widget _fieldTitle(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        title,
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
