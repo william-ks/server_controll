@@ -11,6 +11,8 @@ import '../../backup/providers/backups_provider.dart';
 import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../config/services/server_properties_service.dart';
+import '../../maintenance/models/maintenance_mode.dart';
+import '../../maintenance/providers/maintenance_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
 import '../../server/services/minecraft_command_provider.dart';
 import '../../server/services/server_health_monitor.dart';
@@ -172,6 +174,10 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
   bool _paused = false;
   bool _pauseAfterCurrentCycleRequested = false;
   bool _resumeOnNextOnline = false;
+  bool _chunkProtectionEnabled = false;
+  bool _chunkProtectionOwned = false;
+  MaintenanceMode? _chunkProtectionMode;
+  String _chunkProtectionExecutionId = '';
   int _completedRuns = 0;
   Duration _runElapsedStart = Duration.zero;
   int _lastChunksProcessed = 0;
@@ -216,6 +222,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
   Future<void> _bootstrap() async {
     final backupBeforeStart = ref.read(chunkyConfigProvider).backupBeforeStart;
+    await _loadChunkProtectionStateFromDb();
     await refreshTasksPending();
     await _loadLogsFromDb();
 
@@ -244,10 +251,12 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       await _appendLog(
         'Checkpoint carregado: execução $currentRun/${checkpoint.totalRuns}, radius $currentRadius.',
       );
+      await _restoreChunkProtectionIfNeeded();
       return;
     }
 
     state = state.copyWith(backupBeforeStart: backupBeforeStart);
+    await _restoreChunkProtectionIfNeeded();
   }
 
   Future<void> refreshTasksPending() async {
@@ -308,6 +317,46 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
 
   Future<void> startExecution() async {
     await restartExecutionFromZero();
+  }
+
+  Future<void> configureChunkProtection({
+    required bool enabled,
+    MaintenanceMode? mode,
+  }) async {
+    if (!enabled || mode == null) {
+      _chunkProtectionEnabled = false;
+      _chunkProtectionOwned = false;
+      _chunkProtectionMode = null;
+      _chunkProtectionExecutionId = '';
+      await _persistChunkProtectionState();
+      await _appendLog('Proteção de chunk desativada para a próxima execução.');
+      return;
+    }
+
+    final executionId = 'chunk_${DateTime.now().millisecondsSinceEpoch}';
+    final maintenance = ref.read(maintenanceProvider);
+    var owned = false;
+
+    if (!maintenance.snapshot.isActive) {
+      await ref
+          .read(maintenanceProvider.notifier)
+          .activateNow(mode: mode, countdownSeconds: 0);
+      owned = true;
+      await _appendLog(
+        'Proteção de chunk ativada via manutenção (${mode.label.toLowerCase()}).',
+      );
+    } else {
+      await _appendLog(
+        'Manutenção já estava ativa. Proteção de chunk será reaproveitada sem sobrescrever estado manual.',
+        level: 'WARN',
+      );
+    }
+
+    _chunkProtectionEnabled = true;
+    _chunkProtectionOwned = owned;
+    _chunkProtectionMode = mode;
+    _chunkProtectionExecutionId = executionId;
+    await _persistChunkProtectionState();
   }
 
   Future<void> startSelectedTask() async {
@@ -564,6 +613,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       await ref.read(chunkyTasksProvider.notifier).markCancelled(selected.id!);
     }
     await _clearCheckpoint();
+    await _finalizeChunkProtectionAfterRun();
     await _clearLogs();
     _elapsedTimer?.cancel();
     _completedRuns = 0;
@@ -646,6 +696,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     );
     await _persistCheckpoint();
     await _appendLog('Cancelamento solicitado.', level: 'WARN');
+    await _finalizeChunkProtectionAfterRun();
   }
 
   Future<void> pauseForScheduleConflict() async {
@@ -861,6 +912,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         );
         await _clearCheckpoint();
         await _appendLog('Execução cancelada.');
+        await _finalizeChunkProtectionAfterRun();
       } else {
         await _clearTasksDirs(serverPath);
         state = state.copyWith(
@@ -872,6 +924,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         );
         await _clearCheckpoint();
         await _appendLog('Plano concluído com sucesso.');
+        await _finalizeChunkProtectionAfterRun();
       }
     } catch (error) {
       state = state.copyWith(
@@ -1250,6 +1303,7 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         totalProgress: 100,
         statusMessage: 'Task concluída com sucesso.',
       );
+      unawaited(_finalizeChunkProtectionAfterRun());
       unawaited(_persistCheckpoint());
       return;
     }
@@ -1493,6 +1547,85 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     await db.setSetting('chunk_exec_total_progress', '0');
     await db.setSetting('chunk_exec_elapsed_seconds', '0');
     await db.setSetting('chunk_exec_plan', '');
+  }
+
+  Future<void> _persistChunkProtectionState() async {
+    final db = AppDatabase.instance;
+    await db.setSetting(
+      'chunk_protection_enabled',
+      _chunkProtectionEnabled ? '1' : '0',
+    );
+    await db.setSetting(
+      'chunk_protection_mode',
+      _chunkProtectionMode?.storageValue ?? '',
+    );
+    await db.setSetting(
+      'chunk_protection_owner_execution_id',
+      _chunkProtectionExecutionId,
+    );
+    await db.setSetting(
+      'chunk_protection_owned',
+      _chunkProtectionOwned ? '1' : '0',
+    );
+  }
+
+  Future<void> _loadChunkProtectionStateFromDb() async {
+    final db = AppDatabase.instance;
+    _chunkProtectionEnabled =
+        (await db.getSetting('chunk_protection_enabled') ?? '0') == '1';
+    _chunkProtectionOwned =
+        (await db.getSetting('chunk_protection_owned') ?? '0') == '1';
+    final modeRaw = await db.getSetting('chunk_protection_mode') ?? '';
+    _chunkProtectionMode = modeRaw.trim().isEmpty
+        ? null
+        : MaintenanceModeX.fromStorage(modeRaw);
+    _chunkProtectionExecutionId =
+        await db.getSetting('chunk_protection_owner_execution_id') ?? '';
+  }
+
+  Future<void> _clearChunkProtectionState() async {
+    _chunkProtectionEnabled = false;
+    _chunkProtectionOwned = false;
+    _chunkProtectionMode = null;
+    _chunkProtectionExecutionId = '';
+    await _persistChunkProtectionState();
+  }
+
+  Future<void> _restoreChunkProtectionIfNeeded() async {
+    if (!_chunkProtectionEnabled || _chunkProtectionMode == null) {
+      return;
+    }
+    final maintenanceState = ref.read(maintenanceProvider);
+    if (!maintenanceState.snapshot.isActive) {
+      await ref
+          .read(maintenanceProvider.notifier)
+          .activateNow(mode: _chunkProtectionMode!, countdownSeconds: 0);
+      await _appendLog(
+        'Proteção de chunk restaurada automaticamente após retomada.',
+      );
+    }
+  }
+
+  Future<void> _finalizeChunkProtectionAfterRun() async {
+    if (!_chunkProtectionEnabled) {
+      return;
+    }
+
+    if (_chunkProtectionOwned) {
+      try {
+        await ref.read(maintenanceProvider.notifier).deactivate();
+        await _appendLog(
+          'Proteção de chunk desativada automaticamente ao encerrar execução.',
+        );
+      } catch (_) {
+        await _appendLog(
+          'Falha ao desativar manutenção após execução. Mantenha ajuste manual.',
+          level: 'WARN',
+        );
+      }
+    }
+
+    await _clearChunkProtectionState();
   }
 
   String _formatMb(int mb) {

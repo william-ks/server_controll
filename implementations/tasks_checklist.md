@@ -3,7 +3,7 @@
 ## Lista de tarefas
 - [x] [Task 01 - Categorizacao de Tempo de Jogo dos Players](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_01.md)
 - [x] [Task 02 - Modo de Manutencao do Servidor](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_02.md)
-- [ ] [Task 03 - Protecao Durante Geracao de Chunks](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_03.md)
+- [x] [Task 03 - Protecao Durante Geracao de Chunks](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_03.md)
 - [ ] [Task 04 - Politica de Backup do Servidor](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_04.md)
 - [ ] [Task 05 - Backup Manual Seletivo](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_05.md)
 - [ ] [Task 06 - Sistema de Restauracao de Backup do Servidor](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_06.md)

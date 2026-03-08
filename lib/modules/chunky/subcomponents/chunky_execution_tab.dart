@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
+import '../../../components/modal/app_modal.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../models/server_lifecycle_state.dart';
+import '../../maintenance/models/maintenance_mode.dart';
 import '../../server/providers/server_runtime_provider.dart';
 import '../../server/services/server_health_monitor.dart';
 import '../models/chunky_execution_status.dart';
@@ -74,7 +76,8 @@ class ChunkyExecutionTab extends ConsumerWidget {
                     state.status == ChunkyExecutionStatus.running ||
                     state.status == ChunkyExecutionStatus.paused ||
                     state.status == ChunkyExecutionStatus.cancelling,
-                onPressed: notifier.startSelectedTask,
+                onPressed: () =>
+                    _startTaskWithProtection(context, ref, notifier),
               ),
               AppButton(
                 label: 'Pausar',
@@ -285,6 +288,26 @@ class ChunkyExecutionTab extends ConsumerWidget {
     );
   }
 
+  Future<void> _startTaskWithProtection(
+    BuildContext context,
+    WidgetRef ref,
+    ChunkyExecutionNotifier notifier,
+  ) async {
+    final selection = await showDialog<_ChunkProtectionSelection>(
+      context: context,
+      builder: (_) => const _ChunkProtectionModal(),
+    );
+    if (selection == null) {
+      return;
+    }
+
+    await notifier.configureChunkProtection(
+      enabled: selection.enabled,
+      mode: selection.mode,
+    );
+    await notifier.startSelectedTask();
+  }
+
   Widget _line(BuildContext context, String label, String value) {
     return Row(
       children: [
@@ -357,5 +380,95 @@ class ChunkyExecutionTab extends ConsumerWidget {
     final mm = (duration.inMinutes % 60).toString().padLeft(2, '0');
     final ss = (duration.inSeconds % 60).toString().padLeft(2, '0');
     return '$hh:$mm:$ss';
+  }
+}
+
+class _ChunkProtectionSelection {
+  const _ChunkProtectionSelection({required this.enabled, this.mode});
+
+  final bool enabled;
+  final MaintenanceMode? mode;
+}
+
+class _ChunkProtectionModal extends StatefulWidget {
+  const _ChunkProtectionModal();
+
+  @override
+  State<_ChunkProtectionModal> createState() => _ChunkProtectionModalState();
+}
+
+class _ChunkProtectionModalState extends State<_ChunkProtectionModal> {
+  bool _enabled = false;
+  MaintenanceMode _mode = MaintenanceMode.total;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppModal(
+      icon: Icons.security_rounded,
+      title: 'Proteção durante geração',
+      width: 560,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Deseja ativar proteção de entrada enquanto o Chunky estiver em execução?',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            value: _enabled,
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Ativar proteção'),
+            subtitle: const Text(
+              'Reaproveita o mesmo mecanismo do modo de manutenção.',
+            ),
+            onChanged: (value) => setState(() => _enabled = value),
+          ),
+          const SizedBox(height: 8),
+          AppSelect<MaintenanceMode>(
+            label: 'Tipo de proteção',
+            value: _mode,
+            items: const [
+              AppSelectItem(
+                value: MaintenanceMode.total,
+                label: 'Bloquear todos',
+              ),
+              AppSelectItem(
+                value: MaintenanceMode.adminsOnly,
+                label: 'Permitir apenas admins do app',
+              ),
+            ],
+            onChanged: _enabled
+                ? (value) {
+                    if (value == null) return;
+                    setState(() => _mode = value);
+                  }
+                : null,
+          ),
+        ],
+      ),
+      actions: [
+        AppButton(
+          label: 'Cancelar',
+          onPressed: () => Navigator.of(context).pop(),
+          type: AppButtonType.textButton,
+          variant: AppVariant.danger,
+        ),
+        AppButton(
+          label: 'Iniciar geração',
+          onPressed: () {
+            Navigator.of(context).pop(
+              _ChunkProtectionSelection(
+                enabled: _enabled,
+                mode: _enabled ? _mode : null,
+              ),
+            );
+          },
+          variant: AppVariant.success,
+          icon: Icons.play_arrow_rounded,
+        ),
+      ],
+    );
   }
 }
