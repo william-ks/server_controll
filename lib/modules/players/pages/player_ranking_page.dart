@@ -17,7 +17,7 @@ class PlayerRankingPage extends ConsumerWidget {
 
     return DefaultLayout(
       title: 'Ranking de Players',
-      currentRoute: AppRoutes.players,
+      currentRoute: AppRoutes.playersRanking,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Container(

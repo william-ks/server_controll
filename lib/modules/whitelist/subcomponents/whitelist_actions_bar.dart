@@ -9,6 +9,7 @@ class WhitelistActionsBar extends StatelessWidget {
     required this.onAdd,
     required this.onRefresh,
     required this.onSyncPending,
+    this.extraActions = const [],
     this.addEnabled = true,
     this.syncEnabled = true,
   });
@@ -16,6 +17,7 @@ class WhitelistActionsBar extends StatelessWidget {
   final VoidCallback onAdd;
   final VoidCallback onRefresh;
   final VoidCallback onSyncPending;
+  final List<Widget> extraActions;
   final bool addEnabled;
   final bool syncEnabled;
 
@@ -47,6 +49,7 @@ class WhitelistActionsBar extends StatelessWidget {
           isDisabled: !addEnabled,
           variant: AppVariant.primary,
         ),
+        ...extraActions,
       ],
     );
   }

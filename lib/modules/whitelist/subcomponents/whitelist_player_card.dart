@@ -12,6 +12,7 @@ class WhitelistPlayerCard extends StatelessWidget {
     required this.isOnline,
     required this.isAppAdmin,
     required this.isOp,
+    required this.isBanned,
     required this.pendingOpsCount,
     required this.onToggleAppAdmin,
     required this.onToggleOp,
@@ -23,6 +24,7 @@ class WhitelistPlayerCard extends StatelessWidget {
   final bool isOnline;
   final bool isAppAdmin;
   final bool isOp;
+  final bool isBanned;
   final int pendingOpsCount;
   final Future<void> Function(bool value) onToggleAppAdmin;
   final Future<void> Function(bool value) onToggleOp;
@@ -108,6 +110,11 @@ class WhitelistPlayerCard extends StatelessWidget {
                           _StatusChip(
                             label: 'OP',
                             color: AppColors.warning.withValues(alpha: 0.95),
+                          ),
+                        if (isBanned)
+                          _StatusChip(
+                            label: 'BANIDO',
+                            color: AppColors.danger.withValues(alpha: 0.95),
                           ),
                         if (pendingOpsCount > 0)
                           _StatusChip(

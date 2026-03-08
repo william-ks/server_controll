@@ -9,7 +9,7 @@ import '../../modules/backup/pages/backups_page.dart';
 import '../../modules/audit/pages/audit_page.dart';
 import '../../modules/players/pages/player_ranking_page.dart';
 import '../../modules/schedules/pages/schedules_page.dart';
-import '../../modules/players/pages/players_page.dart';
+import '../../modules/whitelist/pages/whitelist_page.dart';
 
 class RouteDefinition {
   const RouteDefinition({
@@ -59,20 +59,22 @@ class AppRoutes {
       path: players,
       label: 'Players',
       icon: Icons.groups_rounded,
-      builder: (_) => const PlayersPage(),
+      builder: (_) => const WhitelistPage(),
     ),
     RouteDefinition(
       path: playersRanking,
-      label: 'Ranking de players',
+      label: 'Ranking',
       icon: Icons.emoji_events_rounded,
       builder: (_) => const PlayerRankingPage(),
-      showInSidebar: false,
     ),
     RouteDefinition(
       path: whitelist,
       label: 'Whitelist (legado)',
       icon: Icons.verified_user_rounded,
-      builder: (_) => const PlayersPage(),
+      builder: (_) => const WhitelistPage(
+        currentRoute: AppRoutes.whitelist,
+        title: 'Whitelist',
+      ),
       showInSidebar: false,
     ),
     RouteDefinition(

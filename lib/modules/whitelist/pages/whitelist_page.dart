@@ -1,24 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/modal/app_confirm_dialog.dart';
+import '../../../components/modal/app_modal.dart';
+import '../../../components/shared/app_variant.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
 import '../../players/providers/player_permissions_provider.dart';
+import '../../players/providers/players_registry_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
-import '../../players/providers/player_playtime_provider.dart';
 import '../../../layout/default_layout.dart';
 import '../providers/whitelist_provider.dart';
 import '../subcomponents/add_edit_player_modal.dart';
-import '../subcomponents/player_playtime_panel.dart';
 import '../subcomponents/whitelist_actions_bar.dart';
 import '../subcomponents/whitelist_empty_state.dart';
 import '../subcomponents/whitelist_player_card.dart';
 
 class WhitelistPage extends ConsumerStatefulWidget {
-  const WhitelistPage({super.key});
+  const WhitelistPage({
+    super.key,
+    this.currentRoute = AppRoutes.players,
+    this.title = 'Players',
+  });
+
+  final String currentRoute;
+  final String title;
 
   @override
   ConsumerState<WhitelistPage> createState() => _WhitelistPageState();
@@ -28,6 +37,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
   String _permissionsSyncKey = '';
+  bool _filterAdmin = false;
+  bool _filterOp = false;
+  bool _filterBanned = false;
 
   @override
   void dispose() {
@@ -42,8 +54,7 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
     final onlinePlayers = ref.watch(onlinePlayersProvider);
     final runtime = ref.watch(serverRuntimeProvider);
     final requirements = ref.watch(whitelistRequirementsProvider);
-    final playtimeState = ref.watch(playerPlaytimeProvider);
-    final playtimeNotifier = ref.read(playerPlaytimeProvider.notifier);
+    final registryState = ref.watch(playersRegistryProvider);
     final permissionsState = ref.watch(playerPermissionsProvider);
     final permissionsNotifier = ref.read(playerPermissionsProvider.notifier);
 
@@ -138,11 +149,27 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
       }
     }
 
+    final registryByNickname = {
+      for (final player in registryState.players)
+        player.nickname.trim().toLowerCase(): player,
+    };
+
     final filtered = state.players.where((player) {
       if (_query.trim().isEmpty) return true;
       final q = _query.toLowerCase();
-      return player.nickname.toLowerCase().contains(q) ||
+      final matchesQuery =
+          player.nickname.toLowerCase().contains(q) ||
           (player.uuid ?? '').toLowerCase().contains(q);
+      if (!matchesQuery) return false;
+      return true;
+    }).where((player) {
+      final nicknameKey = player.nickname.trim().toLowerCase();
+      final permissions = permissionsState.statusByNickname[nicknameKey];
+      final registry = registryByNickname[nicknameKey];
+      if (_filterAdmin && !(permissions?.isAppAdmin ?? false)) return false;
+      if (_filterOp && !(permissions?.isOp ?? false)) return false;
+      if (_filterBanned && !(registry?.isBanned ?? false)) return false;
+      return true;
     }).toList();
 
     final syncNicknames = [...state.players]
@@ -162,8 +189,8 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
     }
 
     return DefaultLayout(
-      title: 'MineControl',
-      currentRoute: AppRoutes.whitelist,
+      title: widget.title,
+      currentRoute: widget.currentRoute,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Container(
@@ -181,13 +208,70 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                 controller: _searchController,
                 hint: 'Pesquisar por nickname ou UUID',
                 prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: IconButton(
+                  tooltip: 'Filtros',
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.filter_alt_rounded),
+                      if (_activeFiltersCount > 0)
+                        Positioned(
+                          top: -2,
+                          right: -4,
+                          child: Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '$_activeFiltersCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  onPressed: _openFiltersModal,
+                ),
                 onChanged: (value) => setState(() => _query = value),
               ),
+              if (_activeFiltersCount > 0) ...[
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (_filterAdmin) _filterChip('Admin'),
+                      if (_filterOp) _filterChip('OP'),
+                      if (_filterBanned) _filterChip('Banido'),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               WhitelistActionsBar(
                 onAdd: () => openModal(),
                 onRefresh: notifier.refreshAndSyncFromFile,
                 onSyncPending: notifier.syncPending,
+                extraActions: [
+                  AppButton(
+                    label: 'Ranking',
+                    icon: Icons.emoji_events_rounded,
+                    variant: AppVariant.secondary,
+                    transparent: true,
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.playersRanking),
+                  ),
+                ],
                 addEnabled: requirements.maybeWhen(
                   data: (data) => data.canManagePlayers,
                   orElse: () => false,
@@ -198,14 +282,6 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                       runtime.lifecycle == ServerLifecycleState.online,
                   orElse: () => false,
                 ),
-              ),
-              const SizedBox(height: 12),
-              PlayerPlaytimePanel(
-                state: playtimeState,
-                onRefresh: playtimeNotifier.refresh,
-                onSelectPlayer: (playerId) {
-                  playtimeNotifier.selectPlayer(playerId);
-                },
               ),
               requirements.when(
                 data: (data) {
@@ -274,16 +350,16 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                               const SizedBox(height: 14),
                           itemBuilder: (_, index) {
                             final player = filtered[index];
+                            final nicknameKey = player.nickname.trim().toLowerCase();
                             final permissions =
-                                permissionsState.statusByNickname[player
-                                    .nickname
-                                    .trim()
-                                    .toLowerCase()];
+                                permissionsState.statusByNickname[nicknameKey];
+                            final registry = registryByNickname[nicknameKey];
                             return WhitelistPlayerCard(
                               player: player,
                               isOnline: onlinePlayers.contains(player.nickname),
                               isAppAdmin: permissions?.isAppAdmin ?? false,
                               isOp: permissions?.isOp ?? false,
+                              isBanned: registry?.isBanned ?? false,
                               pendingOpsCount:
                                   permissions?.pendingOpsCount ?? 0,
                               onToggleAppAdmin: (value) async {
@@ -337,6 +413,106 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  int get _activeFiltersCount {
+    var total = 0;
+    if (_filterAdmin) total++;
+    if (_filterOp) total++;
+    if (_filterBanned) total++;
+    return total;
+  }
+
+  Widget _filterChip(String label) {
+    return Builder(
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openFiltersModal() async {
+    var filterAdmin = _filterAdmin;
+    var filterOp = _filterOp;
+    var filterBanned = _filterBanned;
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return AppModal(
+            icon: Icons.filter_alt_rounded,
+            title: 'Filtros',
+            width: 520,
+            body: Column(
+              children: [
+                CheckboxListTile(
+                  value: filterAdmin,
+                  title: const Text('Somente admins'),
+                  onChanged: (value) =>
+                      setModalState(() => filterAdmin = value ?? false),
+                ),
+                CheckboxListTile(
+                  value: filterOp,
+                  title: const Text('Somente OPs'),
+                  onChanged: (value) =>
+                      setModalState(() => filterOp = value ?? false),
+                ),
+                CheckboxListTile(
+                  value: filterBanned,
+                  title: const Text('Somente banidos'),
+                  onChanged: (value) =>
+                      setModalState(() => filterBanned = value ?? false),
+                ),
+              ],
+            ),
+            actions: [
+              AppButton(
+                label: 'Limpar',
+                icon: Icons.clear_rounded,
+                type: AppButtonType.textButton,
+                variant: AppVariant.danger,
+                onPressed: () {
+                  setState(() {
+                    _filterAdmin = false;
+                    _filterOp = false;
+                    _filterBanned = false;
+                  });
+                  Navigator.of(context).pop();
+                },
+              ),
+              AppButton(
+                label: 'Aplicar',
+                icon: Icons.check_rounded,
+                variant: AppVariant.success,
+                onPressed: () {
+                  setState(() {
+                    _filterAdmin = filterAdmin;
+                    _filterOp = filterOp;
+                    _filterBanned = filterBanned;
+                  });
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }
