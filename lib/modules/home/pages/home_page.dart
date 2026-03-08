@@ -7,6 +7,7 @@ import '../../../layout/default_layout.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../../backup/providers/backups_provider.dart';
+import '../../backup/subcomponents/manual_server_backup_wizard_modal.dart';
 import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../maintenance/providers/maintenance_provider.dart';
@@ -209,17 +210,28 @@ class HomePage extends ConsumerWidget {
   }
 
   Future<void> _runManualBackup(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    ManualBackupRequest? request;
+    final configured = await showDialog<bool>(
       context: context,
-      builder: (_) => const ManualBackupConfirmModal(),
+      builder: (_) => ManualServerBackupWizardModal(
+        onConfirm: ({required kind, required selectiveRootEntries}) async {
+          request = ManualBackupRequest(
+            kind: kind,
+            selectiveRootEntries: selectiveRootEntries,
+          );
+        },
+      ),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (configured != true || request == null || !context.mounted) return;
 
     final controller = BackupTaskController();
     final result = await showDialog<ManualBackupResult>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => ManualBackupProgressModal(controller: controller),
+      builder: (_) => ManualBackupProgressModal(
+        controller: controller,
+        request: request!,
+      ),
     );
 
     if (!context.mounted || result == null) return;

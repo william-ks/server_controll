@@ -12,6 +12,7 @@ import '../../../components/modal/app_modal.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../backup/providers/backup_config_provider.dart';
+import '../../backup/subcomponents/selective_backup_modal.dart';
 import '../models/schedule_action.dart';
 import '../models/schedule_backup_kind.dart';
 import '../services/cron_matcher.dart';
@@ -36,7 +37,7 @@ class AddScheduleModal extends ConsumerStatefulWidget {
 class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _cronController = TextEditingController();
-  final TextEditingController _selectiveController = TextEditingController();
+  List<String> _selectiveEntries = const [];
 
   ScheduleAction _action = ScheduleAction.restartServer;
   ScheduleBackupKind _backupKind = ScheduleBackupKind.full;
@@ -51,7 +52,6 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
   void dispose() {
     _titleController.dispose();
     _cronController.dispose();
-    _selectiveController.dispose();
     super.dispose();
   }
 
@@ -73,7 +73,7 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
         backupConfig.backupPath.trim().isNotEmpty &&
         Directory(backupConfig.backupPath.trim()).existsSync();
     final requiresServerBackup = _backupKind != ScheduleBackupKind.app;
-    final selectiveEntries = _parseSelectiveEntries(_selectiveController.text);
+    final selectiveEntries = _selectiveEntries;
     final effectiveSelectiveEntries =
         _withBackup && _backupKind == ScheduleBackupKind.selective
         ? selectiveEntries
@@ -122,14 +122,18 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
     }
   }
 
-  List<String> _parseSelectiveEntries(String raw) {
-    return raw
-        .split(',')
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+  Future<void> _pickSelectiveEntries() async {
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => SelectiveBackupModal(
+        onConfirm: (selectedRoots) async {
+          setState(() {
+            _selectiveEntries = [...selectedRoots]..sort();
+            _selectiveError = null;
+          });
+        },
+      ),
+    );
   }
 
   @override
@@ -243,46 +247,56 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
               });
             },
           ),
-          if (_withBackup) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Tipo de backup',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w400,
-                color: scheme.onSurface.withValues(alpha: 0.7),
+          const SizedBox(height: 12),
+          Text(
+            'Tipo de backup',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w400,
+              color: scheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 6),
+          AppSelect<ScheduleBackupKind>(
+            value: _backupKind,
+            items: const [
+              AppSelectItem(
+                value: ScheduleBackupKind.full,
+                label: 'Servidor (total)',
+              ),
+              AppSelectItem(
+                value: ScheduleBackupKind.world,
+                label: 'Mundo (servidor)',
+              ),
+              AppSelectItem(
+                value: ScheduleBackupKind.selective,
+                label: 'Seletivo (servidor)',
+              ),
+              AppSelectItem(
+                value: ScheduleBackupKind.app,
+                label: 'App (dados administrativos)',
+              ),
+            ],
+            onChanged: !_withBackup
+                ? null
+                : (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _backupKind = value;
+                      _backupError = null;
+                      _selectiveError = null;
+                    });
+                  },
+          ),
+          if (!_withBackup)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Ative "Fazer backup" para escolher um tipo na execução do agendamento.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.65),
+                ),
               ),
             ),
-            const SizedBox(height: 6),
-            AppSelect<ScheduleBackupKind>(
-              value: _backupKind,
-              items: const [
-                AppSelectItem(
-                  value: ScheduleBackupKind.full,
-                  label: 'Completo (servidor)',
-                ),
-                AppSelectItem(
-                  value: ScheduleBackupKind.world,
-                  label: 'Mundo (servidor)',
-                ),
-                AppSelectItem(
-                  value: ScheduleBackupKind.selective,
-                  label: 'Seletivo (servidor)',
-                ),
-                AppSelectItem(
-                  value: ScheduleBackupKind.app,
-                  label: 'App (dados administrativos)',
-                ),
-              ],
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() {
-                  _backupKind = value;
-                  _backupError = null;
-                  _selectiveError = null;
-                });
-              },
-            ),
-          ],
           if (_withBackup && _backupKind == ScheduleBackupKind.selective) ...[
             const SizedBox(height: 12),
             Text(
@@ -293,14 +307,21 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
               ),
             ),
             const SizedBox(height: 6),
-            AppTextInput(
-              controller: _selectiveController,
-              hint: 'Ex.: world, plugins, server.properties',
-              onChanged: (_) {
-                if (_selectiveError != null) {
-                  setState(() => _selectiveError = null);
-                }
-              },
+            AppButton(
+              label: 'Escolher itens',
+              icon: Icons.playlist_add_check_rounded,
+              variant: AppVariant.info,
+              transparent: true,
+              onPressed: _pickSelectiveEntries,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _selectiveEntries.isEmpty
+                  ? 'Nenhum item selecionado.'
+                  : _selectiveEntries.join(', '),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.7),
+              ),
             ),
           ],
           if (showServerBackupWarning)

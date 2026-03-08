@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../components/buttons/app_button.dart';
 import '../../../../components/modal/app_modal.dart';
 import '../../../../components/shared/app_variant.dart';
+import '../../backup/models/backup_entry.dart';
 import '../../backup/providers/backups_provider.dart';
 import '../../backup/services/backup_service.dart';
 
@@ -18,39 +19,25 @@ class ManualBackupResult {
   final String? message;
 }
 
-class ManualBackupConfirmModal extends StatelessWidget {
-  const ManualBackupConfirmModal({super.key});
+class ManualBackupRequest {
+  const ManualBackupRequest({
+    required this.kind,
+    this.selectiveRootEntries = const [],
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    return AppModal(
-      icon: Icons.backup_rounded,
-      title: 'Backup manual',
-      body: const Text(
-        'O backup manual será salvo como <timestamp>__manual__full.zip. O servidor precisa estar OFFLINE para continuar.',
-      ),
-      actions: [
-        AppButton(
-          label: 'Cancelar',
-          type: AppButtonType.textButton,
-          variant: AppVariant.danger,
-          onPressed: () => Navigator.of(context).pop(false),
-        ),
-        AppButton(
-          label: 'Confirmar',
-          variant: AppVariant.success,
-          icon: Icons.check_rounded,
-          onPressed: () => Navigator.of(context).pop(true),
-        ),
-      ],
-    );
-  }
+  final BackupContentKind kind;
+  final List<String> selectiveRootEntries;
 }
 
 class ManualBackupProgressModal extends ConsumerStatefulWidget {
-  const ManualBackupProgressModal({super.key, required this.controller});
+  const ManualBackupProgressModal({
+    super.key,
+    required this.controller,
+    required this.request,
+  });
 
   final BackupTaskController controller;
+  final ManualBackupRequest request;
 
   @override
   ConsumerState<ManualBackupProgressModal> createState() =>
@@ -98,9 +85,15 @@ class _ManualBackupProgressModalState
 
   Future<void> _runBackup() async {
     try {
+      // Garante que o modal de progresso seja renderizado antes da operação.
+      await Future<void>.delayed(const Duration(milliseconds: 180));
       await ref
           .read(backupsProvider.notifier)
-          .createManualBackupWithController(widget.controller);
+          .createManualBackupWithController(
+            widget.controller,
+            kind: widget.request.kind,
+            selectiveRootEntries: widget.request.selectiveRootEntries,
+          );
       if (!mounted) return;
       Navigator.of(context).pop(
         const ManualBackupResult(
@@ -137,9 +130,15 @@ class _ManualBackupProgressModalState
 
   @override
   Widget build(BuildContext context) {
+    final title = switch (widget.request.kind) {
+      BackupContentKind.full => 'Executando backup do servidor',
+      BackupContentKind.world => 'Executando backup de mundo',
+      BackupContentKind.selective => 'Executando backup seletivo',
+      _ => 'Executando backup manual',
+    };
     return AppModal(
       icon: Icons.sync_rounded,
-      title: _cancelling ? 'Cancelando backup...' : 'Executando backup manual',
+      title: _cancelling ? 'Cancelando backup...' : title,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

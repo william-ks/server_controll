@@ -136,22 +136,30 @@ class BackupsNotifier extends Notifier<BackupsState> {
   }
 
   Future<void> createManualBackupWithController(
-    BackupTaskController controller,
-  ) async {
+    BackupTaskController controller, {
+    BackupContentKind kind = BackupContentKind.full,
+    List<String> selectiveRootEntries = const [],
+  }) async {
     final runtime = ref.read(serverRuntimeProvider);
     if (runtime.lifecycle != ServerLifecycleState.offline) {
       throw StateError('Servidor precisa estar OFFLINE para executar backup.');
+    }
+    if (kind == BackupContentKind.selective && selectiveRootEntries.isEmpty) {
+      throw StateError('Selecione ao menos um item da raiz para o backup.');
     }
 
     state = state.copyWith(creating: true, clearError: true);
     try {
       final configFiles = ref.read(configFilesProvider);
       final backupConfig = ref.read(backupConfigProvider);
+      final summary = selectiveRootEntries.join(', ');
       await _service.createBackup(
         serverPath: configFiles.serverPath.trim(),
         config: backupConfig,
         trigger: BackupTriggerType.manual,
-        kind: BackupContentKind.full,
+        kind: kind,
+        selectiveRootEntries: selectiveRootEntries,
+        selectiveSummary: kind == BackupContentKind.selective ? summary : null,
         controller: controller,
       );
       final entries = await _service.listBackups(backupConfig);
@@ -167,7 +175,11 @@ class BackupsNotifier extends Notifier<BackupsState> {
             eventType: 'backup.manual',
             entityType: 'server_backup',
             actorType: 'app_operator',
-            payload: {'kind': 'full'},
+            payload: {
+              'kind': kind.name,
+              if (kind == BackupContentKind.selective)
+                'entries': selectiveRootEntries,
+            },
             resultStatus: 'success',
           );
     } catch (error) {
@@ -178,7 +190,12 @@ class BackupsNotifier extends Notifier<BackupsState> {
             eventType: 'backup.manual',
             entityType: 'server_backup',
             actorType: 'app_operator',
-            payload: {'kind': 'full', 'error': error.toString()},
+            payload: {
+              'kind': kind.name,
+              if (kind == BackupContentKind.selective)
+                'entries': selectiveRootEntries,
+              'error': error.toString(),
+            },
             resultStatus: 'error',
           );
       rethrow;

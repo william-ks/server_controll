@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
@@ -290,10 +291,12 @@ class BackupService {
     required Directory sourceDir,
     required bool includeRootDirName,
   }) async {
-    final encoder = ZipFileEncoder();
-    encoder.create(backupFilePath);
-    encoder.addDirectory(sourceDir, includeDirName: includeRootDirName);
-    encoder.close();
+    await Isolate.run(() {
+      final encoder = ZipFileEncoder();
+      encoder.create(backupFilePath);
+      encoder.addDirectory(sourceDir, includeDirName: includeRootDirName);
+      encoder.close();
+    });
   }
 
   Future<void> _zipSelectiveRoots({
@@ -301,42 +304,46 @@ class BackupService {
     required Directory serverRoot,
     required List<String> selectedRoots,
   }) async {
-    final encoder = ZipFileEncoder();
-    encoder.create(backupFilePath);
-
     final normalizedRoot = p.normalize(serverRoot.path);
-    for (final entry in selectedRoots) {
-      final relativeName = entry.trim();
-      if (relativeName.isEmpty) continue;
-      if (relativeName.contains('/') || relativeName.contains(r'\')) {
-        throw StateError(
-          'Seleção inválida: apenas entradas de primeiro nível são permitidas.',
-        );
+    final normalizedEntries = selectedRoots.map((item) => item.trim()).toList();
+
+    await Isolate.run(() {
+      final encoder = ZipFileEncoder();
+      encoder.create(backupFilePath);
+
+      for (final entry in normalizedEntries) {
+        final relativeName = entry.trim();
+        if (relativeName.isEmpty) continue;
+        if (relativeName.contains('/') || relativeName.contains(r'\')) {
+          throw StateError(
+            'Seleção inválida: apenas entradas de primeiro nível são permitidas.',
+          );
+        }
+
+        final targetPath = p.normalize(p.join(normalizedRoot, relativeName));
+        if (!p.isWithin(normalizedRoot, targetPath) &&
+            targetPath != normalizedRoot) {
+          throw StateError('Seleção inválida fora da raiz do servidor.');
+        }
+
+        final fileType = FileSystemEntity.typeSync(targetPath);
+        if (fileType == FileSystemEntityType.notFound) {
+          throw StateError('Entrada "$relativeName" não encontrada na raiz.');
+        }
+
+        if (fileType == FileSystemEntityType.directory) {
+          encoder.addDirectory(
+            Directory(targetPath),
+            includeDirName: true,
+            level: 6,
+          );
+        } else if (fileType == FileSystemEntityType.file) {
+          encoder.addFile(File(targetPath), relativeName);
+        }
       }
 
-      final targetPath = p.normalize(p.join(normalizedRoot, relativeName));
-      if (!p.isWithin(normalizedRoot, targetPath) &&
-          targetPath != normalizedRoot) {
-        throw StateError('Seleção inválida fora da raiz do servidor.');
-      }
-
-      final fileType = FileSystemEntity.typeSync(targetPath);
-      if (fileType == FileSystemEntityType.notFound) {
-        throw StateError('Entrada "$relativeName" não encontrada na raiz.');
-      }
-
-      if (fileType == FileSystemEntityType.directory) {
-        encoder.addDirectory(
-          Directory(targetPath),
-          includeDirName: true,
-          level: 6,
-        );
-      } else if (fileType == FileSystemEntityType.file) {
-        encoder.addFile(File(targetPath), relativeName);
-      }
-    }
-
-    encoder.close();
+      encoder.close();
+    });
   }
 
   _BackupNameMetadata _extractMetadataFromName({

@@ -26,7 +26,7 @@ import '../providers/app_backup_settings_provider.dart';
 import '../providers/backup_config_provider.dart';
 import '../providers/backups_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
-import '../subcomponents/selective_backup_modal.dart';
+import '../subcomponents/manual_server_backup_wizard_modal.dart';
 
 class BackupsPage extends ConsumerStatefulWidget {
   const BackupsPage({super.key});
@@ -131,9 +131,13 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
                   _CapacityBadge(capacity: capacity),
                 ],
                 const SizedBox(height: 12),
-                Row(
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Expanded(
+                    SizedBox(
+                      width: 420,
                       child: AppTextInput(
                         controller: _searchController,
                         hint: 'Pesquisar backup por nome',
@@ -141,36 +145,18 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
                         onChanged: (value) => setState(() => _query = value),
                       ),
                     ),
-                    const SizedBox(width: 10),
                     AppButton(
                       label: 'Atualizar',
                       icon: Icons.refresh_rounded,
                       variant: AppVariant.info,
                       onPressed: notifier.load,
                     ),
-                    const SizedBox(width: 10),
                     AppButton(
-                      label: 'Backup mundo',
-                      icon: Icons.public_rounded,
-                      variant: AppVariant.secondary,
-                      isDisabled: state.creating,
-                      isLoading: state.creating,
-                      onPressed: notifier.createManualWorldBackup,
-                    ),
-                    const SizedBox(width: 10),
-                    AppButton(
-                      label: 'Backup seletivo',
-                      icon: Icons.library_add_check_rounded,
+                      label: 'Novo backup',
+                      icon: Icons.backup_rounded,
                       variant: AppVariant.primary,
                       isDisabled: state.creating,
-                      onPressed: () async {
-                        await showDialog<bool>(
-                          context: context,
-                          builder: (_) => SelectiveBackupModal(
-                            onConfirm: notifier.createManualSelectiveBackup,
-                          ),
-                        );
-                      },
+                      onPressed: () => _openManualBackupWizard(notifier),
                     ),
                   ],
                 ),
@@ -250,6 +236,33 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _openManualBackupWizard(BackupsNotifier notifier) async {
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (_) => ManualServerBackupWizardModal(
+        onConfirm: ({required kind, required selectiveRootEntries}) async {
+          switch (kind) {
+            case BackupContentKind.full:
+              await notifier.createManualBackup();
+            case BackupContentKind.world:
+              await notifier.createManualWorldBackup();
+            case BackupContentKind.selective:
+              await notifier.createManualSelectiveBackup(selectiveRootEntries);
+            case BackupContentKind.app:
+            case BackupContentKind.unknown:
+              throw StateError('Tipo de backup manual não suportado na tela.');
+          }
+        },
+      ),
+    );
+    if (created != true || !mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Backup manual concluído com sucesso.')),
     );
   }
 
@@ -828,16 +841,32 @@ class _BackupCard extends StatelessWidget {
                 icon: Icons.public_rounded,
                 variant: AppVariant.info,
                 transparent: true,
-                isDisabled: !restoreEnabled,
-                onPressed: restoreEnabled ? onRestoreWorld : null,
+                isDisabled:
+                    !restoreEnabled ||
+                    (entry.contentKind != BackupContentKind.full &&
+                        entry.contentKind != BackupContentKind.world),
+                onPressed:
+                    restoreEnabled &&
+                        (entry.contentKind == BackupContentKind.full ||
+                            entry.contentKind == BackupContentKind.world)
+                    ? onRestoreWorld
+                    : null,
               ),
               AppButton(
                 label: 'Restaurar completo',
                 icon: Icons.restart_alt_rounded,
                 variant: AppVariant.warning,
                 transparent: true,
-                isDisabled: !restoreEnabled,
-                onPressed: restoreEnabled ? onRestoreFull : null,
+                isDisabled:
+                    !restoreEnabled ||
+                    (entry.contentKind != BackupContentKind.full &&
+                        entry.contentKind != BackupContentKind.selective),
+                onPressed:
+                    restoreEnabled &&
+                        (entry.contentKind == BackupContentKind.full ||
+                            entry.contentKind == BackupContentKind.selective)
+                    ? onRestoreFull
+                    : null,
               ),
               AppButton(
                 label: 'Apagar',
