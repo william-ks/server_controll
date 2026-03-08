@@ -6,9 +6,11 @@ import '../../../components/inputs/app_text_input.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../../models/server_lifecycle_state.dart';
 import '../../maintenance/models/maintenance_defaults.dart';
 import '../../maintenance/models/maintenance_mode.dart';
 import '../../maintenance/providers/maintenance_provider.dart';
+import '../../server/providers/server_runtime_provider.dart';
 
 class MaintenanceModeModal extends ConsumerStatefulWidget {
   const MaintenanceModeModal({super.key});
@@ -19,10 +21,8 @@ class MaintenanceModeModal extends ConsumerStatefulWidget {
 }
 
 class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
-  final TextEditingController _countdownController = TextEditingController();
   final TextEditingController _motdTotalController = TextEditingController();
   final TextEditingController _motdAdminsController = TextEditingController();
-  final TextEditingController _iconPathController = TextEditingController();
   final TextEditingController _adminNicknamesController =
       TextEditingController();
 
@@ -31,10 +31,8 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
 
   @override
   void dispose() {
-    _countdownController.dispose();
     _motdTotalController.dispose();
     _motdAdminsController.dispose();
-    _iconPathController.dispose();
     _adminNicknamesController.dispose();
     super.dispose();
   }
@@ -45,38 +43,136 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
     }
     _initialized = true;
     _mode = state.defaults.defaultMode;
-    _countdownController.text = '${state.defaults.defaultCountdownSeconds}';
     _motdTotalController.text = state.defaults.motdTotal;
     _motdAdminsController.text = state.defaults.motdAdminsOnly;
-    _iconPathController.text = state.defaults.maintenanceIconPath;
     _adminNicknamesController.text = state.defaults.adminNicknames;
   }
 
   Future<void> _saveDefaults() async {
     final notifier = ref.read(maintenanceProvider.notifier);
+    final maintenanceState = ref.read(maintenanceProvider);
     final defaults = MaintenanceDefaults(
       defaultMode: _mode,
-      defaultCountdownSeconds:
-          int.tryParse(_countdownController.text.trim()) ?? 60,
+      defaultCountdownSeconds: maintenanceState.defaults.defaultCountdownSeconds,
       motdTotal: _motdTotalController.text.trim().isEmpty
           ? 'Servidor em manutenção'
           : _motdTotalController.text.trim(),
       motdAdminsOnly: _motdAdminsController.text.trim().isEmpty
           ? 'Servidor em manutenção (somente admins)'
           : _motdAdminsController.text.trim(),
-      maintenanceIconPath: _iconPathController.text.trim(),
+      maintenanceIconPath: maintenanceState.defaults.maintenanceIconPath,
       adminNicknames: _adminNicknamesController.text.trim(),
     );
     await notifier.saveDefaults(defaults);
   }
 
-  Future<void> _activate({required bool withCountdown}) async {
+  Future<void> _activateFlow() async {
     await _saveDefaults();
     final notifier = ref.read(maintenanceProvider.notifier);
-    final countdown = withCountdown
-        ? (int.tryParse(_countdownController.text.trim()) ?? 60)
-        : 0;
+    final maintenanceState = ref.read(maintenanceProvider);
+    final runtime = ref.read(serverRuntimeProvider);
+    var countdown = 0;
+    if (runtime.lifecycle == ServerLifecycleState.online &&
+        runtime.activePlayers > 0) {
+      final useCountdown = await _askCountdownForOnlinePlayers(
+        runtime.activePlayers,
+      );
+      if (useCountdown == null || !mounted) {
+        return;
+      }
+      if (useCountdown) {
+        final seconds = await _askCountdownSeconds(
+          initialValue: maintenanceState.defaults.defaultCountdownSeconds,
+        );
+        if (seconds == null) {
+          return;
+        }
+        countdown = seconds;
+      }
+    }
     await notifier.activateNow(mode: _mode, countdownSeconds: countdown);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  Future<bool?> _askCountdownForOnlinePlayers(int playersCount) {
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => AppModal(
+        icon: Icons.groups_rounded,
+        title: 'Players online detectados',
+        body: Text(
+          'Detecção de jogadores online ($playersCount). Quer usar contagem regressiva antes de ativar a manutenção?',
+        ),
+        actions: [
+          AppButton(
+            label: 'Sem contagem',
+            onPressed: () => Navigator.of(context).pop(false),
+            type: AppButtonType.textButton,
+            variant: AppVariant.info,
+          ),
+          AppButton(
+            label: 'Usar contagem',
+            onPressed: () => Navigator.of(context).pop(true),
+            variant: AppVariant.warning,
+            icon: Icons.timer_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<int?> _askCountdownSeconds({required int initialValue}) async {
+    final controller = TextEditingController(
+      text: initialValue <= 0 ? '60' : '$initialValue',
+    );
+    int? seconds;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final parsed = int.tryParse(controller.text.trim());
+          final hasError = parsed == null || parsed <= 0;
+          return AppModal(
+            icon: Icons.timer_outlined,
+            title: 'Contagem regressiva',
+            body: AppTextInput(
+              controller: controller,
+              label: 'Tempo (segundos)',
+              hint: 'Ex.: 60',
+              keyboardType: TextInputType.number,
+              errorText: hasError ? 'Informe um número inteiro maior que 0.' : null,
+              onChanged: (_) => setModalState(() {}),
+            ),
+            actions: [
+              AppButton(
+                label: 'Cancelar',
+                onPressed: () => Navigator.of(context).pop(false),
+                type: AppButtonType.textButton,
+                variant: AppVariant.danger,
+              ),
+              AppButton(
+                label: 'Confirmar',
+                onPressed: hasError
+                    ? null
+                    : () {
+                        seconds = parsed;
+                        Navigator.of(context).pop(true);
+                      },
+                variant: AppVariant.success,
+                icon: Icons.check_rounded,
+                isDisabled: hasError,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    controller.dispose();
+    if (result == true) {
+      return seconds;
+    }
+    return null;
   }
 
   @override
@@ -110,70 +206,87 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
                 isActive: false,
               ),
             const SizedBox(height: 8),
-            Text(
-              'Modo de acesso',
-              style: Theme.of(
-                context,
-              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 6),
-            AppSelect<MaintenanceMode>(
-              value: _mode,
-              items: const [
-                AppSelectItem(
-                  value: MaintenanceMode.total,
-                  label: 'Manutenção total',
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Modo de acesso',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      AppSelect<MaintenanceMode>(
+                        value: _mode,
+                        items: const [
+                          AppSelectItem(
+                            value: MaintenanceMode.total,
+                            label: 'Manutenção total',
+                          ),
+                          AppSelectItem(
+                            value: MaintenanceMode.adminsOnly,
+                            label: 'Somente admins do app',
+                          ),
+                        ],
+                        onChanged: active
+                            ? null
+                            : (value) {
+                                if (value == null) return;
+                                setState(() => _mode = value);
+                              },
+                      ),
+                    ],
+                  ),
                 ),
-                AppSelectItem(
-                  value: MaintenanceMode.adminsOnly,
-                  label: 'Somente admins do app',
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Admins permitidos',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      AppTextInput(
+                        controller: _adminNicknamesController,
+                        hint: 'Ex.: steve, alex',
+                        enabled: !active,
+                      ),
+                    ],
+                  ),
                 ),
               ],
-              onChanged: active
-                  ? null
-                  : (value) {
-                      if (value == null) return;
-                      setState(() => _mode = value);
-                    },
             ),
-            const SizedBox(height: 12),
-            AppTextInput(
-              controller: _countdownController,
-              label: 'Contagem regressiva (segundos)',
-              hint: 'Ex.: 60',
-              keyboardType: TextInputType.number,
-              enabled: !active,
-            ),
-            const SizedBox(height: 10),
-            AppTextInput(
-              controller: _motdTotalController,
-              label: 'MOTD para manutenção total',
-              hint: 'Ex.: Servidor em manutenção',
-              enabled: !active,
-            ),
-            const SizedBox(height: 10),
-            AppTextInput(
-              controller: _motdAdminsController,
-              label: 'MOTD para modo somente admins',
-              hint: 'Ex.: Somente admins do app',
-              enabled: !active,
-            ),
-            const SizedBox(height: 10),
-            AppTextInput(
-              controller: _iconPathController,
-              label: 'Caminho da imagem para manutenção',
-              hint: r'Ex.: C:\icons\maintenance.png',
-              enabled: !active,
-            ),
-            const SizedBox(height: 10),
-            AppTextInput(
-              controller: _adminNicknamesController,
-              label: 'Admins do app (apelidos separados por vírgula)',
-              hint: 'Ex.: steve, alex',
-              enabled: !active,
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: AppTextInput(
+                    controller: _motdTotalController,
+                    label: 'MOTD para manutenção total',
+                    hint: 'Ex.: Servidor em manutenção',
+                    enabled: !active,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppTextInput(
+                    controller: _motdAdminsController,
+                    label: 'MOTD para modo somente admins',
+                    hint: 'Ex.: Somente admins do app',
+                    enabled: !active,
+                  ),
+                ),
+              ],
             ),
             if (state.error != null) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
               Text(
                 state.error!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -199,20 +312,12 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
           ),
         if (!active)
           AppButton(
-            label: 'Ativar agora',
-            onPressed: () => _activate(withCountdown: false),
+            label: 'Ativar',
+            onPressed: _activateFlow,
             isLoading: state.saving,
             isDisabled: state.saving,
             variant: AppVariant.warning,
             icon: Icons.play_arrow_rounded,
-          ),
-        if (!active)
-          AppButton(
-            label: 'Ativar com contagem',
-            onPressed: () => _activate(withCountdown: true),
-            isDisabled: state.saving,
-            variant: AppVariant.primary,
-            icon: Icons.timer_rounded,
           ),
         if (active)
           AppButton(
