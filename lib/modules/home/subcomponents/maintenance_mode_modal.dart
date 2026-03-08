@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_text_input.dart';
+import '../../../components/modal/app_confirm_dialog.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
@@ -67,26 +68,16 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
   Future<bool?> _askCountdownForOnlinePlayers(int playersCount) {
     return showDialog<bool>(
       context: context,
-      builder: (_) => AppModal(
+      builder: (_) => AppConfirmDialog(
         icon: Icons.groups_rounded,
         title: 'Players online detectados',
-        body: Text(
-          'Detecção de jogadores online ($playersCount). Quer usar contagem regressiva antes de ativar a manutenção?',
-        ),
-        actions: [
-          AppButton(
-            label: 'Sem contagem',
-            onPressed: () => Navigator.of(context).pop(false),
-            type: AppButtonType.textButton,
-            variant: AppVariant.info,
-          ),
-          AppButton(
-            label: 'Usar contagem',
-            onPressed: () => Navigator.of(context).pop(true),
-            variant: AppVariant.warning,
-            icon: Icons.timer_rounded,
-          ),
-        ],
+        message:
+            'Detecção de jogadores online ($playersCount). Quer usar contagem regressiva antes de ativar a manutenção?',
+        cancelLabel: 'Sem contagem',
+        cancelVariant: AppVariant.info,
+        confirmLabel: 'Usar contagem',
+        confirmVariant: AppVariant.warning,
+        confirmIcon: Icons.timer_rounded,
       ),
     );
   }

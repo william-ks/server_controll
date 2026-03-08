@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_text_input.dart';
-import '../../../components/modal/app_modal.dart';
-import '../../../components/shared/app_variant.dart';
+import '../../../components/modal/app_confirm_dialog.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
@@ -75,90 +73,69 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
     }
 
     Future<void> confirmDelete(int id, String nickname) async {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => AppModal(
-          icon: Icons.delete_outline_rounded,
-          title: 'Remover jogador',
-          width: 600,
-          showFooterDivider: false,
-          actionsAlignment: Alignment.center,
-          actionsWrapAlignment: WrapAlignment.center,
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Você está prestes a remover o jogador $nickname da whitelist local impedindo o jogador de se conectar ao servidor, você tem certeza ?',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                ),
+      final confirmed = await showAppConfirmDialog(
+        context,
+        icon: Icons.delete_outline_rounded,
+        title: 'Remover jogador',
+        width: 600,
+        showFooterDivider: false,
+        actionsAlignment: Alignment.center,
+        actionsWrapAlignment: WrapAlignment.center,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Você está prestes a remover o jogador $nickname da whitelist local impedindo o jogador de se conectar ao servidor, você tem certeza ?',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
               ),
-              const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
                   color: Theme.of(
                     context,
-                  ).colorScheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.info_outline_rounded,
-                      size: 14,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Pode ser necessário reiniciar o servidor para ter efeito.',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ).colorScheme.primary.withValues(alpha: 0.25),
                 ),
               ),
-              const SizedBox(height: 18),
-            ],
-          ),
-          actions: [
-            AppButton(
-              label: 'Cancelar',
-              onPressed: () => Navigator.of(context).pop(),
-              type: AppButtonType.textButton,
-              variant: AppVariant.danger,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Pode ser necessário reiniciar o servidor para ter efeito.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            AppButton(
-              label: 'Confirmar',
-              onPressed: () async {
-                await notifier.removePlayer(id);
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                }
-              },
-              variant: AppVariant.success,
-              icon: Icons.check_rounded,
-            ),
+            const SizedBox(height: 18),
           ],
         ),
       );
+      if (confirmed) {
+        await notifier.removePlayer(id);
+      }
     }
 
     final filtered = state.players.where((player) {

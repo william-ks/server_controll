@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
-import '../../../components/modal/app_modal.dart';
+import '../../../components/modal/app_confirm_dialog.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../config/providers/theme_provider.dart';
 import '../../../database/app_database.dart';
@@ -25,58 +25,28 @@ class _AdvancedSettingsTabState extends ConsumerState<AdvancedSettingsTab> {
   bool _isClearing = false;
 
   Future<void> _clearAllData() async {
-    final firstConfirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AppModal(
-        icon: Icons.warning_amber_rounded,
-        title: 'Confirmação necessária',
-        width: 560,
-        body: const Text(
+    final firstConfirm = await showAppConfirmDialog(
+      context,
+      icon: Icons.warning_amber_rounded,
+      title: 'Confirmação necessária',
+      message:
           'Isso vai apagar todos os dados locais do MineControl (configurações, whitelist local e estado persistido). Deseja continuar?',
-        ),
-        actions: [
-          AppButton(
-            label: 'Cancelar',
-            onPressed: () => Navigator.of(context).pop(false),
-            type: AppButtonType.textButton,
-            variant: AppVariant.danger,
-          ),
-          AppButton(
-            label: 'Continuar',
-            onPressed: () => Navigator.of(context).pop(true),
-            variant: AppVariant.warning,
-            icon: Icons.arrow_forward_rounded,
-          ),
-        ],
-      ),
+      confirmLabel: 'Continuar',
+      confirmVariant: AppVariant.warning,
+      confirmIcon: Icons.arrow_forward_rounded,
     );
 
     if (firstConfirm != true || !mounted) return;
 
-    final secondConfirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AppModal(
-        icon: Icons.delete_forever_rounded,
-        title: 'Última confirmação',
-        width: 560,
-        body: const Text(
-          'A operação é irreversível. Confirmar limpeza total agora?',
-        ),
-        actions: [
-          AppButton(
-            label: 'Voltar',
-            onPressed: () => Navigator.of(context).pop(false),
-            type: AppButtonType.textButton,
-            variant: AppVariant.danger,
-          ),
-          AppButton(
-            label: 'Limpar tudo',
-            onPressed: () => Navigator.of(context).pop(true),
-            variant: AppVariant.danger,
-            icon: Icons.delete_forever_rounded,
-          ),
-        ],
-      ),
+    final secondConfirm = await showAppConfirmDialog(
+      context,
+      icon: Icons.delete_forever_rounded,
+      title: 'Última confirmação',
+      message: 'A operação é irreversível. Confirmar limpeza total agora?',
+      cancelLabel: 'Voltar',
+      confirmLabel: 'Limpar tudo',
+      confirmVariant: AppVariant.danger,
+      confirmIcon: Icons.delete_forever_rounded,
     );
 
     if (secondConfirm != true || !mounted) return;

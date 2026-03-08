@@ -9,6 +9,7 @@ import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
+import '../../../components/modal/app_confirm_dialog.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../config/routes/routes_config.dart';
@@ -187,31 +188,12 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
                           onRestoreFull: () =>
                               _runRestoreFlow(ref, entry, fullRestore: true),
                           onDelete: () async {
-                            final confirmed = await showDialog<bool>(
-                              context: context,
-                              builder: (_) => AppModal(
-                                icon: Icons.delete_rounded,
-                                title: 'Remover backup',
-                                body: Text(
+                            final confirmed = await showAppConfirmDialog(
+                              context,
+                              icon: Icons.delete_rounded,
+                              title: 'Remover backup',
+                              message:
                                   'Deseja remover o backup ${entry.name}?',
-                                ),
-                                actions: [
-                                  AppButton(
-                                    label: 'Cancelar',
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(false),
-                                    variant: AppVariant.danger,
-                                    type: AppButtonType.textButton,
-                                  ),
-                                  AppButton(
-                                    label: 'Confirmar',
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(true),
-                                    variant: AppVariant.success,
-                                    icon: Icons.check_rounded,
-                                  ),
-                                ],
-                              ),
                             );
                             if (confirmed == true && mounted) {
                               await notifier.deleteBackup(entry.path);
@@ -282,31 +264,15 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
     required bool fullRestore,
   }) async {
     final label = fullRestore ? 'completa' : 'de mundo';
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AppModal(
-        icon: Icons.restore_page_rounded,
-        title: 'Confirmar restauração $label',
-        body: Text(
-          fullRestore
-              ? 'A restauração completa sobrescreve toda a raiz do servidor. Um backup de segurança será criado antes da operação. Deseja continuar?'
-              : 'A restauração de mundo sobrescreve apenas a pasta do mundo atual. Um backup de segurança será criado antes da operação. Deseja continuar?',
-        ),
-        actions: [
-          AppButton(
-            label: 'Cancelar',
-            onPressed: () => Navigator.of(context).pop(false),
-            type: AppButtonType.textButton,
-            variant: AppVariant.danger,
-          ),
-          AppButton(
-            label: 'Confirmar restauração',
-            onPressed: () => Navigator.of(context).pop(true),
-            variant: AppVariant.warning,
-            icon: Icons.check_rounded,
-          ),
-        ],
-      ),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      icon: Icons.restore_page_rounded,
+      title: 'Confirmar restauração $label',
+      message: fullRestore
+          ? 'A restauração completa sobrescreve toda a raiz do servidor. Um backup de segurança será criado antes da operação. Deseja continuar?'
+          : 'A restauração de mundo sobrescreve apenas a pasta do mundo atual. Um backup de segurança será criado antes da operação. Deseja continuar?',
+      confirmLabel: 'Confirmar restauração',
+      confirmVariant: AppVariant.warning,
     );
     if (confirmed != true || !mounted) {
       return;
@@ -326,29 +292,16 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
     }
 
     if (!mounted) return;
-    final startNow = await showDialog<bool>(
-      context: context,
-      builder: (_) => AppModal(
-        icon: Icons.play_arrow_rounded,
-        title: 'Restauração concluída',
-        body: const Text(
-          'Deseja iniciar o servidor agora ou manter desligado?',
-        ),
-        actions: [
-          AppButton(
-            label: 'Manter desligado',
-            onPressed: () => Navigator.of(context).pop(false),
-            type: AppButtonType.textButton,
-            variant: AppVariant.info,
-          ),
-          AppButton(
-            label: 'Iniciar servidor',
-            onPressed: () => Navigator.of(context).pop(true),
-            variant: AppVariant.success,
-            icon: Icons.play_arrow_rounded,
-          ),
-        ],
-      ),
+    final startNow = await showAppConfirmDialog(
+      context,
+      icon: Icons.play_arrow_rounded,
+      title: 'Restauração concluída',
+      message: 'Deseja iniciar o servidor agora ou manter desligado?',
+      cancelLabel: 'Manter desligado',
+      cancelVariant: AppVariant.info,
+      confirmLabel: 'Iniciar servidor',
+      confirmVariant: AppVariant.success,
+      confirmIcon: Icons.play_arrow_rounded,
     );
 
     if (startNow == true) {
@@ -468,29 +421,13 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
                   return _AppBackupCard(
                     entry: entry,
                     onRestore: () async {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => AppModal(
-                          icon: Icons.restore_page_rounded,
-                          title: 'Restaurar backup do app',
-                          body: const Text(
+                      final confirm = await showAppConfirmDialog(
+                        context,
+                        icon: Icons.restore_page_rounded,
+                        title: 'Restaurar backup do app',
+                        message:
                             'A restauração do app sobrescreve dados administrativos (DB, players, permissões e histórico). Deseja continuar?',
-                          ),
-                          actions: [
-                            AppButton(
-                              label: 'Cancelar',
-                              onPressed: () => Navigator.of(context).pop(false),
-                              type: AppButtonType.textButton,
-                              variant: AppVariant.danger,
-                            ),
-                            AppButton(
-                              label: 'Confirmar',
-                              onPressed: () => Navigator.of(context).pop(true),
-                              variant: AppVariant.warning,
-                              icon: Icons.check_rounded,
-                            ),
-                          ],
-                        ),
+                        confirmVariant: AppVariant.warning,
                       );
                       if (confirm == true) {
                         final strongConfirm = await _confirmAppRestore(entry);
