@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/schedule_action.dart';
+import '../models/schedule_backup_kind.dart';
 import '../models/schedule_item.dart';
 import '../repositories/schedules_repository.dart';
 
@@ -64,6 +65,8 @@ class SchedulesNotifier extends Notifier<SchedulesState> {
     required String cronExpression,
     required ScheduleAction action,
     required bool withBackup,
+    required ScheduleBackupKind backupKind,
+    required List<String> selectiveRootEntries,
   }) async {
     final now = DateTime.now();
     final item = ScheduleItem(
@@ -71,6 +74,8 @@ class SchedulesNotifier extends Notifier<SchedulesState> {
       cronExpression: cronExpression.trim(),
       action: action,
       withBackup: withBackup,
+      backupKind: backupKind,
+      selectiveRootEntries: selectiveRootEntries,
       isActive: true,
       createdAt: now,
       updatedAt: now,

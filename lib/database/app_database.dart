@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 14;
+  static const int _schemaVersion = 15;
   static int get schemaVersion => _schemaVersion;
 
   Database? _db;
@@ -121,6 +121,8 @@ class AppDatabase {
         cron_expression TEXT NOT NULL,
         action TEXT NOT NULL,
         with_backup INTEGER NOT NULL DEFAULT 0,
+        backup_kind TEXT NOT NULL DEFAULT 'full',
+        selective_roots TEXT NOT NULL DEFAULT '[]',
         is_active INTEGER NOT NULL DEFAULT 1,
         last_executed_at TEXT,
         title TEXT NOT NULL DEFAULT '',
@@ -175,6 +177,7 @@ class AppDatabase {
     await _createPlayersDomainTables(db);
     await _createMaintenanceTables(db);
     await _createBackupMetadataTables(db);
+    await _createAutomaticBackupTables(db);
     await _createPermissionTables(db);
     await _createPlayerIdentityTables(db);
     await _createPlayerBanTables(db);
@@ -199,6 +202,18 @@ class AppDatabase {
     );
     await _addColumnIfMissing(
       db,
+      table: 'schedules',
+      column: 'backup_kind',
+      definition: "TEXT NOT NULL DEFAULT 'full'",
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'schedules',
+      column: 'selective_roots',
+      definition: "TEXT NOT NULL DEFAULT '[]'",
+    );
+    await _addColumnIfMissing(
+      db,
       table: 'chunky_tasks',
       column: 'center_x',
       definition: 'INTEGER NOT NULL DEFAULT 0',
@@ -213,6 +228,7 @@ class AppDatabase {
     await _createPlayersDomainTables(db);
     await _createMaintenanceTables(db);
     await _createBackupMetadataTables(db);
+    await _createAutomaticBackupTables(db);
     await _createPermissionTables(db);
     await _createPlayerIdentityTables(db);
     await _createPlayerBanTables(db);
@@ -361,6 +377,29 @@ class AppDatabase {
         created_at TEXT NOT NULL
       )
     ''');
+  }
+
+  Future<void> _createAutomaticBackupTables(dynamic db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS automatic_backup_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        schedule_id INTEGER,
+        schedule_title TEXT,
+        schedule_action TEXT NOT NULL,
+        backup_kind TEXT NOT NULL,
+        attempt_number INTEGER NOT NULL DEFAULT 1,
+        result_status TEXT NOT NULL,
+        message TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_auto_backup_history_created ON automatic_backup_history(created_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_auto_backup_history_status ON automatic_backup_history(result_status, created_at DESC)',
+    );
   }
 
   Future<void> _createPermissionTables(dynamic db) async {

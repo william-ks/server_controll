@@ -3,10 +3,14 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../database/app_database.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../backup/models/backup_config_settings.dart';
+import '../../backup/providers/auto_backup_status_provider.dart';
+import '../../backup/providers/app_backups_provider.dart';
 import '../../backup/providers/backup_config_provider.dart';
 import '../../backup/providers/backups_provider.dart';
+import '../../backup/repositories/automatic_backup_history_repository.dart';
 import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../chunky/models/chunky_execution_status.dart';
@@ -14,6 +18,7 @@ import '../../chunky/providers/chunky_execution_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
 import '../../server/services/minecraft_command_provider.dart';
 import '../models/schedule_action.dart';
+import '../models/schedule_backup_kind.dart';
 import '../models/schedule_item.dart';
 import '../providers/schedules_provider.dart';
 import 'cron_matcher.dart';
@@ -29,10 +34,13 @@ class SchedulesRunnerService {
   SchedulesRunnerService(this._ref);
 
   static const _commands = MinecraftCommandProvider.vanilla;
+  static const _maxBackupAttempts = 3;
+  static const _defaultRetryIntervalSeconds = 10;
   final Ref _ref;
 
   Timer? _tickTimer;
   bool _runningTick = false;
+  bool _automaticBackupInProgress = false;
   final Map<int, String> _lastExecutionKey = {};
   final Map<int, Set<String>> _sentWarnings = {};
 
@@ -120,8 +128,7 @@ class SchedulesRunnerService {
     final chunkyNotifier = _ref.read(chunkyExecutionProvider.notifier);
     final config = _ref.read(configFilesProvider);
     final backupConfig = _ref.read(backupConfigProvider);
-    final backupAllowed = await _isBackupAllowed(backupConfig);
-    final shouldBackup = schedule.withBackup && backupAllowed;
+    final shouldBackup = schedule.withBackup;
 
     try {
       final chunkyState = _ref.read(chunkyExecutionProvider);
@@ -136,20 +143,39 @@ class SchedulesRunnerService {
       switch (schedule.action) {
         case ScheduleAction.startServer:
           if (shouldBackup) {
-            await _runBackup(config.serverPath.trim(), backupConfig);
+            await _sendSaveAllIfNeeded(schedule.backupKind);
+            await _runScheduledBackupWithRetry(
+              schedule: schedule,
+              serverPath: config.serverPath.trim(),
+              backupConfig: backupConfig,
+            );
           }
           await runtimeNotifier.startServer();
         case ScheduleAction.stopServer:
+          if (shouldBackup) {
+            await _sendSaveAllIfNeeded(schedule.backupKind);
+          }
           await runtimeNotifier.stopServer();
           await _waitForOffline();
           if (shouldBackup) {
-            await _runBackup(config.serverPath.trim(), backupConfig);
+            await _runScheduledBackupWithRetry(
+              schedule: schedule,
+              serverPath: config.serverPath.trim(),
+              backupConfig: backupConfig,
+            );
           }
         case ScheduleAction.restartServer:
+          if (shouldBackup) {
+            await _sendSaveAllIfNeeded(schedule.backupKind);
+          }
           await runtimeNotifier.stopServer();
           await _waitForOffline();
           if (shouldBackup) {
-            await _runBackup(config.serverPath.trim(), backupConfig);
+            await _runScheduledBackupWithRetry(
+              schedule: schedule,
+              serverPath: config.serverPath.trim(),
+              backupConfig: backupConfig,
+            );
           }
           await runtimeNotifier.startServer();
       }
@@ -162,7 +188,13 @@ class SchedulesRunnerService {
       if (schedule.id != null) {
         await _ref.read(schedulesProvider.notifier).markExecuted(schedule.id!);
       }
-    } catch (_) {
+    } catch (error) {
+      await _logAutomaticBackup(
+        schedule: schedule,
+        attempt: 0,
+        resultStatus: 'schedule_error',
+        message: _normalizeError(error),
+      );
       // Silent by design for background runner.
     }
   }
@@ -181,23 +213,159 @@ class SchedulesRunnerService {
     }
   }
 
-  Future<void> _runBackup(
-    String serverPath,
-    BackupConfigSettings backupConfig,
-  ) async {
+  Future<void> _runScheduledBackupWithRetry({
+    required ScheduleItem schedule,
+    required String serverPath,
+    required BackupConfigSettings backupConfig,
+  }) async {
+    final statusNotifier = _ref.read(autoBackupStatusProvider.notifier);
+    if (_automaticBackupInProgress) {
+      const message = 'Já existe um backup automático em progresso.';
+      statusNotifier.markFailure(message);
+      await _logAutomaticBackup(
+        schedule: schedule,
+        attempt: 0,
+        resultStatus: 'blocked',
+        message: message,
+      );
+      throw StateError(message);
+    }
+
+    _automaticBackupInProgress = true;
+    statusNotifier.setRunning(true);
+
+    try {
+      for (var attempt = 1; attempt <= _maxBackupAttempts; attempt++) {
+        try {
+          await _executeBackupAttempt(
+            schedule: schedule,
+            serverPath: serverPath,
+            backupConfig: backupConfig,
+          );
+          await _logAutomaticBackup(
+            schedule: schedule,
+            attempt: attempt,
+            resultStatus: 'success',
+            message: 'Backup automático concluído.',
+          );
+          statusNotifier.clearFailure();
+          return;
+        } catch (error) {
+          final message = _normalizeError(error);
+          final isLastAttempt = attempt >= _maxBackupAttempts;
+          await _logAutomaticBackup(
+            schedule: schedule,
+            attempt: attempt,
+            resultStatus: isLastAttempt ? 'error' : 'retry_error',
+            message: message,
+          );
+          if (isLastAttempt) {
+            statusNotifier.markFailure(
+              'Falha no backup automático (${schedule.title.trim().isEmpty ? 'agendamento' : schedule.title}).',
+            );
+            throw StateError(message);
+          }
+          await _waitRetryInterval();
+        }
+      }
+    } finally {
+      _automaticBackupInProgress = false;
+      statusNotifier.setRunning(false);
+    }
+  }
+
+  Future<void> _executeBackupAttempt({
+    required ScheduleItem schedule,
+    required String serverPath,
+    required BackupConfigSettings backupConfig,
+  }) async {
+    final kind = schedule.backupKind;
+    if (kind == ScheduleBackupKind.app) {
+      await _ref.read(appBackupsProvider.notifier).createAutomaticBackup();
+      return;
+    }
+
+    if (!await _isServerBackupAllowed(backupConfig)) {
+      throw StateError(
+        'Backup de servidor indisponível. Verifique Config > Backup.',
+      );
+    }
+
     final service = _ref.read(backupServiceProvider);
+    if (kind == ScheduleBackupKind.selective &&
+        schedule.selectiveRootEntries.isEmpty) {
+      throw StateError(
+        'Backup seletivo automático exige itens raiz configurados.',
+      );
+    }
+
     await service.createBackup(
       serverPath: serverPath,
       config: backupConfig,
       trigger: BackupTriggerType.schedule,
+      kind: kind.backupContentKind,
+      selectiveRootEntries: schedule.selectiveRootEntries,
+      selectiveSummary: schedule.selectiveRootEntries.join(', '),
     );
   }
 
-  Future<bool> _isBackupAllowed(BackupConfigSettings config) async {
+  Future<bool> _isServerBackupAllowed(BackupConfigSettings config) async {
     if (!config.backupsEnabled) return false;
     final path = config.backupPath.trim();
     if (path.isEmpty) return false;
     return Directory(path).existsSync();
+  }
+
+  Future<void> _waitRetryInterval() async {
+    final seconds = await _resolveRetryIntervalSeconds();
+    await Future<void>.delayed(Duration(seconds: seconds));
+  }
+
+  Future<int> _resolveRetryIntervalSeconds() async {
+    final raw = await AppDatabase.instance.getSetting(
+      'auto_backup_retry_interval_seconds',
+    );
+    final value =
+        int.tryParse((raw ?? '').trim()) ?? _defaultRetryIntervalSeconds;
+    if (value < 1) {
+      return _defaultRetryIntervalSeconds;
+    }
+    return value;
+  }
+
+  Future<void> _logAutomaticBackup({
+    required ScheduleItem schedule,
+    required int attempt,
+    required String resultStatus,
+    required String message,
+  }) async {
+    await _ref
+        .read(automaticBackupHistoryRepositoryProvider)
+        .logAttempt(
+          scheduleId: schedule.id,
+          scheduleTitle: schedule.title,
+          scheduleAction: schedule.action.storageValue,
+          backupKind: schedule.backupKind.storageValue,
+          attemptNumber: attempt,
+          resultStatus: resultStatus,
+          message: message,
+        );
+  }
+
+  Future<void> _sendSaveAllIfNeeded(ScheduleBackupKind kind) async {
+    if (!kind.usesWorldState) {
+      return;
+    }
+    final runtime = _ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.online) {
+      return;
+    }
+    final runtimeNotifier = _ref.read(serverRuntimeProvider.notifier);
+    await runtimeNotifier.sendCommand(_commands.saveAll(flush: true));
+  }
+
+  String _normalizeError(Object error) {
+    return error.toString().replaceFirst('Bad state: ', '').trim();
   }
 
   Future<void> _waitForOffline() async {
@@ -214,7 +382,7 @@ class SchedulesRunnerService {
   Future<void> _sendServerMessage(String message) async {
     final runtimeNotifier = _ref.read(serverRuntimeProvider.notifier);
     await runtimeNotifier.sendCommand(
-      _commands.say(message, prefix: '[Server]'),
+      _commands.say(message, prefix: '[SERVER 🤖]'),
     );
   }
 

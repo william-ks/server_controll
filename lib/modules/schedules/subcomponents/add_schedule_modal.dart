@@ -13,6 +13,7 @@ import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../backup/providers/backup_config_provider.dart';
 import '../models/schedule_action.dart';
+import '../models/schedule_backup_kind.dart';
 import '../services/cron_matcher.dart';
 
 class AddScheduleModal extends ConsumerStatefulWidget {
@@ -23,6 +24,8 @@ class AddScheduleModal extends ConsumerStatefulWidget {
     required String cronExpression,
     required ScheduleAction action,
     required bool withBackup,
+    required ScheduleBackupKind backupKind,
+    required List<String> selectiveRootEntries,
   })
   onCreate;
 
@@ -33,17 +36,22 @@ class AddScheduleModal extends ConsumerStatefulWidget {
 class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _cronController = TextEditingController();
+  final TextEditingController _selectiveController = TextEditingController();
 
   ScheduleAction _action = ScheduleAction.restartServer;
+  ScheduleBackupKind _backupKind = ScheduleBackupKind.full;
   bool _withBackup = false;
   bool _saving = false;
   String? _cronError;
   String? _titleError;
+  String? _backupError;
+  String? _selectiveError;
 
   @override
   void dispose() {
     _titleController.dispose();
     _cronController.dispose();
+    _selectiveController.dispose();
     super.dispose();
   }
 
@@ -60,23 +68,49 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
     }
 
     final backupConfig = ref.read(backupConfigProvider);
-    final canEnableBackup =
+    final serverBackupReady =
         backupConfig.backupsEnabled &&
         backupConfig.backupPath.trim().isNotEmpty &&
         Directory(backupConfig.backupPath.trim()).existsSync();
-    final effectiveWithBackup = canEnableBackup && _withBackup;
+    final requiresServerBackup = _backupKind != ScheduleBackupKind.app;
+    final selectiveEntries = _parseSelectiveEntries(_selectiveController.text);
+    final effectiveSelectiveEntries =
+        _withBackup && _backupKind == ScheduleBackupKind.selective
+        ? selectiveEntries
+        : const <String>[];
+
+    if (_withBackup && requiresServerBackup && !serverBackupReady) {
+      setState(() {
+        _backupError =
+            'Backup de servidor indisponível: verifique Config > Backup (ativos + pasta válida).';
+      });
+      return;
+    }
+    if (_withBackup &&
+        _backupKind == ScheduleBackupKind.selective &&
+        selectiveEntries.isEmpty) {
+      setState(() {
+        _selectiveError =
+            'Informe ao menos um item raiz para o backup seletivo.';
+      });
+      return;
+    }
 
     setState(() {
       _saving = true;
       _cronError = null;
       _titleError = null;
+      _backupError = null;
+      _selectiveError = null;
     });
     try {
       await widget.onCreate(
         title: title,
         cronExpression: cron,
         action: _action,
-        withBackup: effectiveWithBackup,
+        withBackup: _withBackup,
+        backupKind: _backupKind,
+        selectiveRootEntries: effectiveSelectiveEntries,
       );
       if (mounted) {
         Navigator.of(context).pop();
@@ -88,15 +122,27 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
     }
   }
 
+  List<String> _parseSelectiveEntries(String raw) {
+    return raw
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final backupConfig = ref.watch(backupConfigProvider);
-    final backupPathOk =
+    final serverBackupReady =
         backupConfig.backupPath.trim().isNotEmpty &&
         Directory(backupConfig.backupPath.trim()).existsSync();
-    final canEnableBackup = backupConfig.backupsEnabled && backupPathOk;
-    final effectiveWithBackup = canEnableBackup ? _withBackup : false;
+    final canUseServerBackup = backupConfig.backupsEnabled && serverBackupReady;
+    final backupKindNeedsServer = _backupKind != ScheduleBackupKind.app;
+    final showServerBackupWarning =
+        _withBackup && backupKindNeedsServer && !canUseServerBackup;
 
     return AppModal(
       icon: Icons.schedule_rounded,
@@ -186,16 +232,98 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
           const SizedBox(height: 14),
           AppSwitchCard(
             label: 'Fazer backup',
-            value: effectiveWithBackup,
-            onChanged: canEnableBackup
-                ? (value) => setState(() => _withBackup = value)
-                : null,
+            value: _withBackup,
+            onChanged: (value) {
+              setState(() {
+                _withBackup = value;
+                if (!value) {
+                  _backupError = null;
+                  _selectiveError = null;
+                }
+              });
+            },
           ),
-          if (!canEnableBackup)
+          if (_withBackup) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Tipo de backup',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w400,
+                color: scheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 6),
+            AppSelect<ScheduleBackupKind>(
+              value: _backupKind,
+              items: const [
+                AppSelectItem(
+                  value: ScheduleBackupKind.full,
+                  label: 'Completo (servidor)',
+                ),
+                AppSelectItem(
+                  value: ScheduleBackupKind.world,
+                  label: 'Mundo (servidor)',
+                ),
+                AppSelectItem(
+                  value: ScheduleBackupKind.selective,
+                  label: 'Seletivo (servidor)',
+                ),
+                AppSelectItem(
+                  value: ScheduleBackupKind.app,
+                  label: 'App (dados administrativos)',
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _backupKind = value;
+                  _backupError = null;
+                  _selectiveError = null;
+                });
+              },
+            ),
+          ],
+          if (_withBackup && _backupKind == ScheduleBackupKind.selective) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Itens raiz para backup seletivo',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w400,
+                color: scheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 6),
+            AppTextInput(
+              controller: _selectiveController,
+              hint: 'Ex.: world, plugins, server.properties',
+              onChanged: (_) {
+                if (_selectiveError != null) {
+                  setState(() => _selectiveError = null);
+                }
+              },
+            ),
+          ],
+          if (showServerBackupWarning)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'Backup indisponível: verifique Config > Backup (ativos + pasta válida).',
+                'Backup de servidor indisponível: verifique Config > Backup (ativos + pasta válida).',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          if (_backupError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _backupError!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          if (_selectiveError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _selectiveError!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
