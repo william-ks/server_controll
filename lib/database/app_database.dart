@@ -8,6 +8,7 @@ class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
   static const int _schemaVersion = 14;
+  static int get schemaVersion => _schemaVersion;
 
   Database? _db;
 
@@ -45,6 +46,20 @@ class AppDatabase {
     return _db!;
   }
 
+  Future<String> resolveDatabasePath() async {
+    final baseDir = await getApplicationSupportDirectory();
+    await baseDir.create(recursive: true);
+    return p.join(baseDir.path, 'minecontrol.db');
+  }
+
+  Future<void> closeConnection() async {
+    final db = _db;
+    if (db != null) {
+      await db.close();
+      _db = null;
+    }
+  }
+
   Future<void> setSetting(String key, String value) async {
     final db = await database;
     await db.insert('app_settings', {
@@ -69,11 +84,7 @@ class AppDatabase {
   }
 
   Future<void> resetDatabase() async {
-    final db = _db;
-    if (db != null) {
-      await db.close();
-      _db = null;
-    }
+    await closeConnection();
 
     final baseDir = await getApplicationSupportDirectory();
     final dbFile = File(p.join(baseDir.path, 'minecontrol.db'));
