@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../components/inputs/app_text_input.dart';
@@ -55,10 +57,38 @@ class _WhitelistAddPlayerFormState extends State<WhitelistAddPlayerForm> {
 
   @override
   Widget build(BuildContext context) {
+    final hasPreview =
+        widget.iconPath != null &&
+        widget.iconPath!.trim().isNotEmpty &&
+        File(widget.iconPath!).existsSync();
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Center(
+          child: CircleAvatar(
+            radius: 34,
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.12),
+            child: hasPreview
+                ? ClipOval(
+                    child: Image.file(
+                      File(widget.iconPath!),
+                      width: 68,
+                      height: 68,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Icon(
+                    Icons.person_rounded,
+                    size: 30,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+          ),
+        ),
+        const SizedBox(height: 12),
         _fieldLabel(context, 'Icone'),
         AppTextInput(
           controller: _iconController,
