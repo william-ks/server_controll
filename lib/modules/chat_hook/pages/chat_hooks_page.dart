@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../config/routes/routes_config.dart';
+import '../../../config/theme/app_colors.dart';
 import '../../../config/theme/app_styles.dart';
+import '../../../config/theme/app_theme_extension.dart';
 import '../../../database/app_database.dart';
 import '../../../layout/default_layout.dart';
 import '../services/chat_command_registry.dart';
@@ -68,46 +70,16 @@ class _ChatHooksPageState extends ConsumerState<ChatHooksPage> {
                 'Hooks cadastrados',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.secondary,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Comandos reconhecidos no chat via prefixo <server>.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Row(
                 children: [
-                  for (final cmd in commands)
-                    Container(
-                      width: 300,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Theme.of(context).dividerColor),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '<server> ${cmd.name}',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(cmd.description),
-                          const SizedBox(height: 6),
-                          Text(
-                            cmd.permission == ChatCommandPermissionPolicy.appAdmin
-                                ? 'Permissão: admin do app'
-                                : 'Permissão: todos',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
+                  for (var i = 0; i < commands.length; i++) ...[
+                    Expanded(child: _HookCommandCard(command: commands[i])),
+                    if (i < commands.length - 1) const SizedBox(width: 12),
+                  ],
                 ],
               ),
               const SizedBox(height: 16),
@@ -194,6 +166,69 @@ class _ChatHooksPageState extends ConsumerState<ChatHooksPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HookCommandCard extends StatelessWidget {
+  const _HookCommandCard({required this.command});
+
+  final ChatCommandDefinition command;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 110),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: ext.cardBackground,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.65)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.hub_rounded, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '<server> ${command.name}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            command.description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            command.permission == ChatCommandPermissionPolicy.appAdmin
+                ? 'Permissão: admin do app'
+                : 'Permissão: todos',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: ext.mutedText,
+            ),
+          ),
+        ],
       ),
     );
   }
