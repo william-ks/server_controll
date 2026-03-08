@@ -40,6 +40,10 @@ class ConfigFilesNotifier extends Notifier<ConfigFilesSettings> {
       settings.autoRestartOnCrash ? '1' : '0',
     );
     await db.setSetting('restart_wait_seconds', settings.restartWaitSeconds);
+    await db.setSetting(
+      'maintenance_icon_default_path',
+      settings.maintenanceIconPath,
+    );
 
     // Backward-compatible keys already used by runtime/service layers
     await db.setSetting('server_dir', settings.serverPath);
@@ -52,6 +56,7 @@ class ConfigFilesNotifier extends Notifier<ConfigFilesSettings> {
       'xmx',
       settings.ramMaxGb.isEmpty ? '' : '${settings.ramMaxGb}G',
     );
+    await db.setSetting('maintenance_icon_path', settings.maintenanceIconPath);
 
     state = settings;
     await ref
@@ -69,6 +74,7 @@ class ConfigFilesNotifier extends Notifier<ConfigFilesSettings> {
             'jvm_args': settings.jvmArgs,
             'auto_restart_on_crash': settings.autoRestartOnCrash,
             'restart_wait_seconds': settings.restartWaitSeconds,
+            'maintenance_icon_default_path': settings.maintenanceIconPath,
           },
           resultStatus: 'success',
         );

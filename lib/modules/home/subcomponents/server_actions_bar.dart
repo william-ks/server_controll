@@ -81,9 +81,7 @@ class ServerActionsBar extends StatelessWidget {
         AppButton(
           label: maintenanceActive ? 'Manutenção (ativa)' : 'Manutenção',
           onPressed: onMaintenance,
-          variant: maintenanceActive
-              ? AppVariant.warning
-              : AppVariant.secondary,
+          variant: AppVariant.warning,
           icon: Icons.build_circle_outlined,
         ),
       ],

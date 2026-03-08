@@ -11,7 +11,7 @@ extension ScheduleBackupKindX on ScheduleBackupKind {
   };
 
   String get label => switch (this) {
-    ScheduleBackupKind.full => 'Completo',
+    ScheduleBackupKind.full => 'Servidor',
     ScheduleBackupKind.world => 'Mundo',
     ScheduleBackupKind.selective => 'Seletivo',
     ScheduleBackupKind.app => 'App',

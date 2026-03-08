@@ -152,6 +152,7 @@ class MaintenanceNotifier extends Notifier<MaintenanceState> {
         _sendCommand,
         'Modo de manutenção desativado. Acesso normal restaurado.',
       );
+      await _restartServerForMaintenanceVisualsIfNeeded();
     } catch (error) {
       state = state.copyWith(saving: false, error: error.toString());
       rethrow;
@@ -221,6 +222,7 @@ class MaintenanceNotifier extends Notifier<MaintenanceState> {
         _sendCommand,
         'Modo de manutenção ativo ($label).',
       );
+      await _restartServerForMaintenanceVisualsIfNeeded();
       await _enforceAccess();
     } catch (error) {
       state = state.copyWith(saving: false, error: error.toString());
@@ -298,5 +300,13 @@ class MaintenanceNotifier extends Notifier<MaintenanceState> {
 
   Future<void> _sendCommand(String command) async {
     await ref.read(serverRuntimeProvider.notifier).sendCommand(command);
+  }
+
+  Future<void> _restartServerForMaintenanceVisualsIfNeeded() async {
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.online) {
+      return;
+    }
+    await ref.read(serverRuntimeProvider.notifier).restartServer();
   }
 }

@@ -10,6 +10,7 @@ class ConfigFilesSettings {
     required this.jvmArgs,
     required this.autoRestartOnCrash,
     required this.restartWaitSeconds,
+    required this.maintenanceIconPath,
   });
 
   final String serverPath;
@@ -20,6 +21,7 @@ class ConfigFilesSettings {
   final String jvmArgs;
   final bool autoRestartOnCrash;
   final String restartWaitSeconds;
+  final String maintenanceIconPath;
 
   factory ConfigFilesSettings.defaults() {
     return const ConfigFilesSettings(
@@ -31,6 +33,7 @@ class ConfigFilesSettings {
       jvmArgs: '',
       autoRestartOnCrash: true,
       restartWaitSeconds: '10',
+      maintenanceIconPath: '',
     );
   }
 
@@ -43,6 +46,10 @@ class ConfigFilesSettings {
     final ramMaxRaw = await db.getSetting('ram_max_gb') ?? _extractGb(await db.getSetting('xmx')) ?? '8';
     final autoRestartRaw = await db.getSetting('auto_restart_on_crash') ?? '1';
     final restartWaitRaw = await db.getSetting('restart_wait_seconds') ?? '10';
+    final maintenanceIconPath =
+        await db.getSetting('maintenance_icon_default_path') ??
+        await db.getSetting('maintenance_icon_path') ??
+        '';
 
     return ConfigFilesSettings(
       serverPath: serverPath,
@@ -53,6 +60,7 @@ class ConfigFilesSettings {
       jvmArgs: jvmArgs,
       autoRestartOnCrash: autoRestartRaw != '0',
       restartWaitSeconds: restartWaitRaw,
+      maintenanceIconPath: maintenanceIconPath,
     );
   }
 

@@ -40,7 +40,7 @@ const serverPropertiesCatalog = <ServerPropertyFieldDefinition>[
     type: ServerPropertyFieldType.integer,
     description: 'Define o número máximo de jogadores simultâneos.',
     defaultValue: '20',
-    minValue: 1,
+    minValue: 0,
     maxValue: 1000,
   ),
   ServerPropertyFieldDefinition(

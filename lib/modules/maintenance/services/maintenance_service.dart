@@ -93,6 +93,9 @@ class MaintenanceService {
   }) async {
     final now = DateTime.now();
     final defaults = await loadDefaults();
+    final maintenanceIconPath = await _resolveMaintenanceIconPath(
+      defaults.maintenanceIconPath,
+    );
     final motdDuring = mode == MaintenanceMode.total
         ? defaults.motdTotal
         : defaults.motdAdminsOnly;
@@ -114,7 +117,7 @@ class MaintenanceService {
       iconBeforePath = await _backupCurrentServerIcon(serverPath.trim());
       iconDuringPath = await _applyMaintenanceIcon(
         serverPath.trim(),
-        defaults.maintenanceIconPath,
+        maintenanceIconPath,
       );
     }
 
@@ -241,6 +244,12 @@ class MaintenanceService {
       values,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  Future<String> _resolveMaintenanceIconPath(String fallback) async {
+    final configured = await _db.getSetting('maintenance_icon_default_path');
+    final candidate = (configured ?? fallback).trim();
+    return candidate;
   }
 
   Future<String?> _backupCurrentServerIcon(String serverPath) async {
