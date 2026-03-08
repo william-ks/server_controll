@@ -17,6 +17,7 @@ class WhitelistPlayerCard extends StatelessWidget {
     required this.isUnbanPending,
     required this.pendingOpsCount,
     required this.canCancelPendingBan,
+    required this.canCancelPendingWhitelistRemoval,
     required this.onToggleAppAdmin,
     required this.onToggleOp,
     required this.onEdit,
@@ -24,6 +25,7 @@ class WhitelistPlayerCard extends StatelessWidget {
     required this.onCancelPendingBan,
     required this.onUnban,
     required this.onRemoveWhitelist,
+    required this.onCancelPendingWhitelistRemoval,
   });
 
   final WhitelistPlayer player;
@@ -35,6 +37,7 @@ class WhitelistPlayerCard extends StatelessWidget {
   final bool isUnbanPending;
   final int pendingOpsCount;
   final bool canCancelPendingBan;
+  final bool canCancelPendingWhitelistRemoval;
   final Future<void> Function(bool value) onToggleAppAdmin;
   final Future<void> Function(bool value) onToggleOp;
   final VoidCallback onEdit;
@@ -42,6 +45,7 @@ class WhitelistPlayerCard extends StatelessWidget {
   final VoidCallback onCancelPendingBan;
   final VoidCallback onUnban;
   final VoidCallback onRemoveWhitelist;
+  final VoidCallback onCancelPendingWhitelistRemoval;
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +194,12 @@ class WhitelistPlayerCard extends StatelessWidget {
                         onBan();
                       }
                     case _PlayerCardAction.removeWhitelist:
-                      onRemoveWhitelist();
+                      if (player.isPendingRemoval &&
+                          canCancelPendingWhitelistRemoval) {
+                        onCancelPendingWhitelistRemoval();
+                      } else {
+                        onRemoveWhitelist();
+                      }
                   }
                 },
                 itemBuilder: (context) => [
@@ -206,9 +215,14 @@ class WhitelistPlayerCard extends StatelessWidget {
                           : (isBanned ? 'Desfazer banimento' : 'Banir'),
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: _PlayerCardAction.removeWhitelist,
-                    child: Text('Remover da whitelist'),
+                    child: Text(
+                      player.isPendingRemoval &&
+                              canCancelPendingWhitelistRemoval
+                          ? 'Cancelar remoção da whitelist'
+                          : 'Remover da whitelist',
+                    ),
                   ),
                 ],
                 child: Icon(
@@ -233,7 +247,9 @@ class WhitelistPlayerCard extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'PENDENTE',
+                player.isPendingRemoval
+                    ? 'REMOCAO PENDENTE'
+                    : 'PENDENTE',
                 style: TextStyle(
                   color: AppColors.warning.withValues(alpha: 0.92),
                   fontWeight: FontWeight.w700,

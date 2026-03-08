@@ -62,8 +62,50 @@ class WhitelistRepository {
 
   Future<List<WhitelistPlayer>> pending() async {
     final db = await AppDatabase.instance.database;
-    final rows = await db.query('whitelist_players', where: 'is_pending = 1');
+    final rows = await db.query(
+      'whitelist_players',
+      where: "is_pending = 1 AND COALESCE(pending_action, 'add') = 'add'",
+    );
     return rows.map(WhitelistPlayer.fromMap).toList();
+  }
+
+  Future<List<WhitelistPlayer>> pendingRemovals() async {
+    final db = await AppDatabase.instance.database;
+    final rows = await db.query(
+      'whitelist_players',
+      where: "is_pending = 1 AND pending_action = 'remove'",
+    );
+    return rows.map(WhitelistPlayer.fromMap).toList();
+  }
+
+  Future<void> markPendingRemoval(int id) async {
+    final db = await AppDatabase.instance.database;
+    await db.update(
+      'whitelist_players',
+      {
+        'is_pending': 1,
+        'pending_action': 'remove',
+        'is_added': 1,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> cancelPendingRemoval(int id) async {
+    final db = await AppDatabase.instance.database;
+    await db.update(
+      'whitelist_players',
+      {
+        'is_pending': 0,
+        'pending_action': null,
+        'is_added': 1,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: "id = ? AND is_pending = 1 AND pending_action = 'remove'",
+      whereArgs: [id],
+    );
   }
 }
 

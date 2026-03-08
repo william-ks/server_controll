@@ -128,11 +128,20 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
       final normalized = <WhitelistPlayer>[];
       for (final player in players) {
         final hasUuid = player.uuid != null && player.uuid!.trim().isNotEmpty;
-        final shouldBePending = !hasUuid || !player.isAdded;
-        if (player.isPending != shouldBePending) {
+          final shouldBePending = !hasUuid || !player.isAdded;
+          final normalizedPending = player.isPendingRemoval
+              ? true
+              : shouldBePending;
+          final normalizedPendingAction = player.isPendingRemoval
+              ? 'remove'
+              : (normalizedPending ? 'add' : null);
+        if (player.isPending != normalizedPending ||
+            player.pendingAction != normalizedPendingAction ||
+            (!player.isPendingRemoval && player.isAdded == normalizedPending)) {
           final patched = player.copyWith(
-            isPending: shouldBePending,
-            isAdded: !shouldBePending,
+            isPending: normalizedPending,
+            pendingAction: normalizedPendingAction,
+            isAdded: player.isPendingRemoval ? true : !normalizedPending,
             updatedAt: DateTime.now(),
           );
           await _repository.upsertByNickname(patched);
@@ -186,6 +195,7 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
       uuid: hasUuid ? uuid.trim() : null,
       iconPath: iconPath,
       isPending: !hasUuid,
+      pendingAction: !hasUuid ? 'add' : null,
       isAdded: hasUuid,
       createdAt: now,
       updatedAt: now,
@@ -224,16 +234,21 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
     required String nickname,
   }) async {
     final runtime = ref.read(serverRuntimeProvider);
-    if (runtime.lifecycle != ServerLifecycleState.online) {
-      throw StateError(
-        'Para remover da whitelist com segurança, o servidor precisa estar online.',
-      );
+    if (runtime.lifecycle == ServerLifecycleState.online) {
+      await ref
+          .read(serverRuntimeProvider.notifier)
+          .sendCommand(_commands.whitelistRemove(nickname));
+      await _repository.delete(id);
+      await load();
+      return;
     }
 
-    await ref
-        .read(serverRuntimeProvider.notifier)
-        .sendCommand(_commands.whitelistRemove(nickname));
-    await _repository.delete(id);
+    await _repository.markPendingRemoval(id);
+    await load();
+  }
+
+  Future<void> cancelPendingWhitelistRemoval({required int id}) async {
+    await _repository.cancelPendingRemoval(id);
     await load();
   }
 

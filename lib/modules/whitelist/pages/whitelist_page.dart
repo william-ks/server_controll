@@ -89,7 +89,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
       final confirmed = await showAppConfirmDialog(
         context,
         icon: Icons.delete_outline_rounded,
-        title: 'Remover da whitelist',
+        title: runtime.lifecycle == ServerLifecycleState.online
+            ? 'Remover da whitelist'
+            : 'Agendar remoção da whitelist',
         width: 600,
         showFooterDivider: false,
         actionsAlignment: Alignment.center,
@@ -131,7 +133,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Este fluxo exige o servidor online para sincronizar a remoção com segurança.',
+                      runtime.lifecycle == ServerLifecycleState.online
+                          ? 'Como o servidor está online, a remoção será aplicada imediatamente.'
+                          : 'Como o servidor está offline, a remoção ficará pendente e será sincronizada com o comando whitelist remove quando o servidor voltar.',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w600,
@@ -148,6 +152,24 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
       );
       if (confirmed) {
         await notifier.removeFromWhitelist(id: id, nickname: nickname);
+      }
+    }
+
+    Future<void> confirmCancelPendingWhitelistRemoval(
+      int id,
+      String nickname,
+    ) async {
+      final confirmed = await showAppConfirmDialog(
+        context,
+        icon: Icons.undo_rounded,
+        title: 'Cancelar remoção pendente',
+        message:
+            'Deseja cancelar a remoção pendente de $nickname da whitelist? Como ela ainda não foi aplicada no servidor, o acesso via whitelist será mantido.',
+        confirmLabel: 'Cancelar remoção',
+        confirmVariant: AppVariant.warning,
+      );
+      if (confirmed) {
+        await notifier.cancelPendingWhitelistRemoval(id: id);
       }
     }
 
@@ -451,6 +473,8 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                                   permissions?.pendingOpsCount ?? 0,
                               canCancelPendingBan:
                                   runtime.lifecycle != ServerLifecycleState.online,
+                              canCancelPendingWhitelistRemoval:
+                                  player.isPendingRemoval,
                               onToggleAppAdmin: (value) async {
                                 try {
                                   await permissionsNotifier.toggleAppAdmin(
@@ -500,6 +524,11 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                                 player.id!,
                                 player.nickname,
                               ),
+                              onCancelPendingWhitelistRemoval: () =>
+                                  confirmCancelPendingWhitelistRemoval(
+                                    player.id!,
+                                    player.nickname,
+                                  ),
                             );
                           },
                         ),

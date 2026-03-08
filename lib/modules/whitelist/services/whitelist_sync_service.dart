@@ -60,13 +60,15 @@ class WhitelistSyncService {
                     uuid: uuid,
                     iconPath: null,
                     isPending: false,
+                    pendingAction: null,
                     isAdded: true,
                     createdAt: now,
                     updatedAt: now,
                   ))
               .copyWith(
                 uuid: uuid ?? existing?.uuid,
-                isPending: false,
+                isPending: existing?.isPendingRemoval ?? false,
+                pendingAction: existing?.isPendingRemoval == true ? 'remove' : null,
                 isAdded: true,
                 updatedAt: now,
               );
@@ -85,12 +87,35 @@ class WhitelistSyncService {
         player.nickname.toLowerCase(),
       );
 
+      if (player.isPendingRemoval) {
+        if (!hasUuidInServerFile && !hasNameInServerFile) {
+          if (player.id != null) {
+            await _repository.delete(player.id!);
+          }
+          continue;
+        }
+
+        if (!player.isPending || !player.isAdded) {
+          await _repository.upsertByNickname(
+            player.copyWith(
+              isPending: true,
+              pendingAction: 'remove',
+              isAdded: true,
+              updatedAt: DateTime.now(),
+            ),
+          );
+        }
+        continue;
+      }
+
       final shouldBePending = !hasUuidInServerFile || !hasNameInServerFile;
       if (player.isPending != shouldBePending ||
-          player.isAdded == shouldBePending) {
+          player.isAdded == shouldBePending ||
+          (player.pendingAction != null && !shouldBePending)) {
         await _repository.upsertByNickname(
           player.copyWith(
             isPending: shouldBePending,
+            pendingAction: shouldBePending ? 'add' : null,
             isAdded: !shouldBePending,
             updatedAt: DateTime.now(),
           ),
@@ -115,10 +140,19 @@ class WhitelistSyncService {
       await _repository.upsertByNickname(
         player.copyWith(
           isPending: false,
+          pendingAction: null,
           isAdded: true,
           updatedAt: DateTime.now(),
         ),
       );
+    }
+
+    final pendingRemovals = await _repository.pendingRemovals();
+    for (final player in pendingRemovals) {
+      await sendCommand(_commands.whitelistRemove(player.nickname));
+      if (player.id != null) {
+        await _repository.delete(player.id!);
+      }
     }
 
     await syncFromServerFile();

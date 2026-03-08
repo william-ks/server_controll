@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 18;
+  static const int _schemaVersion = 19;
   static int get schemaVersion => _schemaVersion;
 
   Database? _db;
@@ -109,6 +109,7 @@ class AppDatabase {
         uuid TEXT,
         icon_path TEXT,
         is_pending INTEGER NOT NULL DEFAULT 1,
+        pending_action TEXT,
         is_added INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -183,6 +184,12 @@ class AppDatabase {
     await _createPermissionTables(db);
     await _createPlayerIdentityTables(db);
     await _createPlayerBanTables(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'whitelist_players',
+      column: 'pending_action',
+      definition: 'TEXT',
+    );
     await _addColumnIfMissing(
       db,
       table: 'players',
