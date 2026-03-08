@@ -12,6 +12,8 @@ abstract class MinecraftCommandProvider {
   String whitelistAdd(String nickname);
   String op(String nickname);
   String deop(String nickname);
+  String ban(String nickname, {String? reason});
+  String pardon(String nickname);
   String gamerulePvp(bool enabled);
   String timeSetDay();
 
@@ -73,6 +75,19 @@ class _VanillaMinecraftCommandProvider extends MinecraftCommandProvider {
 
   @override
   String deop(String nickname) => 'deop ${nickname.trim()}';
+
+  @override
+  String ban(String nickname, {String? reason}) {
+    final safeNickname = nickname.trim();
+    final safeReason = reason?.trim() ?? '';
+    if (safeReason.isEmpty) {
+      return 'ban $safeNickname';
+    }
+    return 'ban $safeNickname $safeReason';
+  }
+
+  @override
+  String pardon(String nickname) => 'pardon ${nickname.trim()}';
 
   @override
   String gamerulePvp(bool enabled) =>

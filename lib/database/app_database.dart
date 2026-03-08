@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 13;
+  static const int _schemaVersion = 14;
 
   Database? _db;
 
@@ -166,6 +166,7 @@ class AppDatabase {
     await _createBackupMetadataTables(db);
     await _createPermissionTables(db);
     await _createPlayerIdentityTables(db);
+    await _createPlayerBanTables(db);
     await _migrateWhitelistIntoPlayers(db);
     await _syncPrimaryIdentityFromPlayers(db);
   }
@@ -203,6 +204,7 @@ class AppDatabase {
     await _createBackupMetadataTables(db);
     await _createPermissionTables(db);
     await _createPlayerIdentityTables(db);
+    await _createPlayerBanTables(db);
 
     await _addColumnIfMissing(
       db,
@@ -232,6 +234,12 @@ class AppDatabase {
       db,
       table: 'players',
       column: 'is_banned',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'player_bans',
+      column: 'pending_ban',
       definition: 'INTEGER NOT NULL DEFAULT 0',
     );
 
@@ -468,6 +476,34 @@ class AppDatabase {
         'updated_at': updatedAt,
       }, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
+  }
+
+  Future<void> _createPlayerBanTables(dynamic db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS player_bans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        reason TEXT,
+        starts_at TEXT NOT NULL,
+        expires_at TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        pending_ban INTEGER NOT NULL DEFAULT 0,
+        pending_unban INTEGER NOT NULL DEFAULT 0,
+        created_by TEXT NOT NULL DEFAULT 'app',
+        removed_by TEXT,
+        removed_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_player_bans_active ON player_bans(player_id, is_active)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_player_bans_expiration ON player_bans(is_active, expires_at)',
+    );
   }
 
   Future<void> _addColumnIfMissing(

@@ -4,12 +4,14 @@ import 'package:intl/intl.dart';
 
 import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_text_input.dart';
+import '../../../components/modal/app_modal.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
 import '../../../layout/default_layout.dart';
 import '../models/player_registry_history_event.dart';
 import '../models/player_registry_item.dart';
+import '../providers/player_ban_provider.dart';
 import '../providers/player_permissions_provider.dart';
 import '../providers/players_registry_provider.dart';
 
@@ -38,6 +40,7 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
     final registryState = ref.watch(playersRegistryProvider);
     final registryNotifier = ref.read(playersRegistryProvider.notifier);
     final permissionsNotifier = ref.read(playerPermissionsProvider.notifier);
+    final banNotifier = ref.read(playerBanProvider.notifier);
 
     final players = _filterPlayers(registryState.players);
     final history = registryState.history.where((event) {
@@ -145,6 +148,29 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
                             );
                           }
                         },
+                        onBanAction: (item) async {
+                          try {
+                            if (item.isBanned) {
+                              await banNotifier.unbanPlayer(
+                                nickname: item.nickname,
+                              );
+                              await registryNotifier.load();
+                              return;
+                            }
+                            final request = await _openBanDialog(item.nickname);
+                            if (request == null) return;
+                            await banNotifier.banPlayer(
+                              nickname: item.nickname,
+                              reason: request.reason,
+                              duration: request.duration,
+                            );
+                            await registryNotifier.load();
+                          } catch (error) {
+                            _showError(
+                              error.toString().replaceFirst('Bad state: ', ''),
+                            );
+                          }
+                        },
                       ),
               ),
             ],
@@ -216,6 +242,7 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
     List<PlayerRegistryItem> players, {
     required Future<void> Function(String nickname, bool value) onToggleAdmin,
     required Future<void> Function(String nickname, bool value) onToggleOp,
+    required Future<void> Function(PlayerRegistryItem item) onBanAction,
   }) {
     if (players.isEmpty) {
       return const Center(
@@ -301,6 +328,14 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
                         ? () => onToggleOp(item.nickname, !item.isOp)
                         : null,
                   ),
+                  AppButton(
+                    label: item.isBanned ? 'Desbanir' : 'Banir',
+                    variant: item.isBanned
+                        ? AppVariant.success
+                        : AppVariant.danger,
+                    transparent: true,
+                    onPressed: () => onBanAction(item),
+                  ),
                 ],
               ),
             ],
@@ -356,6 +391,69 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<_BanRequest?> _openBanDialog(String nickname) async {
+    final reasonController = TextEditingController();
+    final durationController = TextEditingController();
+
+    final result = await showDialog<_BanRequest>(
+      context: context,
+      builder: (context) {
+        return AppModal(
+          icon: Icons.block_rounded,
+          title: 'Banir player: $nickname',
+          width: 560,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppTextInput(
+                controller: reasonController,
+                label: 'Motivo',
+                hint: 'Ex.: griefing',
+              ),
+              const SizedBox(height: 10),
+              AppTextInput(
+                controller: durationController,
+                label: 'Duração em horas (opcional)',
+                hint: 'Vazio = ban permanente',
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            AppButton(
+              label: 'Cancelar',
+              onPressed: () => Navigator.of(context).pop(),
+              type: AppButtonType.textButton,
+              variant: AppVariant.danger,
+            ),
+            AppButton(
+              label: 'Confirmar ban',
+              onPressed: () {
+                final hours = int.tryParse(durationController.text.trim());
+                final duration = (hours == null || hours <= 0)
+                    ? null
+                    : Duration(hours: hours);
+                Navigator.of(context).pop(
+                  _BanRequest(
+                    reason: reasonController.text.trim(),
+                    duration: duration,
+                  ),
+                );
+              },
+              variant: AppVariant.warning,
+              icon: Icons.check_rounded,
+            ),
+          ],
+        );
+      },
+    );
+
+    reasonController.dispose();
+    durationController.dispose();
+    return result;
+  }
+
   Widget _badge(
     BuildContext context, {
     required String label,
@@ -384,4 +482,11 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
       ),
     );
   }
+}
+
+class _BanRequest {
+  const _BanRequest({required this.reason, required this.duration});
+
+  final String reason;
+  final Duration? duration;
 }

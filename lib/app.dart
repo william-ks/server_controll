@@ -8,6 +8,7 @@ import 'config/routes/app_router.dart';
 import 'config/routes/routes_config.dart';
 import 'config/theme/app_theme.dart';
 import 'modules/maintenance/providers/maintenance_provider.dart';
+import 'modules/players/providers/player_ban_provider.dart';
 import 'modules/players/providers/player_permissions_provider.dart';
 import 'modules/players/providers/player_playtime_provider.dart';
 import 'modules/schedules/services/schedules_runner_service.dart';
@@ -52,6 +53,7 @@ class _MineControlAppState extends ConsumerState<MineControlApp> {
     ref.watch(schedulesRunnerProvider);
     ref.watch(playerPlaytimeProvider);
     ref.watch(playerPermissionsProvider);
+    ref.watch(playerBanProvider);
     ref.watch(maintenanceProvider);
 
     return MaterialApp(
