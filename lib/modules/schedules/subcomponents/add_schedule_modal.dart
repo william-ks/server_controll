@@ -265,11 +265,11 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
               ),
               AppSelectItem(
                 value: ScheduleBackupKind.world,
-                label: 'Mundo (servidor)',
+                label: 'Mundo',
               ),
               AppSelectItem(
                 value: ScheduleBackupKind.selective,
-                label: 'Seletivo (servidor)',
+                label: 'Seletivo',
               ),
               AppSelectItem(
                 value: ScheduleBackupKind.app,
