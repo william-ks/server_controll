@@ -183,6 +183,12 @@ class AppDatabase {
     await _createPermissionTables(db);
     await _createPlayerIdentityTables(db);
     await _createPlayerBanTables(db);
+    await _addColumnIfMissing(
+      db,
+      table: 'players',
+      column: 'icon_path',
+      definition: 'TEXT',
+    );
     await _migrateWhitelistIntoPlayers(db);
     await _syncPrimaryIdentityFromPlayers(db);
   }
@@ -544,6 +550,32 @@ class AppDatabase {
       WHERE TRIM(w.nickname) <> ''
     ''');
 
+    final playersInfo = await db.rawQuery('PRAGMA table_info(players)');
+    final hasIconPath = playersInfo.any((row) => row['name'] == 'icon_path');
+    if (hasIconPath) {
+      await db.execute('''
+        UPDATE players
+        SET
+          is_whitelisted = CASE
+            WHEN LOWER(nickname) IN (
+              SELECT LOWER(nickname) FROM whitelist_players WHERE TRIM(nickname) <> ''
+            ) THEN 1
+            ELSE is_whitelisted
+          END,
+          icon_path = COALESCE(
+            icon_path,
+            (
+              SELECT w.icon_path
+              FROM whitelist_players w
+              WHERE LOWER(w.nickname) = LOWER(players.nickname)
+              LIMIT 1
+            )
+          ),
+          updated_at = updated_at
+      ''');
+      return;
+    }
+
     await db.execute('''
       UPDATE players
       SET
@@ -553,15 +585,6 @@ class AppDatabase {
           ) THEN 1
           ELSE is_whitelisted
         END,
-        icon_path = COALESCE(
-          icon_path,
-          (
-            SELECT w.icon_path
-            FROM whitelist_players w
-            WHERE LOWER(w.nickname) = LOWER(players.nickname)
-            LIMIT 1
-          )
-        ),
         updated_at = updated_at
     ''');
   }
