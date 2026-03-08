@@ -6,9 +6,10 @@ import '../../../layout/default_layout.dart';
 import '../subcomponents/advanced_settings_tab.dart';
 import '../subcomponents/backup_settings_tab.dart';
 import '../subcomponents/files_settings_tab.dart';
+import '../subcomponents/maintenance_settings_tab.dart';
 import '../subcomponents/properties_settings_tab.dart';
 
-enum ConfigTab { arquivos, backup, propriedades, avancado }
+enum ConfigTab { arquivos, backup, propriedades, manutencao, avancado }
 
 class ConfigPage extends StatefulWidget {
   const ConfigPage({super.key});
@@ -22,6 +23,7 @@ class _ConfigPageState extends State<ConfigPage> {
   int _filesReloadToken = 0;
   int _backupReloadToken = 0;
   int _propertiesReloadToken = 0;
+  int _maintenanceReloadToken = 0;
 
   void _setTab(ConfigTab tab) {
     if (_active != tab && tab == ConfigTab.arquivos) {
@@ -32,6 +34,9 @@ class _ConfigPageState extends State<ConfigPage> {
     }
     if (_active != tab && tab == ConfigTab.propriedades) {
       _propertiesReloadToken++;
+    }
+    if (_active != tab && tab == ConfigTab.manutencao) {
+      _maintenanceReloadToken++;
     }
     setState(() => _active = tab);
   }
@@ -77,6 +82,11 @@ class _ConfigPageState extends State<ConfigPage> {
                       onTap: () => _setTab(ConfigTab.propriedades),
                     ),
                     _TabChip(
+                      label: 'Manutenção',
+                      active: _active == ConfigTab.manutencao,
+                      onTap: () => _setTab(ConfigTab.manutencao),
+                    ),
+                    _TabChip(
                       label: 'Avançado',
                       active: _active == ConfigTab.avancado,
                       onTap: () => _setTab(ConfigTab.avancado),
@@ -91,6 +101,7 @@ class _ConfigPageState extends State<ConfigPage> {
                   filesReloadToken: _filesReloadToken,
                   backupReloadToken: _backupReloadToken,
                   propertiesReloadToken: _propertiesReloadToken,
+                  maintenanceReloadToken: _maintenanceReloadToken,
                 ),
               ),
             ],
@@ -148,12 +159,14 @@ class _TabContent extends StatelessWidget {
     required this.filesReloadToken,
     required this.backupReloadToken,
     required this.propertiesReloadToken,
+    required this.maintenanceReloadToken,
   });
 
   final ConfigTab tab;
   final int filesReloadToken;
   final int backupReloadToken;
   final int propertiesReloadToken;
+  final int maintenanceReloadToken;
 
   @override
   Widget build(BuildContext context) {
@@ -166,6 +179,9 @@ class _TabContent extends StatelessWidget {
       ),
       ConfigTab.propriedades => PropertiesSettingsTab(
         key: ValueKey('properties-$propertiesReloadToken'),
+      ),
+      ConfigTab.manutencao => MaintenanceSettingsTab(
+        key: ValueKey('maintenance-$maintenanceReloadToken'),
       ),
       ConfigTab.avancado => const AdvancedSettingsTab(),
     };

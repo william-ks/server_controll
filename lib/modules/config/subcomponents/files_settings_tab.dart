@@ -1,14 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../../../components/badges/app_badge.dart';
-import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/shared/app_variant.dart';
@@ -31,8 +28,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
   final TextEditingController _javaCommandController = TextEditingController();
   final TextEditingController _jvmArgsController = TextEditingController();
   final TextEditingController _restartWaitController = TextEditingController();
-  final TextEditingController _maintenanceIconPathController =
-      TextEditingController();
 
   Timer? _pathDebounce;
   Timer? _fileDebounce;
@@ -45,7 +40,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
   bool _isLoading = true;
   bool _isSaving = false;
   bool _autoRestartOnCrash = true;
-  bool _maintenanceIconPathExists = false;
   String? _ramError;
   String? _restartError;
   String? _initialSnapshot;
@@ -59,7 +53,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     _ramMinController.addListener(_onRamChanged);
     _ramMaxController.addListener(_onRamChanged);
     _restartWaitController.addListener(_onRestartWaitChanged);
-    _maintenanceIconPathController.addListener(_onMaintenanceIconPathChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadFromProvider(refresh: true);
@@ -78,7 +71,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     _javaCommandController.dispose();
     _jvmArgsController.dispose();
     _restartWaitController.dispose();
-    _maintenanceIconPathController.dispose();
     super.dispose();
   }
 
@@ -95,7 +87,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     await _validateJavaCommand();
     _validateRam();
     _validateRestartWait();
-    await _validateMaintenanceIconPath();
     _initialSnapshot = _snapshot();
 
     if (mounted) {
@@ -112,7 +103,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     _ramMaxController.text = settings.ramMaxGb;
     _autoRestartOnCrash = settings.autoRestartOnCrash;
     _restartWaitController.text = settings.restartWaitSeconds;
-    _maintenanceIconPathController.text = settings.maintenanceIconPath;
   }
 
   Future<void> _validatePath() async {
@@ -219,16 +209,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     setState(() {});
   }
 
-  void _onMaintenanceIconPathChanged() {
-    _pathDebounce?.cancel();
-    _pathDebounce = Timer(const Duration(milliseconds: 320), () async {
-      await _validateMaintenanceIconPath();
-      if (mounted) {
-        setState(() {});
-      }
-    });
-  }
-
   void _validateRam() {
     final min = int.tryParse(_ramMinController.text.trim());
     final max = int.tryParse(_ramMaxController.text.trim());
@@ -270,23 +250,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
     _restartError = null;
   }
 
-  Future<void> _validateMaintenanceIconPath() async {
-    final path = _maintenanceIconPathController.text.trim();
-    if (path.isEmpty) {
-      if (mounted) {
-        setState(() => _maintenanceIconPathExists = false);
-      } else {
-        _maintenanceIconPathExists = false;
-      }
-      return;
-    }
-
-    final exists = await File(path).exists();
-    if (mounted) {
-      setState(() => _maintenanceIconPathExists = exists);
-    }
-  }
-
   String _snapshot() {
     return [
       _serverPathController.text.trim(),
@@ -297,7 +260,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
       _jvmArgsController.text.trim(),
       _autoRestartOnCrash ? '1' : '0',
       _restartWaitController.text.trim(),
-      _maintenanceIconPathController.text.trim(),
     ].join('|');
   }
 
@@ -315,9 +277,7 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
         _pathExists &&
         _fileExists &&
         _javaAvailable == true &&
-        _ramError == null &&
-        (_maintenanceIconPathController.text.trim().isEmpty ||
-            _maintenanceIconPathExists);
+        _ramError == null;
   }
 
   ConfigFilesSettings _toSettings() {
@@ -340,39 +300,8 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
       jvmArgs: _jvmArgsController.text.trim(),
       autoRestartOnCrash: _autoRestartOnCrash,
       restartWaitSeconds: restartWait,
-      maintenanceIconPath: _maintenanceIconPathController.text.trim(),
+      maintenanceIconPath: ref.read(configFilesProvider).maintenanceIconPath,
     );
-  }
-
-  Future<void> _pickMaintenanceIconFile() async {
-    final picked = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Selecione imagem padrão de manutenção',
-      type: FileType.custom,
-      allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
-    );
-    if (picked == null ||
-        picked.files.isEmpty ||
-        picked.files.single.path == null) {
-      return;
-    }
-    final sourcePath = picked.files.single.path!;
-    final sourceFile = File(sourcePath);
-    if (!sourceFile.existsSync()) {
-      return;
-    }
-
-    final appDir = await getApplicationSupportDirectory();
-    final targetDir = Directory(p.join(appDir.path, 'maintenance_assets'));
-    await targetDir.create(recursive: true);
-    final extension = p.extension(sourcePath).toLowerCase();
-    final safeExt = extension.isEmpty ? '.png' : extension;
-    final targetPath = p.join(targetDir.path, 'maintenance_default$safeExt');
-    await sourceFile.copy(targetPath);
-    _maintenanceIconPathController.text = targetPath;
-    await _validateMaintenanceIconPath();
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   Future<void> _save() async {
@@ -609,39 +538,6 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 22),
-                _sectionTitle('Manutenção'),
-                _fieldLabel('Imagem padrão para modo manutenção:'),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppTextInput(
-                        controller: _maintenanceIconPathController,
-                        hint: r'Ex.: C:\icons\maintenance.png',
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    AppButton(
-                      label: 'Selecionar arquivo',
-                      icon: Icons.upload_file_rounded,
-                      variant: AppVariant.info,
-                      onPressed: _pickMaintenanceIconFile,
-                    ),
-                  ],
-                ),
-                if (_maintenanceIconPathController.text.trim().isNotEmpty)
-                  _validationBadge(
-                    text: _maintenanceIconPathExists
-                        ? 'ARQUIVO ENCONTRADO'
-                        : 'ARQUIVO NÃO ENCONTRADO',
-                    variant: _maintenanceIconPathExists
-                        ? AppVariant.success
-                        : AppVariant.danger,
-                    icon: _maintenanceIconPathExists
-                        ? Icons.check_circle_outline_rounded
-                        : Icons.close_rounded,
-                  ),
                 const SizedBox(height: 12),
               ],
             ),
@@ -657,7 +553,7 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
               !_isSaving,
           saveLoading: _isSaving,
           helperText: _isDirty && !_hasValidPreconditions
-              ? 'Para salvar: preencha Path, File Server e Java; valide path/jar/java; mantenha RAM valida (min <= max); e use caminho de imagem válido quando informado.'
+              ? 'Para salvar: preencha Path, File Server e Java; valide path/jar/java; e mantenha RAM valida (min <= max).'
               : null,
         ),
       ],
