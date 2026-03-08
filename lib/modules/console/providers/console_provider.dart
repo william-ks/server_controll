@@ -67,6 +67,14 @@ class ConsoleNotifier extends Notifier<ConsoleState> {
     state = state.copyWith(entries: const []);
   }
 
+  void appendSystemMessage(String message) {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    _append(ConsoleEntrySource.system, trimmed);
+  }
+
   void _append(ConsoleEntrySource source, String message) {
     final next = List<ConsoleEntry>.from(state.entries)
       ..add(

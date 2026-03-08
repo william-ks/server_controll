@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/server_lifecycle_state.dart';
 import '../../../models/server_runtime_state.dart';
+import '../../chat_hook/services/chat_hook_service.dart';
 import '../services/minecraft_command_provider.dart';
 import '../services/server_log_parser.dart';
 import '../services/server_process_service.dart';
@@ -129,6 +130,8 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
   }
 
   void _handleStdout(String line) {
+    unawaited(ref.read(chatHookServiceProvider).processStdoutLine(line));
+
     if (ServerLogParser.isServerReady(line)) {
       final readyAt = DateTime.now();
       state = state.copyWith(

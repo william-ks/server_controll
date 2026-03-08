@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 15;
+  static const int _schemaVersion = 16;
   static int get schemaVersion => _schemaVersion;
 
   Database? _db;
@@ -178,6 +178,7 @@ class AppDatabase {
     await _createMaintenanceTables(db);
     await _createBackupMetadataTables(db);
     await _createAutomaticBackupTables(db);
+    await _createChatHookTables(db);
     await _createPermissionTables(db);
     await _createPlayerIdentityTables(db);
     await _createPlayerBanTables(db);
@@ -229,6 +230,7 @@ class AppDatabase {
     await _createMaintenanceTables(db);
     await _createBackupMetadataTables(db);
     await _createAutomaticBackupTables(db);
+    await _createChatHookTables(db);
     await _createPermissionTables(db);
     await _createPlayerIdentityTables(db);
     await _createPlayerBanTables(db);
@@ -399,6 +401,28 @@ class AppDatabase {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_auto_backup_history_status ON automatic_backup_history(result_status, created_at DESC)',
+    );
+  }
+
+  Future<void> _createChatHookTables(dynamic db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_hook_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player TEXT NOT NULL,
+        raw_command TEXT NOT NULL,
+        parsed_command TEXT,
+        parsed_args TEXT NOT NULL DEFAULT '[]',
+        permission_applied TEXT NOT NULL,
+        result_status TEXT NOT NULL,
+        result_message TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_chat_hook_history_created ON chat_hook_history(created_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_chat_hook_history_player ON chat_hook_history(LOWER(player), created_at DESC)',
     );
   }
 
