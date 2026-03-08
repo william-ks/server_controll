@@ -5,6 +5,7 @@ import '../../modules/config/pages/config_page.dart';
 import '../../modules/console/pages/console_page.dart';
 import '../../modules/home/pages/home_page.dart';
 import '../../modules/backup/pages/backups_page.dart';
+import '../../modules/audit/pages/audit_page.dart';
 import '../../modules/schedules/pages/schedules_page.dart';
 import '../../modules/players/pages/players_page.dart';
 import '../../modules/whitelist/pages/whitelist_page.dart';
@@ -34,6 +35,7 @@ class AppRoutes {
   static const whitelist = '/whitelist';
   static const schedules = '/schedules';
   static const backups = '/backups';
+  static const audit = '/audit';
   static const chunky = '/chunky';
   static const config = '/config';
 
@@ -74,6 +76,12 @@ class AppRoutes {
       label: 'Backups',
       icon: Icons.backup_table_rounded,
       builder: (_) => const BackupsPage(),
+    ),
+    RouteDefinition(
+      path: audit,
+      label: 'Auditoria',
+      icon: Icons.fact_check_rounded,
+      builder: (_) => const AuditPage(),
     ),
     RouteDefinition(
       path: chunky,

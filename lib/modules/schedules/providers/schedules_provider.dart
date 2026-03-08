@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../audit/services/audit_service.dart';
 import '../models/schedule_action.dart';
 import '../models/schedule_backup_kind.dart';
 import '../models/schedule_item.dart';
@@ -82,6 +83,23 @@ class SchedulesNotifier extends Notifier<SchedulesState> {
     );
     await _repository.insert(item);
     await load();
+    await ref
+        .read(auditServiceProvider)
+        .logEvent(
+          eventType: 'admin.schedule',
+          entityType: 'schedule',
+          actorType: 'app_operator',
+          payload: {
+            'action': 'create',
+            'title': title,
+            'cron_expression': cronExpression,
+            'schedule_action': action.storageValue,
+            'with_backup': withBackup,
+            'backup_kind': backupKind.storageValue,
+            'selective_entries': selectiveRootEntries,
+          },
+          resultStatus: 'success',
+        );
   }
 
   Future<void> setActive({
@@ -116,5 +134,15 @@ class SchedulesNotifier extends Notifier<SchedulesState> {
   Future<void> delete(int id) async {
     await _repository.delete(id);
     await load();
+    await ref
+        .read(auditServiceProvider)
+        .logEvent(
+          eventType: 'admin.schedule',
+          entityType: 'schedule',
+          entityId: '$id',
+          actorType: 'app_operator',
+          payload: {'action': 'delete', 'id': id},
+          resultStatus: 'success',
+        );
   }
 }

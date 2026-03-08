@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/server_lifecycle_state.dart';
 import '../../../models/server_runtime_state.dart';
+import '../../audit/services/audit_service.dart';
 import '../../server/providers/server_runtime_provider.dart';
 import '../../server/services/minecraft_command_provider.dart';
 import '../repositories/player_ban_repository.dart';
@@ -77,18 +78,57 @@ class PlayerBanNotifier extends Notifier<PlayerBanState> {
   }) async {
     final runtime = ref.read(serverRuntimeProvider);
     final online = runtime.lifecycle == ServerLifecycleState.online;
-    await _repository.banPlayer(
-      nickname: nickname,
-      reason: reason,
-      pendingBan: !online,
-      duration: duration,
-      createdBy: actor,
-    );
+    try {
+      await _repository.banPlayer(
+        nickname: nickname,
+        reason: reason,
+        pendingBan: !online,
+        duration: duration,
+        createdBy: actor,
+      );
 
-    if (online) {
+      if (online) {
+        await ref
+            .read(serverRuntimeProvider.notifier)
+            .sendCommand(_commands.ban(nickname, reason: reason));
+      }
       await ref
-          .read(serverRuntimeProvider.notifier)
-          .sendCommand(_commands.ban(nickname, reason: reason));
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'ban.change',
+            entityType: 'player',
+            entityId: nickname.trim().toLowerCase(),
+            actorType: 'app_operator',
+            actorId: actor,
+            payload: {
+              'action': 'ban',
+              'nickname': nickname,
+              'reason': reason,
+              'duration_seconds': duration?.inSeconds,
+              'online': online,
+            },
+            resultStatus: 'success',
+          );
+    } catch (error) {
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'ban.change',
+            entityType: 'player',
+            entityId: nickname.trim().toLowerCase(),
+            actorType: 'app_operator',
+            actorId: actor,
+            payload: {
+              'action': 'ban',
+              'nickname': nickname,
+              'reason': reason,
+              'duration_seconds': duration?.inSeconds,
+              'online': online,
+              'error': error.toString(),
+            },
+            resultStatus: 'error',
+          );
+      rethrow;
     }
   }
 
@@ -98,15 +138,50 @@ class PlayerBanNotifier extends Notifier<PlayerBanState> {
   }) async {
     final runtime = ref.read(serverRuntimeProvider);
     final online = runtime.lifecycle == ServerLifecycleState.online;
-    await _repository.unbanPlayer(
-      nickname: nickname,
-      removedBy: actor,
-      pendingUnban: !online,
-    );
-    if (online) {
+    try {
+      await _repository.unbanPlayer(
+        nickname: nickname,
+        removedBy: actor,
+        pendingUnban: !online,
+      );
+      if (online) {
+        await ref
+            .read(serverRuntimeProvider.notifier)
+            .sendCommand(_commands.pardon(nickname));
+      }
       await ref
-          .read(serverRuntimeProvider.notifier)
-          .sendCommand(_commands.pardon(nickname));
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'ban.change',
+            entityType: 'player',
+            entityId: nickname.trim().toLowerCase(),
+            actorType: 'app_operator',
+            actorId: actor,
+            payload: {
+              'action': 'unban',
+              'nickname': nickname,
+              'online': online,
+            },
+            resultStatus: 'success',
+          );
+    } catch (error) {
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'ban.change',
+            entityType: 'player',
+            entityId: nickname.trim().toLowerCase(),
+            actorType: 'app_operator',
+            actorId: actor,
+            payload: {
+              'action': 'unban',
+              'nickname': nickname,
+              'online': online,
+              'error': error.toString(),
+            },
+            resultStatus: 'error',
+          );
+      rethrow;
     }
   }
 

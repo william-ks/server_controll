@@ -7,6 +7,7 @@ import 'config/providers/theme_provider.dart';
 import 'config/routes/app_router.dart';
 import 'config/routes/routes_config.dart';
 import 'config/theme/app_theme.dart';
+import 'modules/audit/services/audit_service.dart';
 import 'modules/maintenance/providers/maintenance_provider.dart';
 import 'modules/players/providers/player_ban_provider.dart';
 import 'modules/players/providers/player_permissions_provider.dart';
@@ -28,6 +29,17 @@ class _MineControlAppState extends ConsumerState<MineControlApp> {
   @override
   void initState() {
     super.initState();
+    Future<void>(() async {
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'app.update',
+            entityType: 'application',
+            actorType: 'system',
+            payload: {'status': 'not_checked'},
+            resultStatus: 'info',
+          );
+    });
     _lifecycleListener = AppLifecycleListener(
       onExitRequested: () async {
         if (_shutdownRequested) return AppExitResponse.exit;

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../audit/services/audit_service.dart';
 import '../../../database/app_database.dart';
 import '../models/app_backup_settings.dart';
 
@@ -32,5 +33,18 @@ class AppBackupSettingsNotifier extends Notifier<AppBackupSettings> {
     );
     await db.setSetting('app_backup_cron', settings.cronExpression);
     state = settings;
+    await ref
+        .read(auditServiceProvider)
+        .logEvent(
+          eventType: 'config.change',
+          entityType: 'app_backup_config',
+          actorType: 'app_operator',
+          payload: {
+            'backup_path': settings.backupPath,
+            'auto_enabled': settings.autoEnabled,
+            'cron_expression': settings.cronExpression,
+          },
+          resultStatus: 'success',
+        );
   }
 }

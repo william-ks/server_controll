@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../audit/services/audit_service.dart';
 import '../../../database/app_database.dart';
 import '../models/config_properties_settings.dart';
 import '../services/server_properties_service.dart';
@@ -51,6 +52,26 @@ class ConfigPropertiesNotifier extends Notifier<ConfigPropertiesSettings> {
       settings.simulationDistance,
     );
     state = settings;
+    await ref
+        .read(auditServiceProvider)
+        .logEvent(
+          eventType: 'config.change',
+          entityType: 'server_properties_config',
+          actorType: 'app_operator',
+          payload: {
+            'server_name': settings.serverName,
+            'description': settings.description,
+            'seed': settings.seed,
+            'hardcore': settings.hardcore,
+            'game_mode': settings.gameMode,
+            'max_players': settings.maxPlayers,
+            'pvp': settings.pvp,
+            'whitelist': settings.whitelist,
+            'view_distance': settings.viewDistance,
+            'simulation_distance': settings.simulationDistance,
+          },
+          resultStatus: 'success',
+        );
   }
 
   Future<void> saveEverywhere({

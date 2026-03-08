@@ -14,7 +14,7 @@
 - [x] [Task 11 - Backup dos Dados do Aplicativo](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_11.md)
 - [x] [Task 12 - Fluxo de Backup Automatico](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_12.md)
 - [x] [Task 13 - Hook de Chat para Comandos do Servidor](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_13.md)
-- [ ] [Task 14 - Auditoria e Historico do Sistema](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_14.md)
+- [x] [Task 14 - Auditoria e Historico do Sistema](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_14.md)
 - [ ] [Task 15 - Ajustes de UI e UX Estruturais](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_15.md)
 
 ## Tutorial - como resolver 1 task

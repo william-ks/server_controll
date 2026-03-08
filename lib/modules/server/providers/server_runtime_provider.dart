@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/server_lifecycle_state.dart';
 import '../../../models/server_runtime_state.dart';
+import '../../audit/services/audit_service.dart';
 import '../../chat_hook/services/chat_hook_service.dart';
 import '../services/minecraft_command_provider.dart';
 import '../services/server_log_parser.dart';
@@ -79,12 +80,30 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
 
     try {
       await _service.start();
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'lifecycle.start',
+            entityType: 'server',
+            actorType: 'system',
+            payload: {'source': 'ui_or_automation'},
+            resultStatus: 'success',
+          );
     } catch (error) {
       _uptimeTimer?.cancel();
       state = state.copyWith(
         lifecycle: ServerLifecycleState.error,
         lastError: error.toString(),
       );
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'lifecycle.start',
+            entityType: 'server',
+            actorType: 'system',
+            payload: {'error': error.toString()},
+            resultStatus: 'error',
+          );
     }
   }
 
@@ -95,7 +114,29 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
       return;
     }
     state = state.copyWith(lifecycle: ServerLifecycleState.stopping);
-    await _service.stop();
+    try {
+      await _service.stop();
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'lifecycle.stop',
+            entityType: 'server',
+            actorType: 'system',
+            payload: {'source': 'ui_or_automation'},
+            resultStatus: 'success',
+          );
+    } catch (error) {
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'lifecycle.stop',
+            entityType: 'server',
+            actorType: 'system',
+            payload: {'error': error.toString()},
+            resultStatus: 'error',
+          );
+      rethrow;
+    }
   }
 
   Future<void> restartServer() async {
@@ -106,14 +147,36 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
       lifecycle: ServerLifecycleState.restarting,
       uptime: Duration.zero,
     );
-    await _service.restart();
-    state = state.copyWith(
-      lifecycle: ServerLifecycleState.starting,
-      startedAt: DateTime.now(),
-      readyAt: null,
-      onlinePlayers: const [],
-      activePlayers: 0,
-    );
+    try {
+      await _service.restart();
+      state = state.copyWith(
+        lifecycle: ServerLifecycleState.starting,
+        startedAt: DateTime.now(),
+        readyAt: null,
+        onlinePlayers: const [],
+        activePlayers: 0,
+      );
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'lifecycle.restart',
+            entityType: 'server',
+            actorType: 'system',
+            payload: {'source': 'ui_or_automation'},
+            resultStatus: 'success',
+          );
+    } catch (error) {
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'lifecycle.restart',
+            entityType: 'server',
+            actorType: 'system',
+            payload: {'error': error.toString()},
+            resultStatus: 'error',
+          );
+      rethrow;
+    }
   }
 
   Future<void> sendCommand(String command) async {
@@ -196,6 +259,17 @@ class ServerRuntimeNotifier extends Notifier<ServerRuntimeState> {
       readyAt: null,
       lastError: code == 0 ? null : 'Process exited with code $code',
       clearError: code == 0,
+    );
+    unawaited(
+      ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'lifecycle.exit',
+            entityType: 'server',
+            actorType: 'system',
+            payload: {'exit_code': code},
+            resultStatus: code == 0 ? 'success' : 'error',
+          ),
     );
   }
 

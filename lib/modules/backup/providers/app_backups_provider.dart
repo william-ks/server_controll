@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../audit/services/audit_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../maintenance/providers/maintenance_provider.dart';
 import '../../players/providers/player_ban_provider.dart';
@@ -80,8 +81,26 @@ class AppBackupsNotifier extends Notifier<AppBackupsState> {
       await _service.createAppBackup(automatic: false);
       await load();
       state = state.copyWith(running: false);
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.manual',
+            entityType: 'app_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'app'},
+            resultStatus: 'success',
+          );
     } catch (error) {
       state = state.copyWith(running: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.manual',
+            entityType: 'app_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'app', 'error': error.toString()},
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }
@@ -92,8 +111,26 @@ class AppBackupsNotifier extends Notifier<AppBackupsState> {
       await _service.createAppBackup(automatic: true);
       await load();
       state = state.copyWith(running: false);
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.automatic',
+            entityType: 'app_backup',
+            actorType: 'schedule',
+            payload: {'kind': 'app'},
+            resultStatus: 'success',
+          );
     } catch (error) {
       state = state.copyWith(running: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.automatic',
+            entityType: 'app_backup',
+            actorType: 'schedule',
+            payload: {'kind': 'app', 'error': error.toString()},
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }
@@ -104,8 +141,26 @@ class AppBackupsNotifier extends Notifier<AppBackupsState> {
       await _service.importAppBackup(sourceZipPath);
       await load();
       state = state.copyWith(running: false);
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.import',
+            entityType: 'app_backup',
+            actorType: 'app_operator',
+            payload: {'source_path': sourceZipPath},
+            resultStatus: 'success',
+          );
     } catch (error) {
       state = state.copyWith(running: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.import',
+            entityType: 'app_backup',
+            actorType: 'app_operator',
+            payload: {'source_path': sourceZipPath, 'error': error.toString()},
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }
@@ -121,9 +176,34 @@ class AppBackupsNotifier extends Notifier<AppBackupsState> {
         destinationPath: destinationPath,
       );
       state = state.copyWith(running: false);
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.export',
+            entityType: 'app_backup',
+            actorType: 'app_operator',
+            payload: {
+              'backup_path': backupPath,
+              'destination': destinationPath,
+            },
+            resultStatus: 'success',
+          );
       return path;
     } catch (error) {
       state = state.copyWith(running: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.export',
+            entityType: 'app_backup',
+            actorType: 'app_operator',
+            payload: {
+              'backup_path': backupPath,
+              'destination': destinationPath,
+              'error': error.toString(),
+            },
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }
@@ -135,8 +215,26 @@ class AppBackupsNotifier extends Notifier<AppBackupsState> {
       _reloadPostRestoreProviders();
       await load();
       state = state.copyWith(running: false);
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.restore',
+            entityType: 'app_backup',
+            actorType: 'app_operator',
+            payload: {'backup_path': backupPath},
+            resultStatus: 'success',
+          );
     } catch (error) {
       state = state.copyWith(running: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.restore',
+            entityType: 'app_backup',
+            actorType: 'app_operator',
+            payload: {'backup_path': backupPath, 'error': error.toString()},
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }

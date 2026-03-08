@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/server_lifecycle_state.dart';
 import '../../../models/server_runtime_state.dart';
+import '../../audit/services/audit_service.dart';
 import '../../server/providers/server_runtime_provider.dart';
 import '../../server/services/minecraft_command_provider.dart';
 import '../models/player_permission_status.dart';
@@ -113,39 +114,104 @@ class PlayerPermissionsNotifier extends Notifier<PlayerPermissionsState> {
     final runtime = ref.read(serverRuntimeProvider);
     final key = nickname.trim().toLowerCase();
     final current = state.statusByNickname[key];
-
-    await _repository.setAppAdmin(nickname, enabled);
-    if (!enabled && (current?.isOp ?? false)) {
-      if (runtime.lifecycle == ServerLifecycleState.online) {
-        await ref
-            .read(serverRuntimeProvider.notifier)
-            .sendCommand(_commands.deop(nickname));
-      } else {
-        await _repository.enqueuePendingOpAction(
-          nickname: nickname,
-          promote: false,
-        );
+    try {
+      await _repository.setAppAdmin(nickname, enabled);
+      if (!enabled && (current?.isOp ?? false)) {
+        if (runtime.lifecycle == ServerLifecycleState.online) {
+          await ref
+              .read(serverRuntimeProvider.notifier)
+              .sendCommand(_commands.deop(nickname));
+        } else {
+          await _repository.enqueuePendingOpAction(
+            nickname: nickname,
+            promote: false,
+          );
+        }
       }
+      await _reloadLoaded();
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'permissions.change',
+            entityType: 'player',
+            entityId: nickname.trim().toLowerCase(),
+            actorType: 'app_operator',
+            actorId: 'app_operator',
+            payload: {
+              'field': 'is_app_admin',
+              'value': enabled,
+              'nickname': nickname,
+            },
+            resultStatus: 'success',
+          );
+    } catch (error) {
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'permissions.change',
+            entityType: 'player',
+            entityId: nickname.trim().toLowerCase(),
+            actorType: 'app_operator',
+            actorId: 'app_operator',
+            payload: {
+              'field': 'is_app_admin',
+              'value': enabled,
+              'nickname': nickname,
+              'error': error.toString(),
+            },
+            resultStatus: 'error',
+          );
+      rethrow;
     }
-    await _reloadLoaded();
   }
 
   Future<void> toggleOp(String nickname, bool enabled) async {
     final runtime = ref.read(serverRuntimeProvider);
-    await _repository.setOpStatus(nickname, enabled);
-    if (runtime.lifecycle == ServerLifecycleState.online) {
+    try {
+      await _repository.setOpStatus(nickname, enabled);
+      if (runtime.lifecycle == ServerLifecycleState.online) {
+        await ref
+            .read(serverRuntimeProvider.notifier)
+            .sendCommand(
+              enabled ? _commands.op(nickname) : _commands.deop(nickname),
+            );
+      } else {
+        await _repository.enqueuePendingOpAction(
+          nickname: nickname,
+          promote: enabled,
+        );
+      }
+      await _reloadLoaded();
       await ref
-          .read(serverRuntimeProvider.notifier)
-          .sendCommand(
-            enabled ? _commands.op(nickname) : _commands.deop(nickname),
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'permissions.change',
+            entityType: 'player',
+            entityId: nickname.trim().toLowerCase(),
+            actorType: 'app_operator',
+            actorId: 'app_operator',
+            payload: {'field': 'is_op', 'value': enabled, 'nickname': nickname},
+            resultStatus: 'success',
           );
-    } else {
-      await _repository.enqueuePendingOpAction(
-        nickname: nickname,
-        promote: enabled,
-      );
+    } catch (error) {
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'permissions.change',
+            entityType: 'player',
+            entityId: nickname.trim().toLowerCase(),
+            actorType: 'app_operator',
+            actorId: 'app_operator',
+            payload: {
+              'field': 'is_op',
+              'value': enabled,
+              'nickname': nickname,
+              'error': error.toString(),
+            },
+            resultStatus: 'error',
+          );
+      rethrow;
     }
-    await _reloadLoaded();
   }
 
   Future<void> processPendingActionsIfOnline() async {

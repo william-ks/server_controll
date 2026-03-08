@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../audit/services/audit_service.dart';
 import '../../console/providers/console_provider.dart';
 import '../../players/providers/player_permissions_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
@@ -33,6 +34,14 @@ class ChatHookService {
     if (definition == null) {
       const message = 'Comando desconhecido. Use <server> help.';
       await _sendResponse(message);
+      await _logAudit(
+        player: request.player,
+        command: request.command,
+        args: request.args,
+        permissionPolicy: 'unknown',
+        resultStatus: 'unknown_command',
+        resultMessage: message,
+      );
       await _logHistory(
         player: request.player,
         rawCommand: request.raw,
@@ -53,6 +62,14 @@ class ChatHookService {
       const message =
           'Você não tem permissão para esse comando do hook <server>.';
       await _sendResponse(message);
+      await _logAudit(
+        player: request.player,
+        command: definition.name,
+        args: request.args,
+        permissionPolicy: definition.permission.storageValue,
+        resultStatus: 'denied',
+        resultMessage: message,
+      );
       await _logHistory(
         player: request.player,
         rawCommand: request.raw,
@@ -74,6 +91,14 @@ class ChatHookService {
         ),
       );
       await _sendResponse(result.message);
+      await _logAudit(
+        player: request.player,
+        command: definition.name,
+        args: request.args,
+        permissionPolicy: definition.permission.storageValue,
+        resultStatus: result.success ? 'success' : 'error',
+        resultMessage: result.message,
+      );
       await _logHistory(
         player: request.player,
         rawCommand: request.raw,
@@ -86,6 +111,14 @@ class ChatHookService {
     } catch (error) {
       final message = error.toString().replaceFirst('Bad state: ', '').trim();
       await _sendResponse('Falha ao executar comando: $message');
+      await _logAudit(
+        player: request.player,
+        command: definition.name,
+        args: request.args,
+        permissionPolicy: definition.permission.storageValue,
+        resultStatus: 'error',
+        resultMessage: message,
+      );
       await _logHistory(
         player: request.player,
         rawCommand: request.raw,
@@ -130,6 +163,32 @@ class ChatHookService {
           permissionApplied: permissionApplied,
           resultStatus: resultStatus,
           resultMessage: resultMessage,
+        );
+  }
+
+  Future<void> _logAudit({
+    required String player,
+    required String command,
+    required List<String> args,
+    required String permissionPolicy,
+    required String resultStatus,
+    required String resultMessage,
+  }) async {
+    await _ref
+        .read(auditServiceProvider)
+        .logEvent(
+          eventType: 'chat_hook.command',
+          entityType: 'chat_hook',
+          entityId: command,
+          actorType: 'player',
+          actorId: player,
+          payload: {
+            'command': command,
+            'args': args,
+            'permission_policy': permissionPolicy,
+            'result_message': resultMessage,
+          },
+          resultStatus: resultStatus,
         );
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../database/app_database.dart';
 import '../../../models/server_lifecycle_state.dart';
+import '../../audit/services/audit_service.dart';
 import '../../backup/models/backup_config_settings.dart';
 import '../../backup/providers/auto_backup_status_provider.dart';
 import '../../backup/providers/app_backups_provider.dart';
@@ -349,6 +350,22 @@ class SchedulesRunnerService {
           attemptNumber: attempt,
           resultStatus: resultStatus,
           message: message,
+        );
+    await _ref
+        .read(auditServiceProvider)
+        .logEvent(
+          eventType: 'backup.automatic',
+          entityType: 'schedule',
+          entityId: '${schedule.id ?? ''}',
+          actorType: 'schedule_runner',
+          actorId: schedule.title,
+          payload: {
+            'schedule_action': schedule.action.storageValue,
+            'backup_kind': schedule.backupKind.storageValue,
+            'attempt': attempt,
+            'message': message,
+          },
+          resultStatus: resultStatus,
         );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../audit/services/audit_service.dart';
 import '../../../modules/config/providers/config_files_provider.dart';
 import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../../../models/server_lifecycle_state.dart';
@@ -110,8 +111,26 @@ class BackupsNotifier extends Notifier<BackupsState> {
         capacity: capacity,
         creating: false,
       );
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.manual',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'full'},
+            resultStatus: 'success',
+          );
     } catch (error) {
       state = state.copyWith(creating: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.manual',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'full', 'error': error.toString()},
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }
@@ -142,8 +161,26 @@ class BackupsNotifier extends Notifier<BackupsState> {
         capacity: capacity,
         creating: false,
       );
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.manual',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'full'},
+            resultStatus: 'success',
+          );
     } catch (error) {
       state = state.copyWith(creating: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.manual',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'full', 'error': error.toString()},
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }
@@ -171,8 +208,26 @@ class BackupsNotifier extends Notifier<BackupsState> {
         capacity: capacity,
         creating: false,
       );
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.manual',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'world'},
+            resultStatus: 'success',
+          );
     } catch (error) {
       state = state.copyWith(creating: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.manual',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'world', 'error': error.toString()},
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }
@@ -206,8 +261,30 @@ class BackupsNotifier extends Notifier<BackupsState> {
         capacity: capacity,
         creating: false,
       );
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.manual',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'selective', 'entries': rootEntries},
+            resultStatus: 'success',
+          );
     } catch (error) {
       state = state.copyWith(creating: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.manual',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {
+              'kind': 'selective',
+              'entries': rootEntries,
+              'error': error.toString(),
+            },
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }
@@ -241,8 +318,30 @@ class BackupsNotifier extends Notifier<BackupsState> {
       );
       await load();
       state = state.copyWith(creating: false);
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.restore',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'world', 'backup_path': filePath},
+            resultStatus: 'success',
+          );
     } catch (error) {
       state = state.copyWith(creating: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.restore',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {
+              'kind': 'world',
+              'backup_path': filePath,
+              'error': error.toString(),
+            },
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }
@@ -271,8 +370,30 @@ class BackupsNotifier extends Notifier<BackupsState> {
       );
       await load();
       state = state.copyWith(creating: false);
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.restore',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {'kind': 'full', 'backup_path': filePath},
+            resultStatus: 'success',
+          );
     } catch (error) {
       state = state.copyWith(creating: false, error: error.toString());
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'backup.restore',
+            entityType: 'server_backup',
+            actorType: 'app_operator',
+            payload: {
+              'kind': 'full',
+              'backup_path': filePath,
+              'error': error.toString(),
+            },
+            resultStatus: 'error',
+          );
       rethrow;
     }
   }

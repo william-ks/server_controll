@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 16;
+  static const int _schemaVersion = 17;
   static int get schemaVersion => _schemaVersion;
 
   Database? _db;
@@ -179,6 +179,7 @@ class AppDatabase {
     await _createBackupMetadataTables(db);
     await _createAutomaticBackupTables(db);
     await _createChatHookTables(db);
+    await _createAuditTables(db);
     await _createPermissionTables(db);
     await _createPlayerIdentityTables(db);
     await _createPlayerBanTables(db);
@@ -231,6 +232,7 @@ class AppDatabase {
     await _createBackupMetadataTables(db);
     await _createAutomaticBackupTables(db);
     await _createChatHookTables(db);
+    await _createAuditTables(db);
     await _createPermissionTables(db);
     await _createPlayerIdentityTables(db);
     await _createPlayerBanTables(db);
@@ -423,6 +425,31 @@ class AppDatabase {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_chat_hook_history_player ON chat_hook_history(LOWER(player), created_at DESC)',
+    );
+  }
+
+  Future<void> _createAuditTables(dynamic db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS audit_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_type TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT,
+        actor_type TEXT NOT NULL,
+        actor_id TEXT,
+        payload_json TEXT NOT NULL DEFAULT '{}',
+        result_status TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_audit_events_created ON audit_events(created_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_audit_events_type ON audit_events(event_type, created_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_audit_events_actor ON audit_events(actor_id, created_at DESC)',
     );
   }
 

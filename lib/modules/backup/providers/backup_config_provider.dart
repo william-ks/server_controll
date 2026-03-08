@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../audit/services/audit_service.dart';
 import '../../../database/app_database.dart';
 import '../models/backup_config_settings.dart';
 
@@ -45,5 +46,20 @@ class BackupConfigNotifier extends Notifier<BackupConfigSettings> {
       '${settings.capacityWarnThresholdPercent}',
     );
     state = settings;
+    await ref
+        .read(auditServiceProvider)
+        .logEvent(
+          eventType: 'config.change',
+          entityType: 'backup_config',
+          actorType: 'app_operator',
+          payload: {
+            'backup_path': settings.backupPath,
+            'backups_enabled': settings.backupsEnabled,
+            'retention_max_gb': settings.retentionMaxGb,
+            'auto_cleanup': settings.autoCleanupEnabled,
+            'warn_percent': settings.capacityWarnThresholdPercent,
+          },
+          resultStatus: 'success',
+        );
   }
 }
