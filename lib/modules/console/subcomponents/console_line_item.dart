@@ -12,7 +12,7 @@ class ConsoleLineItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = switch (entry.source) {
-      ConsoleEntrySource.server => const Color(0xFFE5E7EB),
+      ConsoleEntrySource.server => scheme.primary,
       ConsoleEntrySource.user => scheme.primary,
       ConsoleEntrySource.system => scheme.error,
     };

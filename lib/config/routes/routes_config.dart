@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../modules/chunky/pages/chunky_page.dart';
+import '../../modules/chat_hook/pages/chat_hooks_page.dart';
 import '../../modules/config/pages/config_page.dart';
 import '../../modules/console/pages/console_page.dart';
 import '../../modules/home/pages/home_page.dart';
@@ -38,6 +39,7 @@ class AppRoutes {
   static const audit = '/audit';
   static const chunky = '/chunky';
   static const config = '/config';
+  static const hooks = '/hooks';
 
   static final List<RouteDefinition> definitions = [
     RouteDefinition(
@@ -76,6 +78,12 @@ class AppRoutes {
       label: 'Backups',
       icon: Icons.backup_table_rounded,
       builder: (_) => const BackupsPage(),
+    ),
+    RouteDefinition(
+      path: hooks,
+      label: 'Hooks',
+      icon: Icons.hub_rounded,
+      builder: (_) => const ChatHooksPage(),
     ),
     RouteDefinition(
       path: audit,

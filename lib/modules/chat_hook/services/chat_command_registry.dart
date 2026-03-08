@@ -86,6 +86,11 @@ class ChatCommandRegistry {
     return _definitions[command.trim().toLowerCase()];
   }
 
+  List<ChatCommandDefinition> allDefinitions() {
+    return _definitions.values.toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+  }
+
   List<ChatCommandDefinition> visibleFor({required bool isAppAdmin}) {
     return _definitions.values.where((definition) {
       if (definition.permission == ChatCommandPermissionPolicy.everyone) {
