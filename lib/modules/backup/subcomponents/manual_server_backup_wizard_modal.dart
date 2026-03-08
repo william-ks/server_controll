@@ -1,15 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
 
 import '../../../components/buttons/app_button.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
-import '../../config/providers/config_files_provider.dart';
 import '../models/backup_entry.dart';
+import 'selective_backup_modal.dart';
 
 enum ManualServerBackupKind { fullServer, worldOnly, selective }
 
@@ -31,64 +28,16 @@ class _ManualServerBackupWizardModalState
     extends ConsumerState<ManualServerBackupWizardModal> {
   int _step = 1;
   bool _saving = false;
-  bool _loadingEntries = false;
   String? _error;
 
   ManualServerBackupKind _kind = ManualServerBackupKind.fullServer;
-  final Set<String> _selectedRoots = <String>{};
-  List<_RootEntry> _entries = const [];
+  List<String> _selectedRoots = const [];
 
   Future<void> _goToStep2() async {
     setState(() {
       _error = null;
       _step = 2;
     });
-    if (_kind == ManualServerBackupKind.selective) {
-      await _loadEntries();
-    }
-  }
-
-  Future<void> _loadEntries() async {
-    setState(() {
-      _loadingEntries = true;
-      _error = null;
-      _entries = const [];
-      _selectedRoots.clear();
-    });
-    try {
-      final serverPath = ref.read(configFilesProvider).serverPath.trim();
-      if (serverPath.isEmpty) {
-        throw StateError('Defina o path do servidor em Config > Arquivos.');
-      }
-      final serverDir = Directory(serverPath);
-      if (!await serverDir.exists()) {
-        throw StateError('Pasta do servidor não encontrada.');
-      }
-
-      final entries = <_RootEntry>[];
-      await for (final entity in serverDir.list(
-        recursive: false,
-        followLinks: false,
-      )) {
-        final name = p.basename(entity.path).trim();
-        if (name.isEmpty) continue;
-        entries.add(_RootEntry(name: name, isDirectory: entity is Directory));
-      }
-      entries.sort(
-        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-      );
-      if (!mounted) return;
-      setState(() {
-        _entries = entries;
-        _loadingEntries = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _loadingEntries = false;
-        _error = error.toString().replaceFirst('Bad state: ', '');
-      });
-    }
   }
 
   Future<void> _submit() async {
@@ -131,6 +80,20 @@ class _ManualServerBackupWizardModalState
       maxBodyHeight: 520,
       body: _step == 1 ? _buildStep1(context) : _buildStep2(context),
       actions: _step == 1 ? _step1Actions() : _step2Actions(),
+    );
+  }
+
+  Future<void> _pickSelectiveEntries() async {
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => SelectiveBackupModal(
+        onConfirm: (selectedRoots) async {
+          setState(() {
+            _selectedRoots = [...selectedRoots]..sort();
+            _error = null;
+          });
+        },
+      ),
     );
   }
 
@@ -195,52 +158,15 @@ class _ManualServerBackupWizardModalState
             'Confirme para iniciar o backup.',
           ),
         if (isSelective) ...[
-          const Text(
-            'Selecione arquivos e pastas de primeiro nível da raiz do servidor.',
-          ),
+          const Text('Selecione arquivos e pastas de primeiro nível da raiz do servidor.'),
           const SizedBox(height: 10),
-          if (_loadingEntries)
-            const Center(child: CircularProgressIndicator())
-          else if (_entries.isEmpty)
-            const Text('Nenhum item encontrado na raiz do servidor.')
-          else
-            SizedBox(
-              height: 240,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Theme.of(context).dividerColor),
-                ),
-                child: ListView.builder(
-                  itemCount: _entries.length,
-                  itemBuilder: (_, index) {
-                    final item = _entries[index];
-                    final checked = _selectedRoots.contains(item.name);
-                    return CheckboxListTile(
-                      value: checked,
-                      title: Text(item.name),
-                      subtitle: Text(item.isDirectory ? 'Pasta' : 'Arquivo'),
-                      secondary: Icon(
-                        item.isDirectory
-                            ? Icons.folder_rounded
-                            : Icons.insert_drive_file_rounded,
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          if (value == true) {
-                            _selectedRoots.add(item.name);
-                          } else {
-                            _selectedRoots.remove(item.name);
-                          }
-                          _error = null;
-                        });
-                      },
-                    );
-                  },
-                ),
-              ),
-            ),
+          AppButton(
+            label: 'Escolher itens',
+            icon: Icons.playlist_add_check_rounded,
+            variant: AppVariant.info,
+            transparent: true,
+            onPressed: _pickSelectiveEntries,
+          ),
           const SizedBox(height: 10),
           Text(
             'Itens incluídos: ${_selectedRoots.isEmpty ? 'nenhum' : (_selectedRoots.toList()..sort()).join(', ')}',
@@ -300,17 +226,10 @@ class _ManualServerBackupWizardModalState
                   : 'Criar backup do servidor'),
         onPressed: _submit,
         isLoading: _saving,
-        isDisabled: _saving || (_loadingEntries && _kind != ManualServerBackupKind.fullServer),
+        isDisabled: _saving,
         variant: AppVariant.success,
         icon: Icons.archive_rounded,
       ),
     ];
   }
-}
-
-class _RootEntry {
-  const _RootEntry({required this.name, required this.isDirectory});
-
-  final String name;
-  final bool isDirectory;
 }
