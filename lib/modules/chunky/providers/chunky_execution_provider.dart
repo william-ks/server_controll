@@ -17,6 +17,7 @@ import '../../server/providers/server_runtime_provider.dart';
 import '../../server/services/minecraft_command_provider.dart';
 import '../../server/services/server_health_monitor.dart';
 import '../../server/services/server_process_service.dart';
+import '../models/chunky_backup_kind.dart';
 import '../models/chunky_config_settings.dart';
 import '../models/chunky_execution_log_entry.dart';
 import '../models/chunky_execution_status.dart';
@@ -276,6 +277,8 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       shape: settings.shape,
       maxChunksPerRun: settings.maxChunksPerRun,
       backupBeforeStart: enabled,
+      backupKind: settings.backupKind,
+      backupSelectiveRoots: settings.backupSelectiveRoots,
       radiusMode: settings.radiusMode,
     );
     await ref.read(chunkyConfigProvider.notifier).save(next);
@@ -771,14 +774,28 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         }
       }
 
-      if (freshStart && state.backupBeforeStart) {
-        await _appendLog('Criando backup antes da execução.');
+      if (freshStart && config.backupBeforeStart) {
+        await _appendLog(
+          'Criando backup antes da execução (${config.backupKind.label.toLowerCase()}).',
+        );
+        final selectiveRoots = config.backupKind == ChunkyBackupKind.selective
+            ? config.backupSelectiveRoots
+            : const <String>[];
+        if (config.backupKind == ChunkyBackupKind.selective &&
+            selectiveRoots.isEmpty) {
+          throw StateError(
+            'Backup seletivo do Chunky exige itens selecionados em Config > Chunky.',
+          );
+        }
         await ref
             .read(backupServiceProvider)
             .createBackup(
               serverPath: serverPath,
               config: backupConfig,
               trigger: BackupTriggerType.chunk,
+              kind: config.backupKind.backupContentKind,
+              selectiveRootEntries: selectiveRoots,
+              selectiveSummary: selectiveRoots.join(', '),
             );
       }
 

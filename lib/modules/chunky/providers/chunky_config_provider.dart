@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../database/app_database.dart';
+import '../models/chunky_backup_kind.dart';
 import '../models/chunky_config_settings.dart';
 
 final chunkyConfigInitialProvider = Provider<ChunkyConfigSettings>((_) {
@@ -34,6 +35,11 @@ class ChunkyConfigNotifier extends Notifier<ChunkyConfigSettings> {
     await db.setSetting(
       'chunk_backup_before_start',
       settings.backupBeforeStart ? '1' : '0',
+    );
+    await db.setSetting('chunk_backup_kind', settings.backupKind.storageValue);
+    await db.setSetting(
+      'chunk_backup_selective_roots',
+      settings.backupSelectiveRoots.join(','),
     );
     await db.setSetting('chunk_radius_mode', settings.radiusMode);
     state = settings;

@@ -5,10 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../components/badges/app_badge.dart';
+import '../../../components/buttons/app_button.dart';
+import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../backup/subcomponents/selective_backup_modal.dart';
 import '../../config/providers/config_files_provider.dart';
+import '../models/chunky_backup_kind.dart';
 import '../models/chunky_config_settings.dart';
 import '../models/chunky_execution_status.dart';
 import '../providers/chunky_config_provider.dart';
@@ -35,6 +39,9 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
 
   String _pattern = 'spiral';
   String _shape = 'square';
+  bool _backupBeforeStart = false;
+  ChunkyBackupKind _backupKind = ChunkyBackupKind.world;
+  List<String> _backupSelectiveRoots = const [];
   bool _isLoading = true;
   bool _isSaving = false;
   Timer? _saveDebounce;
@@ -78,6 +85,9 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
     _maxChunksController.text = settings.maxChunksPerRun;
     _pattern = settings.pattern;
     _shape = settings.shape;
+    _backupBeforeStart = settings.backupBeforeStart;
+    _backupKind = settings.backupKind;
+    _backupSelectiveRoots = [...settings.backupSelectiveRoots]..sort();
     if (mounted) {
       setState(() => _isLoading = false);
     }
@@ -116,7 +126,9 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
         maxChunksPerRun: _maxChunksController.text.trim().isEmpty
             ? '1000'
             : _maxChunksController.text.trim(),
-        backupBeforeStart: ref.read(chunkyConfigProvider).backupBeforeStart,
+        backupBeforeStart: _backupBeforeStart,
+        backupKind: _backupKind,
+        backupSelectiveRoots: _backupSelectiveRoots,
         radiusMode: ref.read(chunkyConfigProvider).radiusMode,
       );
       await ref.read(chunkyConfigProvider.notifier).save(settings);
@@ -291,6 +303,80 @@ class _ChunkyConfigTabState extends ConsumerState<ChunkyConfigTab> {
                 color: Theme.of(context).colorScheme.primary,
               ),
             ),
+          ],
+          const SizedBox(height: 18),
+          _fieldLabel('Backup antes de iniciar Chunky'),
+          AppSwitchCard(
+            label: 'Executar backup antes do primeiro run',
+            value: _backupBeforeStart,
+            onChanged: configLocked
+                ? null
+                : (value) async {
+                    setState(() => _backupBeforeStart = value);
+                    await _save();
+                  },
+          ),
+          if (_backupBeforeStart) ...[
+            const SizedBox(height: 12),
+            _fieldLabel('Tipo de backup'),
+            AppSelect<ChunkyBackupKind>(
+              value: _backupKind,
+              items: const [
+                AppSelectItem(
+                  value: ChunkyBackupKind.full,
+                  label: 'Servidor (total)',
+                ),
+                AppSelectItem(value: ChunkyBackupKind.world, label: 'Mundo'),
+                AppSelectItem(
+                  value: ChunkyBackupKind.selective,
+                  label: 'Seletivo',
+                ),
+              ],
+              enabled: !configLocked,
+              onChanged: (value) async {
+                if (value == null) return;
+                setState(() {
+                  _backupKind = value;
+                  if (_backupKind != ChunkyBackupKind.selective) {
+                    _backupSelectiveRoots = const [];
+                  }
+                });
+                await _save();
+              },
+            ),
+            if (_backupKind == ChunkyBackupKind.selective) ...[
+              const SizedBox(height: 10),
+              AppButton(
+                label: 'Escolher itens',
+                icon: Icons.playlist_add_check_rounded,
+                variant: AppVariant.info,
+                transparent: true,
+                isDisabled: configLocked,
+                onPressed: configLocked
+                    ? null
+                    : () async {
+                        await showDialog<bool>(
+                          context: context,
+                          builder: (_) => SelectiveBackupModal(
+                            onConfirm: (selectedRoots) async {
+                              setState(() {
+                                _backupSelectiveRoots = [...selectedRoots]
+                                  ..sort();
+                              });
+                              await _save();
+                            },
+                          ),
+                        );
+                      },
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _backupSelectiveRoots.isEmpty
+                    ? 'Nenhum item selecionado.'
+                    : _backupSelectiveRoots.join(', '),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ],
         ],
       ),

@@ -1,4 +1,5 @@
 import '../../../database/app_database.dart';
+import 'chunky_backup_kind.dart';
 
 class ChunkyConfigSettings {
   const ChunkyConfigSettings({
@@ -9,6 +10,8 @@ class ChunkyConfigSettings {
     required this.shape,
     required this.maxChunksPerRun,
     required this.backupBeforeStart,
+    required this.backupKind,
+    required this.backupSelectiveRoots,
     required this.radiusMode,
   });
 
@@ -19,6 +22,8 @@ class ChunkyConfigSettings {
   final String shape;
   final String maxChunksPerRun;
   final bool backupBeforeStart;
+  final ChunkyBackupKind backupKind;
+  final List<String> backupSelectiveRoots;
   final String radiusMode;
 
   factory ChunkyConfigSettings.defaults() {
@@ -30,6 +35,8 @@ class ChunkyConfigSettings {
       shape: 'square',
       maxChunksPerRun: '1000',
       backupBeforeStart: false,
+      backupKind: ChunkyBackupKind.world,
+      backupSelectiveRoots: [],
       radiusMode: 'auto',
     );
   }
@@ -46,8 +53,28 @@ class ChunkyConfigSettings {
           await db.getSetting('chunk_max_per_run') ?? defaults.maxChunksPerRun,
       backupBeforeStart:
           (await db.getSetting('chunk_backup_before_start') ?? '0') == '1',
+      backupKind: ChunkyBackupKindX.fromStorage(
+        await db.getSetting('chunk_backup_kind') ??
+            defaults.backupKind.storageValue,
+      ),
+      backupSelectiveRoots: _parseRoots(
+        await db.getSetting('chunk_backup_selective_roots'),
+      ),
       radiusMode:
           await db.getSetting('chunk_radius_mode') ?? defaults.radiusMode,
     );
+  }
+
+  static List<String> _parseRoots(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return const [];
+    }
+    return raw
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
   }
 }
