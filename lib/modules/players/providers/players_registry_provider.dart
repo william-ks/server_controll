@@ -58,6 +58,7 @@ class PlayersRegistryNotifier extends Notifier<PlayersRegistryState> {
           p.id AS id,
           p.nickname AS nickname,
           p.uuid AS uuid,
+          p.icon_path AS icon_path,
           p.is_whitelisted AS is_whitelisted,
           p.is_app_admin AS is_app_admin,
           p.is_op AS is_op,
@@ -76,6 +77,7 @@ class PlayersRegistryNotifier extends Notifier<PlayersRegistryState> {
           id: row['id'] as int? ?? 0,
           nickname: row['nickname'] as String? ?? '',
           uuid: row['uuid'] as String?,
+          iconPath: row['icon_path'] as String?,
           isWhitelisted: (row['is_whitelisted'] as int? ?? 0) == 1,
           isAppAdmin: (row['is_app_admin'] as int? ?? 0) == 1,
           isOp: (row['is_op'] as int? ?? 0) == 1,
@@ -157,5 +159,31 @@ class PlayersRegistryNotifier extends Notifier<PlayersRegistryState> {
     } catch (error) {
       state = state.copyWith(loading: false, error: error.toString());
     }
+  }
+
+  Future<void> updatePlayerProfile({
+    required int id,
+    required String nickname,
+    String? uuid,
+    String? iconPath,
+  }) async {
+    final db = await AppDatabase.instance.database;
+    final nextNickname = nickname.trim();
+    if (nextNickname.isEmpty) {
+      throw StateError('Nickname é obrigatório.');
+    }
+    final nextUuid = (uuid ?? '').trim();
+    await db.update(
+      'players',
+      {
+        'nickname': nextNickname,
+        'uuid': nextUuid.isEmpty ? null : nextUuid,
+        'icon_path': (iconPath ?? '').trim().isEmpty ? null : iconPath!.trim(),
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    await load();
   }
 }

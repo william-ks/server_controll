@@ -3,6 +3,7 @@ class PlayerRegistryItem {
     required this.id,
     required this.nickname,
     required this.uuid,
+    required this.iconPath,
     required this.isWhitelisted,
     required this.isAppAdmin,
     required this.isOp,
@@ -15,6 +16,7 @@ class PlayerRegistryItem {
   final int id;
   final String nickname;
   final String? uuid;
+  final String? iconPath;
   final bool isWhitelisted;
   final bool isAppAdmin;
   final bool isOp;

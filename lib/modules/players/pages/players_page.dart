@@ -1,6 +1,11 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_text_input.dart';
@@ -254,6 +259,12 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, index) {
         final item = players[index];
+        final avatarFile =
+            item.iconPath != null &&
+                item.iconPath!.trim().isNotEmpty &&
+                File(item.iconPath!).existsSync()
+            ? File(item.iconPath!)
+            : null;
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -263,11 +274,37 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                item.nickname,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.12),
+                    child: avatarFile == null
+                        ? Icon(
+                            Icons.person_rounded,
+                            color: Theme.of(context).colorScheme.primary,
+                          )
+                        : ClipOval(
+                            child: Image.file(
+                              avatarFile,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      item.nickname,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 4),
               Text(
@@ -283,21 +320,31 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
                     context,
                     label: item.isWhitelisted ? 'WHITELIST' : 'SEM WHITELIST',
                     active: item.isWhitelisted,
+                    color: item.isWhitelisted
+                        ? Colors.green
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   _badge(
                     context,
                     label: item.isAppAdmin ? 'ADMIN APP' : 'PLAYER',
                     active: item.isAppAdmin,
+                    color: item.isAppAdmin
+                        ? Colors.indigo
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   _badge(
                     context,
                     label: item.isOp ? 'OP' : 'SEM OP',
                     active: item.isOp,
+                    color: item.isOp
+                        ? Colors.blue
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   _badge(
                     context,
                     label: item.isBanned ? 'BANIDO' : 'NÃO BANIDO',
                     active: item.isBanned,
+                    color: item.isBanned ? Colors.red : Colors.teal,
                   ),
                   if (item.hasIdentityConflict)
                     _badge(
@@ -312,6 +359,18 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
               Wrap(
                 spacing: 8,
                 children: [
+                  AppButton(
+                    label: 'Editar',
+                    variant: AppVariant.secondary,
+                    transparent: true,
+                    icon: Icons.edit_rounded,
+                    onPressed: () async {
+                      final changed = await _openEditPlayerDialog(item);
+                      if (changed == true) {
+                        await ref.read(playersRegistryProvider.notifier).load();
+                      }
+                    },
+                  ),
                   AppButton(
                     label: item.isAppAdmin ? 'Remover admin' : 'Tornar admin',
                     variant: AppVariant.info,
@@ -459,28 +518,171 @@ class _PlayersPageState extends ConsumerState<PlayersPage> {
     required String label,
     required bool active,
     bool danger = false,
+    Color? color,
   }) {
-    final color = danger
+    final badgeColor = danger
         ? Theme.of(context).colorScheme.error
         : (active
-              ? Theme.of(context).colorScheme.primary
+              ? (color ?? Theme.of(context).colorScheme.primary)
               : Theme.of(context).colorScheme.onSurfaceVariant);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.28)),
+        color: badgeColor.withValues(alpha: 0.12),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: color,
+          color: badgeColor,
           fontWeight: FontWeight.w700,
           fontSize: 11,
         ),
       ),
     );
+  }
+
+  Future<bool?> _openEditPlayerDialog(PlayerRegistryItem item) async {
+    final nicknameController = TextEditingController(text: item.nickname);
+    final uuidController = TextEditingController(text: item.uuid ?? '');
+    String? iconPath = item.iconPath;
+
+    Future<void> pickIcon(StateSetter setModalState) async {
+      final picked = await FilePicker.platform.pickFiles(
+        dialogTitle: 'Selecione imagem do player',
+        type: FileType.custom,
+        allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
+      );
+      final sourcePath = picked?.files.single.path;
+      if (sourcePath == null) return;
+      final sourceFile = File(sourcePath);
+      if (!sourceFile.existsSync()) return;
+      final appDir = await getApplicationSupportDirectory();
+      final targetDir = Directory(p.join(appDir.path, 'player_icons'));
+      await targetDir.create(recursive: true);
+      final ext = p.extension(sourcePath).toLowerCase();
+      final safeExt = ext.isEmpty ? '.png' : ext;
+      final targetPath = p.join(
+        targetDir.path,
+        'player_${item.id}_${DateTime.now().millisecondsSinceEpoch}$safeExt',
+      );
+      await sourceFile.copy(targetPath);
+      setModalState(() => iconPath = targetPath);
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final file =
+              iconPath != null &&
+                  iconPath!.trim().isNotEmpty &&
+                  File(iconPath!).existsSync()
+              ? File(iconPath!)
+              : null;
+          return AppModal(
+            icon: Icons.person_rounded,
+            title: 'Editar player',
+            width: 600,
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.12),
+                      child: file == null
+                          ? Icon(
+                              Icons.person_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                            )
+                          : ClipOval(
+                              child: Image.file(
+                                file,
+                                width: 48,
+                                height: 48,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                    ),
+                    const SizedBox(width: 10),
+                    AppButton(
+                      label: 'Selecionar imagem',
+                      icon: Icons.image_rounded,
+                      variant: AppVariant.info,
+                      transparent: true,
+                      onPressed: () => pickIcon(setModalState),
+                    ),
+                    AppButton(
+                      label: 'Remover',
+                      icon: Icons.delete_outline_rounded,
+                      variant: AppVariant.danger,
+                      transparent: true,
+                      onPressed: () => setModalState(() => iconPath = null),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                AppTextInput(
+                  controller: nicknameController,
+                  label: 'Nickname',
+                  hint: 'Ex.: Steve',
+                ),
+                const SizedBox(height: 10),
+                AppTextInput(
+                  controller: uuidController,
+                  label: 'UUID',
+                  hint: 'Opcional',
+                ),
+              ],
+            ),
+            actions: [
+              AppButton(
+                label: 'Cancelar',
+                onPressed: () => Navigator.of(context).pop(false),
+                type: AppButtonType.textButton,
+                variant: AppVariant.danger,
+              ),
+              AppButton(
+                label: 'Salvar',
+                icon: Icons.save_rounded,
+                variant: AppVariant.success,
+                onPressed: () async {
+                  try {
+                    await ref
+                        .read(playersRegistryProvider.notifier)
+                        .updatePlayerProfile(
+                          id: item.id,
+                          nickname: nicknameController.text,
+                          uuid: uuidController.text,
+                          iconPath: iconPath,
+                        );
+                    if (!context.mounted) return;
+                    Navigator.of(context).pop(true);
+                  } catch (error) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          error.toString().replaceFirst('Bad state: ', ''),
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    nicknameController.dispose();
+    uuidController.dispose();
+    return result;
   }
 }
 

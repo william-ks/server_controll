@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 17;
+  static const int _schemaVersion = 18;
   static int get schemaVersion => _schemaVersion;
 
   Database? _db;
@@ -269,6 +269,12 @@ class AppDatabase {
     );
     await _addColumnIfMissing(
       db,
+      table: 'players',
+      column: 'icon_path',
+      definition: 'TEXT',
+    );
+    await _addColumnIfMissing(
+      db,
       table: 'player_bans',
       column: 'pending_ban',
       definition: 'INTEGER NOT NULL DEFAULT 0',
@@ -284,6 +290,7 @@ class AppDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nickname TEXT NOT NULL,
         uuid TEXT,
+        icon_path TEXT,
         is_player INTEGER NOT NULL DEFAULT 1,
         is_whitelisted INTEGER NOT NULL DEFAULT 0,
         is_app_admin INTEGER NOT NULL DEFAULT 0,
@@ -546,6 +553,15 @@ class AppDatabase {
           ) THEN 1
           ELSE is_whitelisted
         END,
+        icon_path = COALESCE(
+          icon_path,
+          (
+            SELECT w.icon_path
+            FROM whitelist_players w
+            WHERE LOWER(w.nickname) = LOWER(players.nickname)
+            LIMIT 1
+          )
+        ),
         updated_at = updated_at
     ''');
   }
