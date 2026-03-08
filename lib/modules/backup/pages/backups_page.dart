@@ -15,6 +15,7 @@ import '../models/backup_capacity_status.dart';
 import '../models/backup_entry.dart';
 import '../providers/backup_config_provider.dart';
 import '../providers/backups_provider.dart';
+import '../subcomponents/selective_backup_modal.dart';
 
 class BackupsPage extends ConsumerStatefulWidget {
   const BackupsPage({super.key});
@@ -127,6 +128,21 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
                     isDisabled: state.creating,
                     isLoading: state.creating,
                     onPressed: notifier.createManualWorldBackup,
+                  ),
+                  const SizedBox(width: 10),
+                  AppButton(
+                    label: 'Backup seletivo',
+                    icon: Icons.library_add_check_rounded,
+                    variant: AppVariant.primary,
+                    isDisabled: state.creating,
+                    onPressed: () async {
+                      await showDialog<bool>(
+                        context: context,
+                        builder: (_) => SelectiveBackupModal(
+                          onConfirm: notifier.createManualSelectiveBackup,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -338,6 +354,18 @@ class _BackupCard extends StatelessWidget {
                     context,
                   ).textTheme.bodySmall?.copyWith(color: ext.mutedText),
                 ),
+                if (entry.description != null &&
+                    entry.description!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Itens raiz: ${entry.description!}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: ext.mutedText),
+                  ),
+                ],
               ],
             ),
           ),

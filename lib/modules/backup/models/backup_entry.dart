@@ -11,6 +11,7 @@ class BackupEntry {
     required this.origin,
     required this.contentKind,
     required this.timestamp,
+    this.description,
   });
 
   final String name;
@@ -20,4 +21,5 @@ class BackupEntry {
   final BackupOriginKind origin;
   final BackupContentKind contentKind;
   final DateTime timestamp;
+  final String? description;
 }

@@ -171,6 +171,41 @@ class BackupsNotifier extends Notifier<BackupsState> {
     }
   }
 
+  Future<void> createManualSelectiveBackup(List<String> rootEntries) async {
+    final runtime = ref.read(serverRuntimeProvider);
+    if (runtime.lifecycle != ServerLifecycleState.offline) {
+      throw StateError('Servidor precisa estar OFFLINE para executar backup.');
+    }
+    if (rootEntries.isEmpty) {
+      throw StateError('Selecione ao menos um item da raiz para o backup.');
+    }
+
+    state = state.copyWith(creating: true, clearError: true);
+    try {
+      final configFiles = ref.read(configFilesProvider);
+      final backupConfig = ref.read(backupConfigProvider);
+      final summary = rootEntries.join(', ');
+      await _service.createBackup(
+        serverPath: configFiles.serverPath.trim(),
+        config: backupConfig,
+        trigger: BackupTriggerType.manual,
+        kind: BackupContentKind.selective,
+        selectiveRootEntries: rootEntries,
+        selectiveSummary: summary,
+      );
+      final entries = await _service.listBackups(backupConfig);
+      final capacity = await _service.evaluateCapacity(backupConfig);
+      state = state.copyWith(
+        entries: entries,
+        capacity: capacity,
+        creating: false,
+      );
+    } catch (error) {
+      state = state.copyWith(creating: false, error: error.toString());
+      rethrow;
+    }
+  }
+
   Future<void> deleteBackup(String filePath) async {
     await _service.deleteBackup(filePath);
     await load();

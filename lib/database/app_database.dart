@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 10;
+  static const int _schemaVersion = 11;
 
   Database? _db;
 
@@ -163,6 +163,7 @@ class AppDatabase {
 
     await _createPlayersDomainTables(db);
     await _createMaintenanceTables(db);
+    await _createBackupMetadataTables(db);
   }
 
   Future<void> _upgradeToDefinitiveSchema(
@@ -195,6 +196,7 @@ class AppDatabase {
 
     await _createPlayersDomainTables(db);
     await _createMaintenanceTables(db);
+    await _createBackupMetadataTables(db);
   }
 
   Future<void> _createPlayersDomainTables(dynamic db) async {
@@ -281,6 +283,19 @@ class AppDatabase {
       'countdown_seconds': 0,
       'updated_at': DateTime.now().toIso8601String(),
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  Future<void> _createBackupMetadataTables(dynamic db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS backup_history_metadata (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        backup_name TEXT NOT NULL UNIQUE,
+        trigger TEXT NOT NULL,
+        content_kind TEXT NOT NULL,
+        summary_text TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> _addColumnIfMissing(

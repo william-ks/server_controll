@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:archive/archive_io.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../../../database/app_database.dart';
 import '../../config/services/server_properties_service.dart';
 import '../models/backup_capacity_status.dart';
 import '../models/backup_config_settings.dart';
@@ -34,12 +36,15 @@ class BackupTaskController {
 }
 
 class BackupService {
+  BackupService({AppDatabase? db}) : _db = db ?? AppDatabase.instance;
+
   static final _namePattern = RegExp(
     r'^(\d{8}_\d{6})__([a-z]+)__([a-z]+)\.zip$',
     caseSensitive: false,
   );
 
   final ServerPropertiesService _propertiesService = ServerPropertiesService();
+  final AppDatabase _db;
 
   Future<BackupEntry> createBackup({
     required String serverPath,
@@ -47,6 +52,7 @@ class BackupService {
     required BackupTriggerType trigger,
     BackupContentKind kind = BackupContentKind.full,
     List<String> selectiveRootEntries = const [],
+    String? selectiveSummary,
     BackupTaskController? controller,
   }) async {
     final sourceDir = Directory(serverPath);
@@ -125,18 +131,35 @@ class BackupService {
 
     final created = File(backupFilePath);
     final stat = await created.stat();
+    final createdName = p.basename(created.path);
+    if (kind == BackupContentKind.selective) {
+      final summary = selectiveSummary?.trim().isNotEmpty == true
+          ? selectiveSummary!.trim()
+          : selectiveRootEntries.join(', ');
+      await _saveMetadata(
+        backupName: createdName,
+        trigger: trigger,
+        contentKind: kind,
+        summary: summary,
+      );
+    }
     final meta = _extractMetadataFromName(
-      name: p.basename(created.path),
+      name: createdName,
       modifiedAt: stat.modified,
     );
     return BackupEntry(
-      name: p.basename(created.path),
+      name: createdName,
       path: created.path,
       sizeBytes: stat.size,
       modifiedAt: stat.modified,
       origin: meta.origin,
       contentKind: meta.contentKind,
       timestamp: meta.timestamp,
+      description: kind == BackupContentKind.selective
+          ? (selectiveSummary?.trim().isNotEmpty == true
+                ? selectiveSummary!.trim()
+                : selectiveRootEntries.join(', '))
+          : null,
     );
   }
 
@@ -146,6 +169,7 @@ class BackupService {
 
     final backupDir = Directory(backupDirPath);
     if (!await backupDir.exists()) return const [];
+    final metadataByName = await _loadMetadataByBackupName();
 
     final entries = <BackupEntry>[];
     await for (final entity in backupDir.list(followLinks: false)) {
@@ -167,6 +191,7 @@ class BackupService {
           origin: meta.origin,
           contentKind: meta.contentKind,
           timestamp: meta.timestamp,
+          description: metadataByName[name],
         ),
       );
     }
@@ -177,9 +202,16 @@ class BackupService {
 
   Future<void> deleteBackup(String backupFilePath) async {
     final file = File(backupFilePath);
+    final fileName = p.basename(backupFilePath);
     if (await file.exists()) {
       await file.delete();
     }
+    final db = await _db.database;
+    await db.delete(
+      'backup_history_metadata',
+      where: 'backup_name = ?',
+      whereArgs: [fileName],
+    );
   }
 
   Future<void> enforceRetention(BackupConfigSettings config) async {
@@ -399,6 +431,42 @@ class BackupService {
       return 0;
     }
     return (parsed * 1024 * 1024 * 1024).floor();
+  }
+
+  Future<Map<String, String>> _loadMetadataByBackupName() async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'backup_history_metadata',
+      columns: ['backup_name', 'summary_text'],
+    );
+    final map = <String, String>{};
+    for (final row in rows) {
+      final name = (row['backup_name'] as String?)?.trim() ?? '';
+      if (name.isEmpty) {
+        continue;
+      }
+      final summary = (row['summary_text'] as String?)?.trim() ?? '';
+      if (summary.isNotEmpty) {
+        map[name] = summary;
+      }
+    }
+    return map;
+  }
+
+  Future<void> _saveMetadata({
+    required String backupName,
+    required BackupTriggerType trigger,
+    required BackupContentKind contentKind,
+    required String summary,
+  }) async {
+    final db = await _db.database;
+    await db.insert('backup_history_metadata', {
+      'backup_name': backupName,
+      'trigger': _originTag(trigger),
+      'content_kind': _contentTag(contentKind),
+      'summary_text': summary,
+      'created_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 }
 
