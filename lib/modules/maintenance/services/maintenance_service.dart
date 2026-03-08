@@ -65,10 +65,6 @@ class MaintenanceService {
     await _db.setSetting('maintenance_motd_total', defaults.motdTotal);
     await _db.setSetting('maintenance_motd_admin', defaults.motdAdminsOnly);
     await _db.setSetting('maintenance_icon_path', defaults.maintenanceIconPath);
-    await _db.setSetting(
-      'maintenance_admin_nicknames',
-      defaults.adminNicknames.trim(),
-    );
   }
 
   Future<void> saveScheduledState({
@@ -177,18 +173,6 @@ class MaintenanceService {
     return loadSnapshot();
   }
 
-  Future<Set<String>> loadAdminNicknames() async {
-    final defaults = await loadDefaults();
-    final result = <String>{};
-    for (final part in defaults.adminNicknames.split(',')) {
-      final nickname = part.trim();
-      if (nickname.isNotEmpty) {
-        result.add(nickname.toLowerCase());
-      }
-    }
-    return result;
-  }
-
   Future<bool> isPlayerAllowed({
     required MaintenanceMode mode,
     required String nickname,
@@ -196,8 +180,7 @@ class MaintenanceService {
     if (mode == MaintenanceMode.total) {
       return false;
     }
-    final admins = await loadAdminNicknames();
-    return admins.contains(nickname.trim().toLowerCase());
+    return _isAppAdminNickname(nickname);
   }
 
   Future<List<String>> resolveUnauthorizedPlayers({
@@ -210,12 +193,12 @@ class MaintenanceService {
           .where((name) => name.isNotEmpty)
           .toList();
     }
-    final admins = await loadAdminNicknames();
     final blocked = <String>[];
     for (final raw in onlinePlayers) {
       final nickname = raw.trim();
       if (nickname.isEmpty) continue;
-      if (!admins.contains(nickname.toLowerCase())) {
+      final allowed = await _isAppAdminNickname(nickname);
+      if (!allowed) {
         blocked.add(nickname);
       }
     }
@@ -320,5 +303,20 @@ class MaintenanceService {
   Future<Directory> _maintenanceStorageDir() async {
     final appDir = await getApplicationSupportDirectory();
     return Directory(p.join(appDir.path, 'maintenance'));
+  }
+
+  Future<bool> _isAppAdminNickname(String nickname) async {
+    final trimmed = nickname.trim().toLowerCase();
+    if (trimmed.isEmpty) return false;
+    final db = await _db.database;
+    final rows = await db.query(
+      'players',
+      columns: ['is_app_admin'],
+      where: 'LOWER(nickname) = ?',
+      whereArgs: [trimmed],
+      limit: 1,
+    );
+    if (rows.isEmpty) return false;
+    return (rows.first['is_app_admin'] as int? ?? 0) == 1;
   }
 }

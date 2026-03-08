@@ -7,7 +7,6 @@ import '../../../components/modal/app_modal.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../models/server_lifecycle_state.dart';
-import '../../maintenance/models/maintenance_defaults.dart';
 import '../../maintenance/models/maintenance_mode.dart';
 import '../../maintenance/providers/maintenance_provider.dart';
 import '../../server/providers/server_runtime_provider.dart';
@@ -21,19 +20,11 @@ class MaintenanceModeModal extends ConsumerStatefulWidget {
 }
 
 class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
-  final TextEditingController _motdTotalController = TextEditingController();
-  final TextEditingController _motdAdminsController = TextEditingController();
-  final TextEditingController _adminNicknamesController =
-      TextEditingController();
-
   MaintenanceMode _mode = MaintenanceMode.total;
   bool _initialized = false;
 
   @override
   void dispose() {
-    _motdTotalController.dispose();
-    _motdAdminsController.dispose();
-    _adminNicknamesController.dispose();
     super.dispose();
   }
 
@@ -43,31 +34,9 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
     }
     _initialized = true;
     _mode = state.defaults.defaultMode;
-    _motdTotalController.text = state.defaults.motdTotal;
-    _motdAdminsController.text = state.defaults.motdAdminsOnly;
-    _adminNicknamesController.text = state.defaults.adminNicknames;
-  }
-
-  Future<void> _saveDefaults() async {
-    final notifier = ref.read(maintenanceProvider.notifier);
-    final maintenanceState = ref.read(maintenanceProvider);
-    final defaults = MaintenanceDefaults(
-      defaultMode: _mode,
-      defaultCountdownSeconds: maintenanceState.defaults.defaultCountdownSeconds,
-      motdTotal: _motdTotalController.text.trim().isEmpty
-          ? 'Servidor em manutenção'
-          : _motdTotalController.text.trim(),
-      motdAdminsOnly: _motdAdminsController.text.trim().isEmpty
-          ? 'Servidor em manutenção (somente admins)'
-          : _motdAdminsController.text.trim(),
-      maintenanceIconPath: maintenanceState.defaults.maintenanceIconPath,
-      adminNicknames: _adminNicknamesController.text.trim(),
-    );
-    await notifier.saveDefaults(defaults);
   }
 
   Future<void> _activateFlow() async {
-    await _saveDefaults();
     final notifier = ref.read(maintenanceProvider.notifier);
     final maintenanceState = ref.read(maintenanceProvider);
     final runtime = ref.read(serverRuntimeProvider);
@@ -205,73 +174,41 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
                 text: 'Ativação agendada em $countdown segundo(s).',
                 isActive: false,
               ),
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _fieldBlock(
-                    title: 'Modo de acesso',
-                    child: AppSelect<MaintenanceMode>(
-                      value: _mode,
-                      items: const [
-                        AppSelectItem(
-                          value: MaintenanceMode.total,
-                          label: 'Manutenção total',
-                        ),
-                        AppSelectItem(
-                          value: MaintenanceMode.adminsOnly,
-                          label: 'Somente admins do app',
-                        ),
-                      ],
-                      onChanged: active
-                          ? null
-                          : (value) {
-                              if (value == null) return;
-                              setState(() => _mode = value);
-                            },
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _fieldBlock(
-                    title: 'Admins permitidos',
-                    child: AppTextInput(
-                      controller: _adminNicknamesController,
-                      hint: 'Ex.: steve, alex',
-                      enabled: !active,
-                    ),
-                  ),
-                ),
-              ],
+            _infoBanner(
+              context,
+              icon: Icons.settings_rounded,
+              text:
+                  'Configurações de manutenção (MOTD e ícone) ficam em Config > Manutenção.',
             ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _fieldBlock(
-                    title: 'MOTD para manutenção total',
-                    child: AppTextInput(
-                      controller: _motdTotalController,
-                      hint: 'Ex.: Servidor em manutenção',
-                      enabled: !active,
-                    ),
+            const SizedBox(height: 8),
+            _infoBanner(
+              context,
+              icon: Icons.image_rounded,
+              text:
+                  'A imagem do modo manutenção será definida nas configurações.',
+            ),
+            const SizedBox(height: 8),
+            _fieldBlock(
+              title: 'Modo de acesso',
+              child: AppSelect<MaintenanceMode>(
+                value: _mode,
+                items: const [
+                  AppSelectItem(
+                    value: MaintenanceMode.total,
+                    label: 'Manutenção total (ninguém entra)',
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _fieldBlock(
-                    title: 'MOTD para modo somente admins',
-                    child: AppTextInput(
-                      controller: _motdAdminsController,
-                      hint: 'Ex.: Somente admins do app',
-                      enabled: !active,
-                    ),
+                  AppSelectItem(
+                    value: MaintenanceMode.adminsOnly,
+                    label: 'Somente admins do app',
                   ),
-                ),
-              ],
+                ],
+                onChanged: active
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() => _mode = value);
+                      },
+              ),
             ),
             if (state.error != null) ...[
               const SizedBox(height: 16),
@@ -290,14 +227,6 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
           type: AppButtonType.textButton,
           variant: AppVariant.danger,
         ),
-        if (!active)
-          AppButton(
-            label: 'Salvar padrões',
-            onPressed: _saveDefaults,
-            isDisabled: state.saving,
-            variant: AppVariant.info,
-            icon: Icons.save_outlined,
-          ),
         if (!active)
           AppButton(
             label: 'Ativar',
@@ -334,6 +263,31 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
         const SizedBox(height: 6),
         child,
       ],
+    );
+  }
+
+  Widget _infoBanner(
+    BuildContext context, {
+    required IconData icon,
+    required String text,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text)),
+        ],
+      ),
     );
   }
 
