@@ -8,6 +8,8 @@ class PlayerRegistryItem {
     required this.isAppAdmin,
     required this.isOp,
     required this.isBanned,
+    required this.isBanPending,
+    required this.isUnbanPending,
     required this.hasIdentityConflict,
     required this.createdAt,
     required this.updatedAt,
@@ -21,6 +23,8 @@ class PlayerRegistryItem {
   final bool isAppAdmin;
   final bool isOp;
   final bool isBanned;
+  final bool isBanPending;
+  final bool isUnbanPending;
   final bool hasIdentityConflict;
   final DateTime createdAt;
   final DateTime updatedAt;

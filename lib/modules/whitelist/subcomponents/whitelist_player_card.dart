@@ -13,11 +13,16 @@ class WhitelistPlayerCard extends StatelessWidget {
     required this.isAppAdmin,
     required this.isOp,
     required this.isBanned,
+    required this.isBanPending,
+    required this.isUnbanPending,
     required this.pendingOpsCount,
+    required this.canCancelPendingBan,
     required this.onToggleAppAdmin,
     required this.onToggleOp,
     required this.onEdit,
     required this.onBan,
+    required this.onCancelPendingBan,
+    required this.onUnban,
     required this.onRemoveWhitelist,
   });
 
@@ -26,11 +31,16 @@ class WhitelistPlayerCard extends StatelessWidget {
   final bool isAppAdmin;
   final bool isOp;
   final bool isBanned;
+  final bool isBanPending;
+  final bool isUnbanPending;
   final int pendingOpsCount;
+  final bool canCancelPendingBan;
   final Future<void> Function(bool value) onToggleAppAdmin;
   final Future<void> Function(bool value) onToggleOp;
   final VoidCallback onEdit;
   final VoidCallback onBan;
+  final VoidCallback onCancelPendingBan;
+  final VoidCallback onUnban;
   final VoidCallback onRemoveWhitelist;
 
   @override
@@ -120,8 +130,13 @@ class WhitelistPlayerCard extends StatelessWidget {
                           ),
                         if (isBanned)
                           _StatusChip(
-                            label: 'BANIDO',
+                            label: isBanPending ? 'BANIMENTO PENDENTE' : 'BANIDO',
                             color: AppColors.danger.withValues(alpha: 0.95),
+                          ),
+                        if (isUnbanPending)
+                          _StatusChip(
+                            label: 'DESBANIMENTO PENDENTE',
+                            color: AppColors.info.withValues(alpha: 0.95),
                           ),
                       ],
                     ),
@@ -167,7 +182,13 @@ class WhitelistPlayerCard extends StatelessWidget {
                     case _PlayerCardAction.edit:
                       onEdit();
                     case _PlayerCardAction.ban:
-                      onBan();
+                      if (isBanPending && canCancelPendingBan) {
+                        onCancelPendingBan();
+                      } else if (isBanned) {
+                        onUnban();
+                      } else {
+                        onBan();
+                      }
                     case _PlayerCardAction.removeWhitelist:
                       onRemoveWhitelist();
                   }
@@ -179,8 +200,11 @@ class WhitelistPlayerCard extends StatelessWidget {
                   ),
                   PopupMenuItem(
                     value: _PlayerCardAction.ban,
-                    enabled: !isBanned,
-                    child: Text(isBanned ? 'Já banido' : 'Banir'),
+                    child: Text(
+                      isBanPending && canCancelPendingBan
+                          ? 'Cancelar banimento'
+                          : (isBanned ? 'Desfazer banimento' : 'Banir'),
+                    ),
                   ),
                   const PopupMenuItem(
                     value: _PlayerCardAction.removeWhitelist,

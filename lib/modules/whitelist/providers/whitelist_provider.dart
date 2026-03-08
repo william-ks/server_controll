@@ -237,55 +237,6 @@ class WhitelistNotifier extends Notifier<WhitelistState> {
     await load();
   }
 
-  Future<void> purgePlayerData({
-    required int id,
-    required String nickname,
-  }) async {
-    final runtime = ref.read(serverRuntimeProvider);
-    if (runtime.lifecycle != ServerLifecycleState.online) {
-      throw StateError(
-        'Para banir e remover completamente o jogador, o servidor precisa estar online.',
-      );
-    }
-
-    final db = await AppDatabase.instance.database;
-    final rows = await db.query(
-      'players',
-      columns: ['id', 'icon_path'],
-      where: 'LOWER(nickname) = ?',
-      whereArgs: [nickname.trim().toLowerCase()],
-      limit: 1,
-    );
-    final playerId = rows.isEmpty ? null : rows.first['id'] as int?;
-    final iconPath =
-        rows.isEmpty ? null : (rows.first['icon_path'] as String?)?.trim();
-
-    await ref
-        .read(serverRuntimeProvider.notifier)
-        .sendCommand(_commands.whitelistRemove(nickname));
-
-    await _repository.delete(id);
-
-    if (playerId != null) {
-      await db.delete('players', where: 'id = ?', whereArgs: [playerId]);
-    }
-
-    if (iconPath != null && iconPath.isNotEmpty) {
-      final file = File(iconPath);
-      if (await file.exists()) {
-        await file.delete();
-      }
-    }
-
-    await ref.read(playerPermissionsProvider.notifier).loadForNicknames(
-      state.players
-          .where((item) => item.nickname.trim().toLowerCase() != nickname.trim().toLowerCase())
-          .map((item) => item.nickname)
-          .toList(),
-    );
-    await load();
-  }
-
   Future<String?> pickIconAndSave(String nickname) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,

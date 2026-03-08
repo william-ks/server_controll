@@ -151,12 +151,14 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
       }
     }
 
-    Future<void> confirmBanAndDelete(int id, String nickname) async {
+    Future<void> confirmBan(int id, String nickname) async {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (_) => AppModal(
           icon: Icons.gpp_bad_rounded,
-          title: 'Banir e apagar dados do jogador',
+          title: runtime.lifecycle == ServerLifecycleState.online
+              ? 'Banir jogador'
+              : 'Agendar banimento',
           width: 640,
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,11 +168,13 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                 variant: AppVariant.danger,
                 title: 'Ação irreversível',
                 description:
-                    'Ao banir $nickname, ele será removido da whitelist, terá todo o histórico de ranking/sessões apagado e será removido da lista local de players. Tudo será perdido.',
+                    'Ao banir $nickname, ele será removido da whitelist e terá o histórico de ranking/sessões zerado. Esta ação é irreversível para os dados de playtime.',
               ),
               const SizedBox(height: 14),
               Text(
-                'O servidor precisa estar online para que o banimento seja aplicado corretamente antes da limpeza local.',
+                runtime.lifecycle == ServerLifecycleState.online
+                    ? 'Como o servidor está online, o banimento será aplicado imediatamente.'
+                    : 'Como o servidor está offline, o banimento ficará pendente até o servidor voltar a ficar online. Enquanto isso, você poderá cancelar esse banimento pendente.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -183,7 +187,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
               variant: AppVariant.danger,
             ),
             AppButton(
-              label: 'Banir e excluir',
+              label: runtime.lifecycle == ServerLifecycleState.online
+                  ? 'Banir agora'
+                  : 'Agendar banimento',
               icon: Icons.delete_forever_rounded,
               variant: AppVariant.danger,
               onPressed: () => Navigator.of(context).pop(true),
@@ -196,7 +202,45 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
               nickname: nickname,
               reason: 'Banido pelo operador do app',
             );
-        await notifier.purgePlayerData(id: id, nickname: nickname);
+        await ref.read(playersRegistryProvider.notifier).load();
+        await notifier.load();
+      }
+    }
+
+    Future<void> confirmCancelPendingBan(String nickname) async {
+      final confirmed = await showAppConfirmDialog(
+        context,
+        icon: Icons.undo_rounded,
+        title: 'Cancelar banimento pendente',
+        message:
+            'Deseja cancelar o banimento pendente de $nickname? Como ele ainda não foi aplicado no servidor, a ação será revertida.',
+        confirmLabel: 'Cancelar banimento',
+        confirmVariant: AppVariant.warning,
+      );
+      if (confirmed) {
+        await ref.read(playerBanProvider.notifier).cancelPendingBan(
+              nickname: nickname,
+            );
+        await ref.read(playersRegistryProvider.notifier).load();
+      }
+    }
+
+    Future<void> confirmUnban(String nickname) async {
+      final confirmed = await showAppConfirmDialog(
+        context,
+        icon: Icons.gpp_good_rounded,
+        title: 'Desfazer banimento',
+        message: runtime.lifecycle == ServerLifecycleState.online
+            ? 'Deseja desfazer o banimento de $nickname agora?'
+            : 'Deseja desfazer o banimento de $nickname? Como o servidor está offline, o desfazer ficará pendente até ele voltar.',
+        confirmLabel: 'Desfazer banimento',
+        confirmVariant: AppVariant.success,
+      );
+      if (confirmed) {
+        await ref.read(playerBanProvider.notifier).unbanPlayer(
+              nickname: nickname,
+            );
+        await ref.read(playersRegistryProvider.notifier).load();
       }
     }
 
@@ -401,8 +445,12 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                               isAppAdmin: permissions?.isAppAdmin ?? false,
                               isOp: permissions?.isOp ?? false,
                               isBanned: registry?.isBanned ?? false,
+                              isBanPending: registry?.isBanPending ?? false,
+                              isUnbanPending: registry?.isUnbanPending ?? false,
                               pendingOpsCount:
                                   permissions?.pendingOpsCount ?? 0,
+                              canCancelPendingBan:
+                                  runtime.lifecycle != ServerLifecycleState.online,
                               onToggleAppAdmin: (value) async {
                                 try {
                                   await permissionsNotifier.toggleAppAdmin(
@@ -444,8 +492,10 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                                 }
                               },
                               onEdit: () => openModal(id: player.id),
-                              onBan: () =>
-                                  confirmBanAndDelete(player.id!, player.nickname),
+                              onBan: () => confirmBan(player.id!, player.nickname),
+                              onCancelPendingBan: () =>
+                                  confirmCancelPendingBan(player.nickname),
+                              onUnban: () => confirmUnban(player.nickname),
                               onRemoveWhitelist: () => confirmRemoveWhitelist(
                                 player.id!,
                                 player.nickname,

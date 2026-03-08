@@ -55,6 +55,14 @@ class PlayerBanRepository {
       note: reason.trim(),
       changedBy: createdBy,
     );
+
+    if (!pendingBan) {
+      await _applyBanConsequences(
+        db,
+        playerId: playerId,
+        nickname: nickname,
+      );
+    }
   }
 
   Future<void> unbanPlayer({
@@ -103,6 +111,56 @@ class PlayerBanRepository {
         oldValue: '1',
         newValue: '0',
         changedBy: removedBy,
+      );
+    }
+  }
+
+  Future<void> cancelPendingBan({
+    required String nickname,
+    String removedBy = 'app_operator',
+  }) async {
+    final db = await _db.database;
+    final player = await db.query(
+      'players',
+      columns: ['id'],
+      where: 'LOWER(nickname) = ?',
+      whereArgs: [nickname.trim().toLowerCase()],
+      limit: 1,
+    );
+    if (player.isEmpty) return;
+    final playerId = player.first['id'] as int;
+    final now = DateTime.now();
+
+    await db.update(
+      'player_bans',
+      {
+        'is_active': 0,
+        'pending_ban': 0,
+        'pending_unban': 0,
+        'removed_by': removedBy,
+        'removed_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      },
+      where: 'player_id = ? AND is_active = 1 AND pending_ban = 1',
+      whereArgs: [playerId],
+    );
+
+    final hasOtherActive = await _hasActiveBan(db, playerId);
+    if (!hasOtherActive) {
+      await db.update(
+        'players',
+        {'is_banned': 0, 'updated_at': now.toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [playerId],
+      );
+      await _appendStatusHistory(
+        db,
+        playerId: playerId,
+        statusType: 'ban',
+        oldValue: '1',
+        newValue: '0',
+        changedBy: removedBy,
+        note: 'banimento pendente cancelado',
       );
     }
   }
@@ -213,6 +271,7 @@ class PlayerBanRepository {
     final rows = await db.rawQuery('''
       SELECT
         b.id AS ban_id,
+        b.player_id AS player_id,
         p.nickname AS nickname,
         b.reason AS reason
       FROM player_bans b
@@ -223,15 +282,21 @@ class PlayerBanRepository {
     ''');
     for (final row in rows) {
       final id = row['ban_id'] as int? ?? 0;
+      final playerId = row['player_id'] as int? ?? 0;
       final nickname = row['nickname'] as String? ?? '';
       final reason = row['reason'] as String?;
-      if (id <= 0 || nickname.trim().isEmpty) continue;
+      if (id <= 0 || playerId <= 0 || nickname.trim().isEmpty) continue;
       await onBan(nickname, reason);
       await db.update(
         'player_bans',
         {'pending_ban': 0, 'updated_at': DateTime.now().toIso8601String()},
         where: 'id = ?',
         whereArgs: [id],
+      );
+      await _applyBanConsequences(
+        db,
+        playerId: playerId,
+        nickname: nickname,
       );
     }
   }
@@ -265,5 +330,33 @@ class PlayerBanRepository {
       'note': note,
       'created_at': DateTime.now().toIso8601String(),
     });
+  }
+
+  Future<void> _applyBanConsequences(
+    dynamic db, {
+    required int playerId,
+    required String nickname,
+  }) async {
+    final trimmedNickname = nickname.trim().toLowerCase();
+    await db.delete(
+      'whitelist_players',
+      where: 'LOWER(nickname) = ?',
+      whereArgs: [trimmedNickname],
+    );
+    await db.update(
+      'players',
+      {
+        'is_whitelisted': 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [playerId],
+    );
+    await db.delete('player_sessions', where: 'player_id = ?', whereArgs: [playerId]);
+    await db.delete(
+      'player_playtime_aggregates',
+      where: 'player_id = ?',
+      whereArgs: [playerId],
+    );
   }
 }

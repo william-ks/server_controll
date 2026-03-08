@@ -185,6 +185,46 @@ class PlayerBanNotifier extends Notifier<PlayerBanState> {
     }
   }
 
+  Future<void> cancelPendingBan({
+    required String nickname,
+    String actor = 'app_operator',
+  }) async {
+    try {
+      await _repository.cancelPendingBan(nickname: nickname, removedBy: actor);
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'ban.change',
+            entityType: 'player',
+            entityId: nickname.trim().toLowerCase(),
+            actorType: 'app_operator',
+            actorId: actor,
+            payload: {
+              'action': 'cancel_pending_ban',
+              'nickname': nickname,
+            },
+            resultStatus: 'success',
+          );
+    } catch (error) {
+      await ref
+          .read(auditServiceProvider)
+          .logEvent(
+            eventType: 'ban.change',
+            entityType: 'player',
+            entityId: nickname.trim().toLowerCase(),
+            actorType: 'app_operator',
+            actorId: actor,
+            payload: {
+              'action': 'cancel_pending_ban',
+              'nickname': nickname,
+              'error': error.toString(),
+            },
+            resultStatus: 'error',
+          );
+      rethrow;
+    }
+  }
+
   Future<void> processBanSync() async {
     final runtime = ref.read(serverRuntimeProvider);
     final online = runtime.lifecycle == ServerLifecycleState.online;

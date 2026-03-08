@@ -63,11 +63,21 @@ class PlayersRegistryNotifier extends Notifier<PlayersRegistryState> {
           p.is_app_admin AS is_app_admin,
           p.is_op AS is_op,
           p.is_banned AS is_banned,
+          COALESCE(b.pending_ban, 0) AS pending_ban,
+          COALESCE(b.pending_unban, 0) AS pending_unban,
           p.created_at AS created_at,
           p.updated_at AS updated_at,
           COALESCE(MAX(i.conflict_pending_manual_review), 0) AS has_conflict
         FROM players p
         LEFT JOIN player_identities i ON i.player_id = p.id
+        LEFT JOIN (
+          SELECT
+            player_id,
+            MAX(CASE WHEN is_active = 1 AND pending_ban = 1 THEN 1 ELSE 0 END) AS pending_ban,
+            MAX(CASE WHEN pending_unban = 1 THEN 1 ELSE 0 END) AS pending_unban
+          FROM player_bans
+          GROUP BY player_id
+        ) b ON b.player_id = p.id
         GROUP BY p.id
         ORDER BY LOWER(p.nickname) ASC
       ''');
@@ -82,6 +92,8 @@ class PlayersRegistryNotifier extends Notifier<PlayersRegistryState> {
           isAppAdmin: (row['is_app_admin'] as int? ?? 0) == 1,
           isOp: (row['is_op'] as int? ?? 0) == 1,
           isBanned: (row['is_banned'] as int? ?? 0) == 1,
+          isBanPending: (row['pending_ban'] as int? ?? 0) == 1,
+          isUnbanPending: (row['pending_unban'] as int? ?? 0) == 1,
           hasIdentityConflict: (row['has_conflict'] as int? ?? 0) == 1,
           createdAt:
               DateTime.tryParse((row['created_at'] as String?) ?? '') ??
