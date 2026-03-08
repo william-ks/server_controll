@@ -58,7 +58,6 @@ class PlayerRankingDashboard extends StatelessWidget {
               children: [
                 SizedBox(
                   width: cardWidth,
-                  height: 104,
                   child: _OverviewMetricCard(
                     title: 'LÍDER',
                     value: leader?.nickname ?? '--',
@@ -71,7 +70,6 @@ class PlayerRankingDashboard extends StatelessWidget {
                 ),
                 SizedBox(
                   width: cardWidth,
-                  height: 104,
                   child: _OverviewMetricCard(
                     title: 'PLAYERS RANQUEADOS',
                     value: '${ranking.length}',
@@ -84,7 +82,6 @@ class PlayerRankingDashboard extends StatelessWidget {
                 ),
                 SizedBox(
                   width: cardWidth,
-                  height: 104,
                   child: _OverviewMetricCard(
                     title: 'PERÍODO ATUAL',
                     value: state.selectedPeriod.label.toUpperCase(),
