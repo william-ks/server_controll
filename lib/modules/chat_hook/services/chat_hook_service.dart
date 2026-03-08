@@ -30,7 +30,7 @@ class ChatHookService {
     final isAppAdmin = status.isAppAdmin;
 
     final registry = _ref.read(chatCommandRegistryProvider);
-    final definition = registry.find(request.command);
+    final definition = await registry.find(request.command);
     if (definition == null) {
       const message = 'Comando desconhecido. Use <server> help.';
       await _sendResponse(message);

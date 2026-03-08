@@ -362,7 +362,7 @@ class _AddScheduleModalState extends ConsumerState<AddScheduleModal> {
           onPressed: _save,
           isLoading: _saving,
           isDisabled: _saving,
-          variant: AppVariant.success,
+          variant: AppVariant.primary,
           icon: Icons.add_rounded,
         ),
       ],

@@ -101,7 +101,7 @@ class _SchedulesPageState extends ConsumerState<SchedulesPage> {
                         ),
                       );
                     },
-                    variant: AppVariant.success,
+                    variant: AppVariant.primary,
                   ),
                 ],
               ),

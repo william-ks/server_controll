@@ -8,6 +8,7 @@ import '../../../config/theme/app_styles.dart';
 import '../../../config/theme/app_theme_extension.dart';
 import '../../../database/app_database.dart';
 import '../../../layout/default_layout.dart';
+import '../../../components/selects/app_select.dart';
 import '../services/chat_command_registry.dart';
 
 class ChatHooksPage extends ConsumerStatefulWidget {
@@ -19,11 +20,13 @@ class ChatHooksPage extends ConsumerStatefulWidget {
 
 class _ChatHooksPageState extends ConsumerState<ChatHooksPage> {
   late Future<List<_HookHistoryItem>> _historyFuture;
+  late Future<List<ChatCommandDefinition>> _commandsFuture;
 
   @override
   void initState() {
     super.initState();
     _historyFuture = _loadHistory();
+    _commandsFuture = _loadCommands();
   }
 
   Future<List<_HookHistoryItem>> _loadHistory() async {
@@ -46,9 +49,12 @@ class _ChatHooksPageState extends ConsumerState<ChatHooksPage> {
     }).toList();
   }
 
+  Future<List<ChatCommandDefinition>> _loadCommands() {
+    return ref.read(chatCommandRegistryProvider).allDefinitions();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final commands = ref.read(chatCommandRegistryProvider).allDefinitions();
     return DefaultLayout(
       title: 'MineControl',
       currentRoute: AppRoutes.hooks,
@@ -74,13 +80,47 @@ class _ChatHooksPageState extends ConsumerState<ChatHooksPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  for (var i = 0; i < commands.length; i++) ...[
-                    Expanded(child: _HookCommandCard(command: commands[i])),
-                    if (i < commands.length - 1) const SizedBox(width: 12),
-                  ],
-                ],
+              FutureBuilder<List<ChatCommandDefinition>>(
+                future: _commandsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 18),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Text(
+                      snapshot.error.toString().replaceFirst('Bad state: ', ''),
+                    );
+                  }
+                  final commands = snapshot.data ?? const <ChatCommandDefinition>[];
+                  return Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      for (final command in commands)
+                        SizedBox(
+                          width: 320,
+                          child: _HookCommandCard(
+                            command: command,
+                            onPermissionChanged: (permission) async {
+                              await ref
+                                  .read(chatCommandRegistryProvider)
+                                  .setPermission(
+                                    command.name,
+                                    permission,
+                                  );
+                              if (!mounted) return;
+                              setState(() {
+                                _commandsFuture = _loadCommands();
+                              });
+                            },
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 16),
               Row(
@@ -172,9 +212,14 @@ class _ChatHooksPageState extends ConsumerState<ChatHooksPage> {
 }
 
 class _HookCommandCard extends StatelessWidget {
-  const _HookCommandCard({required this.command});
+  const _HookCommandCard({
+    required this.command,
+    required this.onPermissionChanged,
+  });
 
   final ChatCommandDefinition command;
+  final Future<void> Function(ChatCommandPermissionPolicy permission)
+  onPermissionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -216,20 +261,98 @@ class _HookCommandCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             command.description,
-            maxLines: 2,
+            maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           Text(
-            command.permission == ChatCommandPermissionPolicy.appAdmin
-                ? 'Permissão: admin do app'
-                : 'Permissão: todos',
+            'Permissão',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: ext.mutedText,
+              fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: 6),
+          _PermissionSelect(
+            value: command.permission,
+            onChanged: onPermissionChanged,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PermissionSelect extends StatefulWidget {
+  const _PermissionSelect({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final ChatCommandPermissionPolicy value;
+  final Future<void> Function(ChatCommandPermissionPolicy permission) onChanged;
+
+  @override
+  State<_PermissionSelect> createState() => _PermissionSelectState();
+}
+
+class _PermissionSelectState extends State<_PermissionSelect> {
+  late ChatCommandPermissionPolicy _value;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.value;
+  }
+
+  @override
+  void didUpdateWidget(covariant _PermissionSelect oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _value = widget.value;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: AppSelect<ChatCommandPermissionPolicy>(
+            value: _value,
+            enabled: !_saving,
+            items: const [
+              AppSelectItem(
+                value: ChatCommandPermissionPolicy.everyone,
+                label: 'Todos',
+              ),
+              AppSelectItem(
+                value: ChatCommandPermissionPolicy.appAdmin,
+                label: 'Somente admin',
+              ),
+            ],
+            onChanged: (value) async {
+              if (value == null || value == _value) return;
+              setState(() {
+                _saving = true;
+                _value = value;
+              });
+              await widget.onChanged(value);
+              if (!mounted) return;
+              setState(() => _saving = false);
+            },
+          ),
+        ),
+        if (_saving) ...[
+          const SizedBox(width: 10),
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ],
+      ],
     );
   }
 }
