@@ -123,7 +123,8 @@ class _SelectiveBackupModalState extends ConsumerState<SelectiveBackupModal> {
           else if (_entries.isEmpty)
             const Text('Nenhum item encontrado na raiz do servidor.')
           else
-            Flexible(
+            SizedBox(
+              height: 260,
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -131,7 +132,6 @@ class _SelectiveBackupModalState extends ConsumerState<SelectiveBackupModal> {
                   border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: ListView.builder(
-                  shrinkWrap: true,
                   itemCount: _entries.length,
                   itemBuilder: (_, index) {
                     final item = _entries[index];
