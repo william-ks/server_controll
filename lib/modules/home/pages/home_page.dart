@@ -9,11 +9,13 @@ import '../../../modules/server/providers/server_runtime_provider.dart';
 import '../../backup/providers/backups_provider.dart';
 import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
+import '../../maintenance/providers/maintenance_provider.dart';
 import '../providers/home_provider.dart';
 import '../providers/pvp_control_provider.dart';
 import '../subcomponents/active_players_card.dart';
 import '../subcomponents/kick_players_modal.dart';
 import '../subcomponents/manual_backup_modal.dart';
+import '../subcomponents/maintenance_mode_modal.dart';
 import '../subcomponents/online_players_strip_card.dart';
 import '../subcomponents/pvp_control_card.dart';
 import '../subcomponents/server_actions_bar.dart';
@@ -31,6 +33,7 @@ class HomePage extends ConsumerWidget {
     final pvpNotifier = ref.read(pvpControlProvider.notifier);
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final config = ref.watch(configFilesProvider);
+    final maintenanceState = ref.watch(maintenanceProvider);
     final hasEssentials =
         config.serverPath.trim().isNotEmpty &&
         config.javaCommand.trim().isNotEmpty &&
@@ -143,6 +146,7 @@ class HomePage extends ConsumerWidget {
                       ServerActionsBar(
                         lifecycle: runtime.lifecycle,
                         canStartServer: hasEssentials,
+                        maintenanceActive: maintenanceState.snapshot.isActive,
                         onStart: actions.startServer,
                         onStop: actions.stopServer,
                         onRestart: actions.restartServer,
@@ -153,6 +157,12 @@ class HomePage extends ConsumerWidget {
                           showDialog<void>(
                             context: context,
                             builder: (_) => const KickPlayersModal(),
+                          );
+                        },
+                        onMaintenance: () {
+                          showDialog<void>(
+                            context: context,
+                            builder: (_) => const MaintenanceModeModal(),
                           );
                         },
                       ),

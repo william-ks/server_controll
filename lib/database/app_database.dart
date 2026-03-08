@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 9;
+  static const int _schemaVersion = 10;
 
   Database? _db;
 
@@ -162,6 +162,7 @@ class AppDatabase {
     );
 
     await _createPlayersDomainTables(db);
+    await _createMaintenanceTables(db);
   }
 
   Future<void> _upgradeToDefinitiveSchema(
@@ -193,6 +194,7 @@ class AppDatabase {
     );
 
     await _createPlayersDomainTables(db);
+    await _createMaintenanceTables(db);
   }
 
   Future<void> _createPlayersDomainTables(dynamic db) async {
@@ -253,6 +255,32 @@ class AppDatabase {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_playtime_agg_type_key ON player_playtime_aggregates(period_type, period_key)',
     );
+  }
+
+  Future<void> _createMaintenanceTables(dynamic db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS maintenance_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        is_active INTEGER NOT NULL DEFAULT 0,
+        mode TEXT NOT NULL DEFAULT 'total',
+        starts_at TEXT,
+        ends_at TEXT,
+        countdown_seconds INTEGER NOT NULL DEFAULT 0,
+        motd_before TEXT,
+        motd_during TEXT,
+        icon_before_path TEXT,
+        icon_during_path TEXT,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.insert('maintenance_state', {
+      'id': 1,
+      'is_active': 0,
+      'mode': 'total',
+      'countdown_seconds': 0,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
   Future<void> _addColumnIfMissing(
