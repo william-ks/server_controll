@@ -1,7 +1,7 @@
 # CHECKLIST CENTRAL DE TASKS
 
 ## Lista de tarefas
-- [ ] [Task 01 - Categorizacao de Tempo de Jogo dos Players](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_01.md)
+- [x] [Task 01 - Categorizacao de Tempo de Jogo dos Players](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_01.md)
 - [ ] [Task 02 - Modo de Manutencao do Servidor](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_02.md)
 - [ ] [Task 03 - Protecao Durante Geracao de Chunks](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_03.md)
 - [ ] [Task 04 - Politica de Backup do Servidor](C:/Users/Usuario/Desktop/projeto/server_controll/implementations/task_04.md)
@@ -36,4 +36,3 @@
 ## Observacoes operacionais
 - A ordem recomendada de execucao segue dependencias descritas em cada `task_XX.md`.
 - Sempre respeitar regras globais do `tasks.md`, incluindo prefixo de chat `[SERVER 🤖]` e compatibilidade Windows/Linux.
-

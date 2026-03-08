@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 8;
+  static const int _schemaVersion = 9;
 
   Database? _db;
 
@@ -160,6 +160,8 @@ class AppDatabase {
     await db.execute(
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_chunky_tasks_single_selected ON chunky_tasks(status) WHERE deleted_at IS NULL AND status = 'selected'",
     );
+
+    await _createPlayersDomainTables(db);
   }
 
   Future<void> _upgradeToDefinitiveSchema(
@@ -188,6 +190,68 @@ class AppDatabase {
       table: 'chunky_tasks',
       column: 'center_z',
       definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+
+    await _createPlayersDomainTables(db);
+  }
+
+  Future<void> _createPlayersDomainTables(dynamic db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS players (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nickname TEXT NOT NULL,
+        uuid TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_players_nickname_unique ON players(LOWER(nickname))',
+    );
+    await db.execute(
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_players_uuid_unique_non_empty ON players(uuid) WHERE uuid IS NOT NULL AND uuid <> ''",
+    );
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS player_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        is_open INTEGER NOT NULL DEFAULT 1,
+        is_incomplete INTEGER NOT NULL DEFAULT 0,
+        start_at TEXT NOT NULL,
+        end_at TEXT,
+        last_seen_at TEXT,
+        close_reason TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_player_sessions_player_start ON player_sessions(player_id, start_at)',
+    );
+    await db.execute(
+      "CREATE INDEX IF NOT EXISTS idx_player_sessions_open_only ON player_sessions(player_id) WHERE is_open = 1",
+    );
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS player_playtime_aggregates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        period_type TEXT NOT NULL,
+        period_key TEXT NOT NULL,
+        total_seconds INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_playtime_agg_unique_period ON player_playtime_aggregates(player_id, period_type, period_key)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_playtime_agg_type_key ON player_playtime_aggregates(period_type, period_key)',
     );
   }
 

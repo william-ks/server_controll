@@ -9,9 +9,11 @@ import '../../../models/server_lifecycle_state.dart';
 import '../../../config/routes/routes_config.dart';
 import '../../../config/theme/app_styles.dart';
 import '../../server/providers/server_runtime_provider.dart';
+import '../../players/providers/player_playtime_provider.dart';
 import '../../../layout/default_layout.dart';
 import '../providers/whitelist_provider.dart';
 import '../subcomponents/add_edit_player_modal.dart';
+import '../subcomponents/player_playtime_panel.dart';
 import '../subcomponents/whitelist_actions_bar.dart';
 import '../subcomponents/whitelist_empty_state.dart';
 import '../subcomponents/whitelist_player_card.dart';
@@ -40,6 +42,8 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
     final onlinePlayers = ref.watch(onlinePlayersProvider);
     final runtime = ref.watch(serverRuntimeProvider);
     final requirements = ref.watch(whitelistRequirementsProvider);
+    final playtimeState = ref.watch(playerPlaytimeProvider);
+    final playtimeNotifier = ref.read(playerPlaytimeProvider.notifier);
 
     Future<void> openModal({int? id}) async {
       final player = id == null
@@ -55,7 +59,12 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
           player: player,
           onPickIcon: notifier.pickIconAndSave,
           onSave: ({required nickname, uuid, iconPath}) {
-            return notifier.savePlayer(id: id, nickname: nickname, uuid: uuid, iconPath: iconPath);
+            return notifier.savePlayer(
+              id: id,
+              nickname: nickname,
+              uuid: uuid,
+              iconPath: iconPath,
+            );
           },
         ),
       );
@@ -78,23 +87,36 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
               Text(
                 'Você está prestes a remover o jogador $nickname da whitelist local impedindo o jogador de se conectar ao servidor, você tem certeza ?',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
               ),
               const SizedBox(height: 14),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.25),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.info_outline_rounded, size: 14, color: Theme.of(context).colorScheme.primary),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -138,7 +160,8 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
     final filtered = state.players.where((player) {
       if (_query.trim().isEmpty) return true;
       final q = _query.toLowerCase();
-      return player.nickname.toLowerCase().contains(q) || (player.uuid ?? '').toLowerCase().contains(q);
+      return player.nickname.toLowerCase().contains(q) ||
+          (player.uuid ?? '').toLowerCase().contains(q);
     }).toList();
 
     return DefaultLayout(
@@ -168,11 +191,24 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                 onAdd: () => openModal(),
                 onRefresh: notifier.refreshAndSyncFromFile,
                 onSyncPending: notifier.syncPending,
-                addEnabled: requirements.maybeWhen(data: (data) => data.canManagePlayers, orElse: () => false),
-                syncEnabled: requirements.maybeWhen(
-                  data: (data) => data.canManagePlayers && runtime.lifecycle == ServerLifecycleState.online,
+                addEnabled: requirements.maybeWhen(
+                  data: (data) => data.canManagePlayers,
                   orElse: () => false,
                 ),
+                syncEnabled: requirements.maybeWhen(
+                  data: (data) =>
+                      data.canManagePlayers &&
+                      runtime.lifecycle == ServerLifecycleState.online,
+                  orElse: () => false,
+                ),
+              ),
+              const SizedBox(height: 12),
+              PlayerPlaytimePanel(
+                state: playtimeState,
+                onRefresh: playtimeNotifier.refresh,
+                onSelectPlayer: (playerId) {
+                  playtimeNotifier.selectPlayer(playerId);
+                },
               ),
               requirements.when(
                 data: (data) {
@@ -181,7 +217,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                       padding: const EdgeInsets.only(top: 10),
                       child: Text(
                         'Defina Path do servidor, Comando do Java e Nome do file server em Config > Arquivos antes de gerenciar a whitelist.',
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     );
                   }
@@ -190,7 +228,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                       padding: const EdgeInsets.only(top: 10),
                       child: Text(
                         'Arquivo whitelist.json não encontrado em ${data.whitelistFilePath}.',
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     );
                   }
@@ -204,14 +244,22 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
               if (state.error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(state.error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  child: Text(
+                    state.error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ),
               const SizedBox(height: 8),
               Expanded(
                 child: filtered.isEmpty
                     ? const WhitelistEmptyState()
                     : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 6,
+                        ),
                         clipBehavior: Clip.none,
                         itemCount: filtered.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 14),
@@ -221,7 +269,8 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                             player: player,
                             isOnline: onlinePlayers.contains(player.nickname),
                             onEdit: () => openModal(id: player.id),
-                            onDelete: () => confirmDelete(player.id!, player.nickname),
+                            onDelete: () =>
+                                confirmDelete(player.id!, player.nickname),
                           );
                         },
                       ),

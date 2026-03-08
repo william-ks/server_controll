@@ -58,6 +58,21 @@ class ServerLogParser {
     return match?.group(1)?.trim();
   }
 
+  static String? parseKickedPlayer(String line) {
+    final kickedByCommand = RegExp(r'Kicked (\S+):').firstMatch(line);
+    if (kickedByCommand != null) {
+      return kickedByCommand.group(1)?.trim();
+    }
+    final kickedConnection = RegExp(
+      r'\]:\s(.+)\s+lost connection:\s+Kicked',
+      caseSensitive: false,
+    ).firstMatch(line);
+    if (kickedConnection != null) {
+      return kickedConnection.group(1)?.trim();
+    }
+    return null;
+  }
+
   static bool isStopping(String line) {
     return line.toLowerCase().contains('stopping server');
   }
