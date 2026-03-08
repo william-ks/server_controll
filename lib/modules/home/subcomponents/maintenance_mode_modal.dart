@@ -207,80 +207,68 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
               ),
             const SizedBox(height: 8),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Modo de acesso',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
+                  child: _fieldBlock(
+                    title: 'Modo de acesso',
+                    child: AppSelect<MaintenanceMode>(
+                      value: _mode,
+                      items: const [
+                        AppSelectItem(
+                          value: MaintenanceMode.total,
+                          label: 'Manutenção total',
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      AppSelect<MaintenanceMode>(
-                        value: _mode,
-                        items: const [
-                          AppSelectItem(
-                            value: MaintenanceMode.total,
-                            label: 'Manutenção total',
-                          ),
-                          AppSelectItem(
-                            value: MaintenanceMode.adminsOnly,
-                            label: 'Somente admins do app',
-                          ),
-                        ],
-                        onChanged: active
-                            ? null
-                            : (value) {
-                                if (value == null) return;
-                                setState(() => _mode = value);
-                              },
-                      ),
-                    ],
+                        AppSelectItem(
+                          value: MaintenanceMode.adminsOnly,
+                          label: 'Somente admins do app',
+                        ),
+                      ],
+                      onChanged: active
+                          ? null
+                          : (value) {
+                              if (value == null) return;
+                              setState(() => _mode = value);
+                            },
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Admins permitidos',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      AppTextInput(
-                        controller: _adminNicknamesController,
-                        hint: 'Ex.: steve, alex',
-                        enabled: !active,
-                      ),
-                    ],
+                  child: _fieldBlock(
+                    title: 'Admins permitidos',
+                    child: AppTextInput(
+                      controller: _adminNicknamesController,
+                      hint: 'Ex.: steve, alex',
+                      enabled: !active,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: AppTextInput(
-                    controller: _motdTotalController,
-                    label: 'MOTD para manutenção total',
-                    hint: 'Ex.: Servidor em manutenção',
-                    enabled: !active,
+                  child: _fieldBlock(
+                    title: 'MOTD para manutenção total',
+                    child: AppTextInput(
+                      controller: _motdTotalController,
+                      hint: 'Ex.: Servidor em manutenção',
+                      enabled: !active,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: AppTextInput(
-                    controller: _motdAdminsController,
-                    label: 'MOTD para modo somente admins',
-                    hint: 'Ex.: Somente admins do app',
-                    enabled: !active,
+                  child: _fieldBlock(
+                    title: 'MOTD para modo somente admins',
+                    child: AppTextInput(
+                      controller: _motdAdminsController,
+                      hint: 'Ex.: Somente admins do app',
+                      enabled: !active,
+                    ),
                   ),
                 ),
               ],
@@ -329,6 +317,22 @@ class _MaintenanceModeModalState extends ConsumerState<MaintenanceModeModal> {
             variant: AppVariant.success,
             icon: Icons.lock_open_rounded,
           ),
+      ],
+    );
+  }
+
+  Widget _fieldBlock({required String title, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        child,
       ],
     );
   }
