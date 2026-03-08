@@ -142,6 +142,7 @@ class PlayerRankingDashboard extends StatelessWidget {
   ) {
     return _PanelCard(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(

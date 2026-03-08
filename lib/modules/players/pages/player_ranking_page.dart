@@ -29,11 +29,13 @@ class PlayerRankingPage extends ConsumerWidget {
             boxShadow: AppStyles.softShadow(opacity: 0.18),
           ),
           padding: const EdgeInsets.all(16),
-          child: PlayerRankingDashboard(
-            state: playtimeState,
-            onRefresh: playtimeNotifier.refresh,
-            onToggleShowAll: playtimeNotifier.toggleShowFullRanking,
-            onPeriodChanged: playtimeNotifier.setRankingPeriod,
+          child: SingleChildScrollView(
+            child: PlayerRankingDashboard(
+              state: playtimeState,
+              onRefresh: playtimeNotifier.refresh,
+              onToggleShowAll: playtimeNotifier.toggleShowFullRanking,
+              onPeriodChanged: playtimeNotifier.setRankingPeriod,
+            ),
           ),
         ),
       ),
