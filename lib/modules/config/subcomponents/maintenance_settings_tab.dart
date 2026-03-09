@@ -10,6 +10,7 @@ import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../../config/theme/app_theme_extension.dart';
 import '../../maintenance/models/maintenance_defaults.dart';
 import '../../maintenance/providers/maintenance_provider.dart';
 import '../models/config_files_settings.dart';
@@ -24,7 +25,8 @@ class MaintenanceSettingsTab extends ConsumerStatefulWidget {
       _MaintenanceSettingsTabState();
 }
 
-class _MaintenanceSettingsTabState extends ConsumerState<MaintenanceSettingsTab> {
+class _MaintenanceSettingsTabState
+    extends ConsumerState<MaintenanceSettingsTab> {
   static const String _maintenanceIconFileName = 'maintenance_default';
   static const List<String> _imageExtensions = ['png', 'jpg', 'jpeg', 'webp'];
   static const List<String> _serverIconCandidates = [
@@ -108,17 +110,17 @@ class _MaintenanceSettingsTabState extends ConsumerState<MaintenanceSettingsTab>
 
     setState(() => _isHandlingIcon = true);
     try {
-    final appDir = await getApplicationSupportDirectory();
-    final targetDir = Directory(p.join(appDir.path, 'maintenance_assets'));
-    await targetDir.create(recursive: true);
-    final ext = p.extension(sourcePath).toLowerCase();
-    final safeExt = ext.isEmpty ? '.png' : ext;
+      final appDir = await getApplicationSupportDirectory();
+      final targetDir = Directory(p.join(appDir.path, 'maintenance_assets'));
+      await targetDir.create(recursive: true);
+      final ext = p.extension(sourcePath).toLowerCase();
+      final safeExt = ext.isEmpty ? '.png' : ext;
       await _deleteOldMaintenanceCopies(targetDir);
       final targetPath = p.join(
         targetDir.path,
         '$_maintenanceIconFileName$safeExt',
       );
-    await sourceFile.copy(targetPath);
+      await sourceFile.copy(targetPath);
       _maintenanceIconPath = targetPath;
       await _loadVisualState();
       _showMessage('Visual de manutenção atualizado.');
@@ -141,7 +143,9 @@ class _MaintenanceSettingsTabState extends ConsumerState<MaintenanceSettingsTab>
       }
       _maintenanceIconPath = '';
       await _loadVisualState();
-      _showMessage('Visual de manutenção removido. O servidor usará o visual padrão.');
+      _showMessage(
+        'Visual de manutenção removido. O servidor usará o visual padrão.',
+      );
     } catch (_) {
       _showMessage('Não foi possível remover o visual de manutenção.');
     } finally {
@@ -153,7 +157,9 @@ class _MaintenanceSettingsTabState extends ConsumerState<MaintenanceSettingsTab>
 
   Future<void> _deleteOldMaintenanceCopies(Directory targetDir) async {
     for (final ext in _imageExtensions) {
-      final file = File(p.join(targetDir.path, '$_maintenanceIconFileName.$ext'));
+      final file = File(
+        p.join(targetDir.path, '$_maintenanceIconFileName.$ext'),
+      );
       if (await file.exists()) {
         await file.delete();
       }
@@ -234,6 +240,8 @@ class _MaintenanceSettingsTabState extends ConsumerState<MaintenanceSettingsTab>
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -244,149 +252,166 @@ class _MaintenanceSettingsTabState extends ConsumerState<MaintenanceSettingsTab>
       children: [
         Expanded(
           child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Manutenção',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.secondary,
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: ext.cardBackground,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: ext.cardBorder.withValues(alpha: 0.5),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
                   ),
-                ),
-                const SizedBox(height: 10),
-                const AppBadge(
-                  icon: Icons.info_outline_rounded,
-                  variant: AppVariant.info,
-                  title:
-                      'Essas configurações são usadas quando o modo manutenção for ativado na Home.',
-                ),
-                const SizedBox(height: 22),
-                Text(
-                  'Visual do servidor em manutenção',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.secondary,
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Manutenção',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.outline.withValues(alpha: 0.5),
+                  const SizedBox(height: 10),
+                  const AppBadge(
+                    icon: Icons.info_outline_rounded,
+                    variant: AppVariant.info,
+                    title:
+                        'Essas configurações são usadas quando o modo manutenção for ativado na Home.',
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    'Visual do servidor em manutenção',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Container(
+                        width: 76,
+                        height: 76,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.outline.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: previewFile == null
+                              ? Icon(
+                                  Icons.image_not_supported_rounded,
+                                  size: 30,
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.45),
+                                )
+                              : Image.file(
+                                  previewFile,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, error, stackTrace) {
+                                    return Icon(
+                                      Icons.broken_image_rounded,
+                                      size: 30,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.45),
+                                    );
+                                  },
+                                ),
                         ),
                       ),
-                      child: ClipOval(
-                        child: previewFile == null
-                            ? Icon(
-                                Icons.image_not_supported_rounded,
-                                size: 30,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.45),
-                              )
-                            : Image.file(
-                                previewFile,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, error, stackTrace) {
-                                  return Icon(
-                                    Icons.broken_image_rounded,
-                                    size: 30,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.45),
-                                  );
-                                },
-                              ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _maintenanceIconFile != null
+                                  ? 'Imagem própria de manutenção configurada.'
+                                  : usingServerDefault
+                                  ? 'Sem imagem de manutenção. O visual padrão do servidor será usado.'
+                                  : 'Nenhuma imagem disponível no momento.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 8,
+                              children: [
+                                AppButton(
+                                  label: _maintenanceIconFile == null
+                                      ? 'Escolher foto'
+                                      : 'Editar foto',
+                                  onPressed: _pickIcon,
+                                  isLoading: _isHandlingIcon,
+                                  isDisabled: _isHandlingIcon,
+                                  icon: Icons.upload_rounded,
+                                ),
+                                AppButton(
+                                  label: 'Remover',
+                                  onPressed: _removeIcon,
+                                  variant: AppVariant.danger,
+                                  transparent: true,
+                                  isDisabled:
+                                      _maintenanceIconFile == null ||
+                                      _isHandlingIcon,
+                                  icon: Icons.delete_outline_rounded,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _maintenanceIconFile != null
-                                ? 'Imagem própria de manutenção configurada.'
-                                : usingServerDefault
-                                ? 'Sem imagem de manutenção. O visual padrão do servidor será usado.'
-                                : 'Nenhuma imagem disponível no momento.',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 8,
-                            children: [
-                              AppButton(
-                                label: _maintenanceIconFile == null
-                                    ? 'Escolher foto'
-                                    : 'Editar foto',
-                                onPressed: _pickIcon,
-                                isLoading: _isHandlingIcon,
-                                isDisabled: _isHandlingIcon,
-                                icon: Icons.upload_rounded,
-                              ),
-                              AppButton(
-                                label: 'Remover',
-                                onPressed: _removeIcon,
-                                variant: AppVariant.danger,
-                                transparent: true,
-                                isDisabled:
-                                    _maintenanceIconFile == null ||
-                                    _isHandlingIcon,
-                                icon: Icons.delete_outline_rounded,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 30),
-                Text(
-                  'Servidor',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.secondary,
+                    ],
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Defina as mensagens que serão aplicadas ao servidor durante a manutenção.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.76)
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  const SizedBox(height: 30),
+                  Text(
+                    'Servidor',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 18),
-                _fieldTitle(context, 'Mensagem para manutenção total'),
-                AppTextInput(
-                  controller: _motdTotalController,
-                  hint: 'Ex.: Servidor temporariamente indisponível para manutenção.',
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 18),
-                _fieldTitle(context, 'Mensagem para modo somente admins'),
-                AppTextInput(
-                  controller: _motdAdminsController,
-                  hint:
-                      'Ex.: Manutenção em andamento. Acesso liberado apenas para admins.',
-                  onChanged: (_) => setState(() {}),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  Text(
+                    'Defina as mensagens que serão aplicadas ao servidor durante a manutenção.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.76)
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _fieldTitle(context, 'Mensagem para manutenção total'),
+                  AppTextInput(
+                    controller: _motdTotalController,
+                    hint:
+                        'Ex.: Servidor temporariamente indisponível para manutenção.',
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 18),
+                  _fieldTitle(context, 'Mensagem para modo somente admins'),
+                  AppTextInput(
+                    controller: _motdAdminsController,
+                    hint:
+                        'Ex.: Manutenção em andamento. Acesso liberado apenas para admins.',
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

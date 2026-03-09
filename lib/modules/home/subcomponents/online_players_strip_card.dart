@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../config/theme/app_colors.dart';
-import '../../../../config/theme/app_theme_extension.dart';
 
 class OnlinePlayersStripCard extends StatelessWidget {
   const OnlinePlayersStripCard({super.key, required this.players});
@@ -10,59 +9,20 @@ class OnlinePlayersStripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    if (players.isEmpty) {
+      return Text(
+        '0 jogadores conectados',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: AppColors.neutral,
+          fontStyle: FontStyle.italic,
+        ),
+      );
+    }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: ext.cardBackground,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.65)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.16),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.badge_rounded, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'JOGADORES ONLINE',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-              Text(
-                '${players.length}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: players.isEmpty ? AppColors.neutral : AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (players.isEmpty)
-            Text(
-              '0 jogadores conectados',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.neutral),
-            )
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: players.map((name) => _PlayerBadge(name: name)).toList(),
-            ),
-        ],
-      ),
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: players.map((name) => _PlayerBadge(name: name)).toList(),
     );
   }
 }
@@ -88,11 +48,16 @@ class _PlayerBadge extends StatelessWidget {
             width: 7,
             height: 7,
             margin: const EdgeInsets.only(right: 6),
-            decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+              color: AppColors.success,
+              shape: BoxShape.circle,
+            ),
           ),
           Text(
             name,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),

@@ -9,7 +9,8 @@ import '../../../components/modal/app_modal.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../models/server_lifecycle_state.dart';
 import '../../../config/routes/routes_config.dart';
-import '../../../config/theme/app_styles.dart';
+
+import '../../../config/theme/app_theme_extension.dart';
 import '../../players/providers/player_ban_provider.dart';
 import '../../players/providers/player_permissions_provider.dart';
 import '../../players/providers/players_registry_provider.dart';
@@ -59,7 +60,7 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
     final registryState = ref.watch(playersRegistryProvider);
     final permissionsState = ref.watch(playerPermissionsProvider);
     final permissionsNotifier = ref.read(playerPermissionsProvider.notifier);
-
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     Future<void> openModal({int? id}) async {
       final player = id == null
           ? null
@@ -220,7 +221,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
         ),
       );
       if (confirmed == true) {
-        await ref.read(playerBanProvider.notifier).banPlayer(
+        await ref
+            .read(playerBanProvider.notifier)
+            .banPlayer(
               nickname: nickname,
               reason: 'Banido pelo operador do app',
             );
@@ -240,9 +243,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
         confirmVariant: AppVariant.warning,
       );
       if (confirmed) {
-        await ref.read(playerBanProvider.notifier).cancelPendingBan(
-              nickname: nickname,
-            );
+        await ref
+            .read(playerBanProvider.notifier)
+            .cancelPendingBan(nickname: nickname);
         await ref.read(playersRegistryProvider.notifier).load();
       }
     }
@@ -259,9 +262,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
         confirmVariant: AppVariant.success,
       );
       if (confirmed) {
-        await ref.read(playerBanProvider.notifier).unbanPlayer(
-              nickname: nickname,
-            );
+        await ref
+            .read(playerBanProvider.notifier)
+            .unbanPlayer(nickname: nickname);
         await ref.read(playersRegistryProvider.notifier).load();
       }
     }
@@ -271,23 +274,26 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
         player.nickname.trim().toLowerCase(): player,
     };
 
-    final filtered = state.players.where((player) {
-      if (_query.trim().isEmpty) return true;
-      final q = _query.toLowerCase();
-      final matchesQuery =
-          player.nickname.toLowerCase().contains(q) ||
-          (player.uuid ?? '').toLowerCase().contains(q);
-      if (!matchesQuery) return false;
-      return true;
-    }).where((player) {
-      final nicknameKey = player.nickname.trim().toLowerCase();
-      final permissions = permissionsState.statusByNickname[nicknameKey];
-      final registry = registryByNickname[nicknameKey];
-      if (_filterAdmin && !(permissions?.isAppAdmin ?? false)) return false;
-      if (_filterOp && !(permissions?.isOp ?? false)) return false;
-      if (_filterBanned && !(registry?.isBanned ?? false)) return false;
-      return true;
-    }).toList();
+    final filtered = state.players
+        .where((player) {
+          if (_query.trim().isEmpty) return true;
+          final q = _query.toLowerCase();
+          final matchesQuery =
+              player.nickname.toLowerCase().contains(q) ||
+              (player.uuid ?? '').toLowerCase().contains(q);
+          if (!matchesQuery) return false;
+          return true;
+        })
+        .where((player) {
+          final nicknameKey = player.nickname.trim().toLowerCase();
+          final permissions = permissionsState.statusByNickname[nicknameKey];
+          final registry = registryByNickname[nicknameKey];
+          if (_filterAdmin && !(permissions?.isAppAdmin ?? false)) return false;
+          if (_filterOp && !(permissions?.isOp ?? false)) return false;
+          if (_filterBanned && !(registry?.isBanned ?? false)) return false;
+          return true;
+        })
+        .toList();
 
     final syncNicknames = [...state.players]
       ..sort(
@@ -309,16 +315,22 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
       title: widget.title,
       currentRoute: widget.currentRoute,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: AppStyles.radiusLg,
-            border: Border.all(color: Theme.of(context).dividerColor),
-            boxShadow: AppStyles.softShadow(opacity: 0.18),
+            color: ext.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             children: [
               AppTextInput(
@@ -457,7 +469,9 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                               const SizedBox(height: 14),
                           itemBuilder: (_, index) {
                             final player = filtered[index];
-                            final nicknameKey = player.nickname.trim().toLowerCase();
+                            final nicknameKey = player.nickname
+                                .trim()
+                                .toLowerCase();
                             final permissions =
                                 permissionsState.statusByNickname[nicknameKey];
                             final registry = registryByNickname[nicknameKey];
@@ -472,7 +486,8 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                               pendingOpsCount:
                                   permissions?.pendingOpsCount ?? 0,
                               canCancelPendingBan:
-                                  runtime.lifecycle != ServerLifecycleState.online,
+                                  runtime.lifecycle !=
+                                  ServerLifecycleState.online,
                               canCancelPendingWhitelistRemoval:
                                   player.isPendingRemoval,
                               onToggleAppAdmin: (value) async {
@@ -516,7 +531,8 @@ class _WhitelistPageState extends ConsumerState<WhitelistPage> {
                                 }
                               },
                               onEdit: () => openModal(id: player.id),
-                              onBan: () => confirmBan(player.id!, player.nickname),
+                              onBan: () =>
+                                  confirmBan(player.id!, player.nickname),
                               onCancelPendingBan: () =>
                                   confirmCancelPendingBan(player.nickname),
                               onUnban: () => confirmUnban(player.nickname),

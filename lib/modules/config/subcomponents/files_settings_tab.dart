@@ -9,6 +9,7 @@ import '../../../components/badges/app_badge.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../../config/theme/app_theme_extension.dart';
 import '../models/config_files_settings.dart';
 import '../providers/config_files_provider.dart';
 import 'sticky_form_actions_bar.dart';
@@ -360,6 +361,8 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -374,172 +377,190 @@ class _FilesSettingsTabState extends ConsumerState<FilesSettingsTab> {
       children: [
         Expanded(
           child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _sectionTitle('Core'),
-                _fieldLabel('Path do servidor:'),
-                AppTextInput(
-                  controller: _serverPathController,
-                  hint: r'Ex.: C:\minecraft\meu-servidor',
-                  prefixIcon: const Icon(Icons.folder_open_rounded),
-                  onChanged: (_) => setState(() {}),
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: ext.cardBackground,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: ext.cardBorder.withValues(alpha: 0.5),
                 ),
-                if (showPathBadge)
-                  _validationBadge(
-                    text: _pathExists ? 'ENCONTRADO' : 'NAO ENCONTRADO',
-                    variant: _pathExists
-                        ? AppVariant.success
-                        : AppVariant.danger,
-                    icon: _pathExists
-                        ? Icons.check_circle_outline_rounded
-                        : Icons.close_rounded,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
                   ),
-                if (!showPathBadge)
-                  _validationBadge(
-                    text: 'INFORME O PATH',
-                    variant: AppVariant.info,
-                    icon: Icons.info_outline_rounded,
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionTitle('Core'),
+                  _fieldLabel('Path do servidor:'),
+                  AppTextInput(
+                    controller: _serverPathController,
+                    hint: r'Ex.: C:\minecraft\meu-servidor',
+                    prefixIcon: const Icon(Icons.folder_open_rounded),
+                    onChanged: (_) => setState(() {}),
                   ),
-                const SizedBox(height: 14),
-                _fieldLabel('Nome do file server:'),
-                AppTextInput(
-                  controller: _jarFileController,
-                  hint: 'Ex.: server.jar',
-                  prefixIcon: const Icon(Icons.insert_drive_file_outlined),
-                  onChanged: (_) => setState(() {}),
-                ),
-                if (showFileBadge)
-                  _validationBadge(
-                    text: _fileExists ? 'ENCONTRADO' : 'NAO ENCONTRADO',
-                    variant: _fileExists
-                        ? AppVariant.success
-                        : AppVariant.danger,
-                    icon: _fileExists
-                        ? Icons.check_circle_outline_rounded
-                        : Icons.close_rounded,
-                  ),
-                const SizedBox(height: 14),
-                _fieldLabel('Comando do Java:'),
-                Text(
-                  'Comando utilizado pelo sistema para executar o Java no terminal. Esse valor sera utilizado quando o servidor for iniciado.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                AppTextInput(
-                  controller: _javaCommandController,
-                  hint: 'Ex.: java ou /usr/bin/java',
-                  prefixIcon: const Icon(Icons.terminal_rounded),
-                  onChanged: (_) => setState(() {}),
-                ),
-                if (showJavaBadge)
-                  _validationBadge(
-                    text: _checkingJava
-                        ? 'VALIDANDO...'
-                        : (_javaAvailable == true
-                              ? 'JAVA DISPONIVEL'
-                              : 'JAVA NAO ENCONTRADO'),
-                    variant: _checkingJava
-                        ? AppVariant.info
-                        : (_javaAvailable == true
-                              ? AppVariant.success
-                              : AppVariant.danger),
-                    icon: _checkingJava
-                        ? Icons.hourglass_top_rounded
-                        : (_javaAvailable == true
-                              ? Icons.check_circle_outline_rounded
-                              : Icons.close_rounded),
-                  ),
-                const SizedBox(height: 14),
-                _fieldLabel('JVM args:'),
-                AppTextInput(
-                  controller: _jvmArgsController,
-                  hint: 'Ex.: -Xms2G',
-                  prefixIcon: const Icon(Icons.tune_rounded),
-                  onChanged: (_) => setState(() {}),
-                ),
-                _validationBadge(
-                  text:
-                      'ATENCAO: Flags com -XX:+AlwaysPreTouch pre-alocam toda a RAM. Deixe vazio para o comportamento padrao.',
-                  variant: AppVariant.warning,
-                  icon: Icons.warning_amber_rounded,
-                ),
-                const SizedBox(height: 22),
-                _sectionTitle('Memória RAM'),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _fieldLabel('Minimo (GB):'),
-                          AppTextInput(
-                            controller: _ramMinController,
-                            hint: 'Ex.: 2',
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => setState(() {}),
-                          ),
-                        ],
-                      ),
+                  if (showPathBadge)
+                    _validationBadge(
+                      text: _pathExists ? 'ENCONTRADO' : 'NAO ENCONTRADO',
+                      variant: _pathExists
+                          ? AppVariant.success
+                          : AppVariant.danger,
+                      icon: _pathExists
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.close_rounded,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _fieldLabel('Maximo (GB):'),
-                          AppTextInput(
-                            controller: _ramMaxController,
-                            hint: 'Ex.: 8',
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => setState(() {}),
-                          ),
-                        ],
-                      ),
+                  if (!showPathBadge)
+                    _validationBadge(
+                      text: 'INFORME O PATH',
+                      variant: AppVariant.info,
+                      icon: Icons.info_outline_rounded,
                     ),
-                  ],
-                ),
-                if (_ramError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      _ramError!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+                  const SizedBox(height: 14),
+                  _fieldLabel('Nome do file server:'),
+                  AppTextInput(
+                    controller: _jarFileController,
+                    hint: 'Ex.: server.jar',
+                    prefixIcon: const Icon(Icons.insert_drive_file_outlined),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  if (showFileBadge)
+                    _validationBadge(
+                      text: _fileExists ? 'ENCONTRADO' : 'NAO ENCONTRADO',
+                      variant: _fileExists
+                          ? AppVariant.success
+                          : AppVariant.danger,
+                      icon: _fileExists
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.close_rounded,
+                    ),
+                  const SizedBox(height: 14),
+                  _fieldLabel('Comando do Java:'),
+                  Text(
+                    'Comando utilizado pelo sistema para executar o Java no terminal. Esse valor sera utilizado quando o servidor for iniciado.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                const SizedBox(height: 22),
-                _sectionTitle('Comportamento'),
-                AppSwitchCard(
-                  label: 'Auto restart em caso de crash:',
-                  value: _autoRestartOnCrash,
-                  onChanged: (value) =>
-                      setState(() => _autoRestartOnCrash = value),
-                ),
-                const SizedBox(height: 10),
-                _fieldLabel('Tempo de espera para restart (segundos):'),
-                AppTextInput(
-                  controller: _restartWaitController,
-                  enabled: _autoRestartOnCrash,
-                  hint: 'Ex.: 10',
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                ),
-                if (_autoRestartOnCrash && _restartError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      _restartError!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                  const SizedBox(height: 6),
+                  AppTextInput(
+                    controller: _javaCommandController,
+                    hint: 'Ex.: java ou /usr/bin/java',
+                    prefixIcon: const Icon(Icons.terminal_rounded),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  if (showJavaBadge)
+                    _validationBadge(
+                      text: _checkingJava
+                          ? 'VALIDANDO...'
+                          : (_javaAvailable == true
+                                ? 'JAVA DISPONIVEL'
+                                : 'JAVA NAO ENCONTRADO'),
+                      variant: _checkingJava
+                          ? AppVariant.info
+                          : (_javaAvailable == true
+                                ? AppVariant.success
+                                : AppVariant.danger),
+                      icon: _checkingJava
+                          ? Icons.hourglass_top_rounded
+                          : (_javaAvailable == true
+                                ? Icons.check_circle_outline_rounded
+                                : Icons.close_rounded),
+                    ),
+                  const SizedBox(height: 14),
+                  _fieldLabel('JVM args:'),
+                  AppTextInput(
+                    controller: _jvmArgsController,
+                    hint: 'Ex.: -Xms2G',
+                    prefixIcon: const Icon(Icons.tune_rounded),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  _validationBadge(
+                    text:
+                        'ATENCAO: Flags com -XX:+AlwaysPreTouch pre-alocam toda a RAM. Deixe vazio para o comportamento padrao.',
+                    variant: AppVariant.warning,
+                    icon: Icons.warning_amber_rounded,
+                  ),
+                  const SizedBox(height: 22),
+                  _sectionTitle('Memória RAM'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _fieldLabel('Minimo (GB):'),
+                            AppTextInput(
+                              controller: _ramMinController,
+                              hint: 'Ex.: 2',
+                              keyboardType: TextInputType.number,
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _fieldLabel('Maximo (GB):'),
+                            AppTextInput(
+                              controller: _ramMaxController,
+                              hint: 'Ex.: 8',
+                              keyboardType: TextInputType.number,
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_ramError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        _ramError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ),
+                  const SizedBox(height: 22),
+                  _sectionTitle('Comportamento'),
+                  AppSwitchCard(
+                    label: 'Auto restart em caso de crash:',
+                    value: _autoRestartOnCrash,
+                    onChanged: (value) =>
+                        setState(() => _autoRestartOnCrash = value),
                   ),
-                const SizedBox(height: 12),
-              ],
+                  const SizedBox(height: 10),
+                  _fieldLabel('Tempo de espera para restart (segundos):'),
+                  AppTextInput(
+                    controller: _restartWaitController,
+                    enabled: _autoRestartOnCrash,
+                    hint: 'Ex.: 10',
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  if (_autoRestartOnCrash && _restartError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        _restartError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+              ),
             ),
           ),
         ),

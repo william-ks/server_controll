@@ -27,56 +27,43 @@ class _ChunkyPageState extends ConsumerState<ChunkyPage> {
     final activeTab = ref.watch(chunkyTabProvider);
 
     return DefaultLayout(
-      title: 'MineControl',
+      title: 'Chunky',
       currentRoute: AppRoutes.chunky,
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: AppStyles.radiusLg,
-            border: Border.all(color: Theme.of(context).dividerColor),
-            boxShadow: AppStyles.softShadow(opacity: 0.18),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Align(
-                alignment: Alignment.center,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _ChunkyTabChip(
-                      label: 'Execução',
-                      active: activeTab == ChunkyTab.execution,
-                      onTap: () => _setTab(ChunkyTab.execution),
-                    ),
-                    _ChunkyTabChip(
-                      label: 'Tasks',
-                      active: activeTab == ChunkyTab.tasks,
-                      onTap: () => _setTab(ChunkyTab.tasks),
-                    ),
-                    _ChunkyTabChip(
-                      label: 'Logs',
-                      active: activeTab == ChunkyTab.logs,
-                      onTap: () => _setTab(ChunkyTab.logs),
-                    ),
-                  ],
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _ChunkyTabChip(
+                  label: 'Execução',
+                  active: activeTab == ChunkyTab.execution,
+                  onTap: () => _setTab(ChunkyTab.execution),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: switch (activeTab) {
-                  ChunkyTab.execution => const ChunkyExecutionTab(),
-                  ChunkyTab.tasks => const ChunkyTasksTab(),
-                  ChunkyTab.logs => const ChunkyLogsTab(),
-                },
-              ),
-            ],
-          ),
+                _ChunkyTabChip(
+                  label: 'Tasks',
+                  active: activeTab == ChunkyTab.tasks,
+                  onTap: () => _setTab(ChunkyTab.tasks),
+                ),
+                _ChunkyTabChip(
+                  label: 'Logs',
+                  active: activeTab == ChunkyTab.logs,
+                  onTap: () => _setTab(ChunkyTab.logs),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: switch (activeTab) {
+                ChunkyTab.execution => const ChunkyExecutionTab(),
+                ChunkyTab.tasks => const ChunkyTasksTab(),
+                ChunkyTab.logs => const ChunkyLogsTab(),
+              },
+            ),
+          ],
         ),
       ),
     );

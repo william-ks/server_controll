@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../../../components/buttons/app_button.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../../config/theme/app_theme_extension.dart';
 import '../../config/providers/config_files_provider.dart';
 
 class SelectiveBackupModal extends ConsumerStatefulWidget {
@@ -102,6 +103,7 @@ class _SelectiveBackupModalState extends ConsumerState<SelectiveBackupModal> {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return AppModal(
       icon: Icons.library_add_check_rounded,
       title: 'Backup seletivo',
@@ -142,8 +144,18 @@ class _SelectiveBackupModalState extends ConsumerState<SelectiveBackupModal> {
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Theme.of(context).dividerColor),
+                  color: ext.cardBackground,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: ext.cardBorder.withValues(alpha: 0.5),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: ListView.builder(
                   itemCount: _entries.length,

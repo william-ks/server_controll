@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../config/theme/app_styles.dart';
+import '../../config/theme/app_theme_extension.dart';
 
 class AppModal extends StatelessWidget {
   const AppModal({
@@ -36,19 +36,27 @@ class AppModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final dividerColor = Theme.of(context).dividerColor;
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final screenHeight = MediaQuery.sizeOf(context).height;
     final effectiveBodyHeight = (screenHeight * 0.58).clamp(180.0, maxBodyHeight);
     final showHeader = showHeaderDivider ?? showDividers;
     final showFooter = showFooterDivider ?? showDividers;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AppStyles.radiusLg),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: width,
         decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: AppStyles.radiusLg,
-          boxShadow: AppStyles.softShadow(opacity: 0.25),
+          color: ext.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 15,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),

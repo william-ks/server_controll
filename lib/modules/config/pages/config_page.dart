@@ -47,65 +47,55 @@ class _ConfigPageState extends State<ConfigPage> {
       title: 'MineControl',
       currentRoute: AppRoutes.config,
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: AppStyles.radiusLg,
-            border: Border.all(color: Theme.of(context).dividerColor),
-            boxShadow: AppStyles.softShadow(opacity: 0.18),
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Align(
-                alignment: Alignment.center,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _TabChip(
-                      label: 'Arquivos',
-                      active: _active == ConfigTab.arquivos,
-                      onTap: () => _setTab(ConfigTab.arquivos),
-                    ),
-                    _TabChip(
-                      label: 'Backup',
-                      active: _active == ConfigTab.backup,
-                      onTap: () => _setTab(ConfigTab.backup),
-                    ),
-                    _TabChip(
-                      label: 'Propriedades',
-                      active: _active == ConfigTab.propriedades,
-                      onTap: () => _setTab(ConfigTab.propriedades),
-                    ),
-                    _TabChip(
-                      label: 'Manutenção',
-                      active: _active == ConfigTab.manutencao,
-                      onTap: () => _setTab(ConfigTab.manutencao),
-                    ),
-                    _TabChip(
-                      label: 'Avançado',
-                      active: _active == ConfigTab.avancado,
-                      onTap: () => _setTab(ConfigTab.avancado),
-                    ),
-                  ],
-                ),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Align(
+              alignment: Alignment.center,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _TabChip(
+                    label: 'Arquivos',
+                    active: _active == ConfigTab.arquivos,
+                    onTap: () => _setTab(ConfigTab.arquivos),
+                  ),
+                  _TabChip(
+                    label: 'Backup',
+                    active: _active == ConfigTab.backup,
+                    onTap: () => _setTab(ConfigTab.backup),
+                  ),
+                  _TabChip(
+                    label: 'Propriedades',
+                    active: _active == ConfigTab.propriedades,
+                    onTap: () => _setTab(ConfigTab.propriedades),
+                  ),
+                  _TabChip(
+                    label: 'Manutenção',
+                    active: _active == ConfigTab.manutencao,
+                    onTap: () => _setTab(ConfigTab.manutencao),
+                  ),
+                  _TabChip(
+                    label: 'Avançado',
+                    active: _active == ConfigTab.avancado,
+                    onTap: () => _setTab(ConfigTab.avancado),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _TabContent(
-                  tab: _active,
-                  filesReloadToken: _filesReloadToken,
-                  backupReloadToken: _backupReloadToken,
-                  propertiesReloadToken: _propertiesReloadToken,
-                  maintenanceReloadToken: _maintenanceReloadToken,
-                ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _TabContent(
+                tab: _active,
+                filesReloadToken: _filesReloadToken,
+                backupReloadToken: _backupReloadToken,
+                propertiesReloadToken: _propertiesReloadToken,
+                maintenanceReloadToken: _maintenanceReloadToken,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

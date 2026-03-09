@@ -8,6 +8,7 @@ import '../../../components/badges/app_badge.dart';
 import '../../../components/inputs/app_switch_card.dart';
 import '../../../components/inputs/app_text_input.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../../config/theme/app_theme_extension.dart';
 import '../../../modules/backup/models/backup_capacity_status.dart';
 import '../../../modules/backup/models/backup_config_settings.dart';
 import '../../../modules/backup/providers/backup_config_provider.dart';
@@ -235,6 +236,8 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
   @override
   Widget build(BuildContext context) {
     final capacity = ref.watch(backupsProvider).capacity;
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -245,97 +248,116 @@ class _BackupSettingsTabState extends ConsumerState<BackupSettingsTab> {
       children: [
         Expanded(
           child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _sectionTitle('Backups'),
-                _fieldLabel('Pasta para backup:'),
-                AppTextInput(
-                  controller: _backupPathController,
-                  hint: r'Ex.: D:\MineControl\backups',
-                  prefixIcon: const Icon(Icons.folder_copy_rounded),
-                  onChanged: (_) => setState(() {}),
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: ext.cardBackground,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: ext.cardBorder.withValues(alpha: 0.5),
                 ),
-                if (showPathBadge)
-                  _validationBadge(
-                    text: _pathExists
-                        ? 'PASTA ENCONTRADA'
-                        : 'PASTA NÃO ENCONTRADA',
-                    variant: _pathExists
-                        ? AppVariant.success
-                        : AppVariant.danger,
-                    icon: _pathExists
-                        ? Icons.check_circle_outline_rounded
-                        : Icons.close_rounded,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
                   ),
-                if (!showPathBadge)
-                  _validationBadge(
-                    text: 'INFORME UMA PASTA',
-                    variant: AppVariant.info,
-                    icon: Icons.info_outline_rounded,
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionTitle('Backups'),
+                  _fieldLabel('Pasta para backup:'),
+                  AppTextInput(
+                    controller: _backupPathController,
+                    hint: r'Ex.: D:\MineControl\backups',
+                    prefixIcon: const Icon(Icons.folder_copy_rounded),
+                    onChanged: (_) => setState(() {}),
                   ),
-                if (capacity != null && capacity.hasLimit)
-                  _validationBadge(
-                    text: _capacityText(capacity),
-                    variant: switch (capacity.level) {
-                      BackupCapacityLevel.normal => AppVariant.success,
-                      BackupCapacityLevel.warning => AppVariant.warning,
-                      BackupCapacityLevel.reached => AppVariant.warning,
-                      BackupCapacityLevel.exceeded => AppVariant.danger,
-                    },
-                    icon: Icons.storage_rounded,
+                  if (showPathBadge)
+                    _validationBadge(
+                      text: _pathExists
+                          ? 'PASTA ENCONTRADA'
+                          : 'PASTA NÃO ENCONTRADA',
+                      variant: _pathExists
+                          ? AppVariant.success
+                          : AppVariant.danger,
+                      icon: _pathExists
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.close_rounded,
+                    ),
+                  if (!showPathBadge)
+                    _validationBadge(
+                      text: 'INFORME UMA PASTA',
+                      variant: AppVariant.info,
+                      icon: Icons.info_outline_rounded,
+                    ),
+                  if (capacity != null && capacity.hasLimit)
+                    _validationBadge(
+                      text: _capacityText(capacity),
+                      variant: switch (capacity.level) {
+                        BackupCapacityLevel.normal => AppVariant.success,
+                        BackupCapacityLevel.warning => AppVariant.warning,
+                        BackupCapacityLevel.reached => AppVariant.warning,
+                        BackupCapacityLevel.exceeded => AppVariant.danger,
+                      },
+                      icon: Icons.storage_rounded,
+                    ),
+                  const SizedBox(height: 14),
+                  AppSwitchCard(
+                    label: 'Backups ativos:',
+                    value: _backupsEnabled,
+                    onChanged: (value) =>
+                        setState(() => _backupsEnabled = value),
                   ),
-                const SizedBox(height: 14),
-                AppSwitchCard(
-                  label: 'Backups ativos:',
-                  value: _backupsEnabled,
-                  onChanged: (value) => setState(() => _backupsEnabled = value),
-                ),
-                const SizedBox(height: 14),
-                _fieldLabel('Limite de retenção (GB):'),
-                AppTextInput(
-                  controller: _retentionMaxGbController,
-                  hint: 'Ex.: 0 (ilimitado), 10, 25.5',
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                ),
-                if (_retentionError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      _retentionError!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                  const SizedBox(height: 14),
+                  _fieldLabel('Limite de retenção (GB):'),
+                  AppTextInput(
+                    controller: _retentionMaxGbController,
+                    hint: 'Ex.: 0 (ilimitado), 10, 25.5',
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  if (_retentionError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        _retentionError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ),
+                  const SizedBox(height: 14),
+                  AppSwitchCard(
+                    label: 'Limpeza automática quando exceder limite',
+                    value: _autoCleanupEnabled,
+                    onChanged: (value) =>
+                        setState(() => _autoCleanupEnabled = value),
                   ),
-                const SizedBox(height: 14),
-                AppSwitchCard(
-                  label: 'Limpeza automática quando exceder limite',
-                  value: _autoCleanupEnabled,
-                  onChanged: (value) =>
-                      setState(() => _autoCleanupEnabled = value),
-                ),
-                const SizedBox(height: 14),
-                _fieldLabel('Alerta de capacidade (%)'),
-                AppTextInput(
-                  controller: _warnPercentController,
-                  hint: 'Ex.: 80',
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                ),
-                if (_warnPercentError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      _warnPercentError!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                  const SizedBox(height: 14),
+                  _fieldLabel('Alerta de capacidade (%)'),
+                  AppTextInput(
+                    controller: _warnPercentController,
+                    hint: 'Ex.: 80',
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  if (_warnPercentError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        _warnPercentError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ),
-                  ),
-                const SizedBox(height: 12),
-              ],
+                  const SizedBox(height: 12),
+                ],
+              ),
             ),
           ),
         ),

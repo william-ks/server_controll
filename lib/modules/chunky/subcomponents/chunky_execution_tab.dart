@@ -27,41 +27,48 @@ class ChunkyExecutionTab extends ConsumerWidget {
     final tasksNotifier = ref.read(chunkyTasksProvider.notifier);
     final selectedTask = tasksState.selectedTask;
     final serverOnline = runtime.lifecycle == ServerLifecycleState.online;
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppSelect<int>(
-            label: 'Select Task',
-            hint: 'Select a task',
-            value: selectedTask?.id,
-            items: tasksState.items
-                .where((item) => item.id != null)
-                .map(
-                  (item) => AppSelectItem<int>(
-                    value: item.id!,
-                    label: '${item.name} (${chunkyWorldLabel(item.world)})',
-                  ),
-                )
-                .toList(),
-            onChanged: (value) async {
-              if (value == null) return;
-              try {
-                await tasksNotifier.selectTask(value);
-              } catch (error) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      error.toString().replaceFirst('Bad state: ', ''),
-                    ),
-                  ),
-                );
-              }
-            },
+          Row(
+            children: [
+              Expanded(
+                child: AppSelect<int>(
+                  label: 'Selecionar Task',
+                  hint: 'Selecione a task para execução',
+                  value: selectedTask?.id,
+                  items: tasksState.items
+                      .where((item) => item.id != null)
+                      .map(
+                        (item) => AppSelectItem<int>(
+                          value: item.id!,
+                          label: '${item.name} (${chunkyWorldLabel(item.world)})',    
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) async {
+                    if (value == null) return;
+                    try {
+                      await tasksNotifier.selectTask(value);
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            error.toString().replaceFirst('Bad state: ', ''),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -76,7 +83,7 @@ class ChunkyExecutionTab extends ConsumerWidget {
                     state.status == ChunkyExecutionStatus.running ||
                     state.status == ChunkyExecutionStatus.paused ||
                     state.status == ChunkyExecutionStatus.cancelling,
-                onPressed: () => _confirmAndStartTask(context, notifier),
+                onPressed: () => _confirmAndStartTask(context, notifier),       
               ),
               AppButton(
                 label: 'Pausar',
@@ -106,7 +113,7 @@ class ChunkyExecutionTab extends ConsumerWidget {
                 onPressed: notifier.cancel,
               ),
               AppButton(
-                label: 'Refresh',
+                label: 'Atualizar',
                 icon: Icons.refresh_rounded,
                 variant: AppVariant.secondary,
                 isDisabled: !serverOnline,
@@ -120,168 +127,138 @@ class ChunkyExecutionTab extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).extension<AppThemeExtension>()!.cardBackground,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Theme.of(context)
-                    .extension<AppThemeExtension>()!
-                    .cardBorder
-                    .withValues(alpha: 0.65),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.16),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              color: ext.cardBackground,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: ext.cardBorder),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _line(context, 'Status da execução', state.status.label),
-                const SizedBox(height: 6),
-                _line(
-                  context,
-                  'Task selecionada',
-                  selectedTask?.name ?? 'Nenhuma',
+                Text(
+                  'Estado Geral',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
-                const SizedBox(height: 6),
-                _line(
-                  context,
-                  'Region / World',
-                  selectedTask == null
-                      ? '-'
-                      : chunkyWorldLabel(selectedTask.world),
-                ),
-                const SizedBox(height: 6),
-                _line(
-                  context,
-                  'Center X/Z',
-                  selectedTask == null
-                      ? '-'
-                      : 'X ${selectedTask.centerX} | Z ${selectedTask.centerZ}',
-                ),
-                const SizedBox(height: 6),
-                _line(
-                  context,
-                  'Radius',
-                  selectedTask == null
-                      ? '${state.currentRadius}'
-                      : selectedTask.radius.toStringAsFixed(0),
-                ),
-                const SizedBox(height: 6),
-                _line(context, 'Shape', selectedTask?.shape ?? '-'),
-                const SizedBox(height: 6),
-                _line(context, 'Pattern', selectedTask?.pattern ?? '-'),
-                const SizedBox(height: 6),
-                _line(context, 'Total Time', _formatDuration(state.elapsed)),
-                const SizedBox(height: 6),
-                _line(
-                  context,
-                  'Modo de manutenção',
-                  selectedTask == null
-                      ? '-'
-                      : (selectedTask.maintenanceEnabled
-                            ? (selectedTask.maintenanceMode == 'admins_only'
-                                  ? 'Somente admins do app'
-                                  : 'Bloquear todos')
-                            : 'Desativado'),
-                ),
-                const SizedBox(height: 10),
-                AppBadge(
-                  icon: state.tasksPending
-                      ? Icons.warning_amber_rounded
-                      : Icons.check_circle_outline_rounded,
-                  variant: state.tasksPending
-                      ? AppVariant.warning
-                      : AppVariant.success,
-                  title: state.tasksPending
-                      ? 'Arquivos de tarefa do Chunky: ENCONTRADOS'
-                      : 'Arquivos de tarefa do Chunky: NAO ENCONTRADOS',
-                ),
-                if (state.pendingTasks.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _pendingTaskCard(context, state),
-                ],
-                const SizedBox(height: 8),
-                _line(
-                  context,
-                  'Saude do servidor',
-                  state.serverHealthState.label,
-                ),
-                const SizedBox(height: 6),
-                _line(
-                  context,
-                  'Overloads (janela 30s)',
-                  '${state.overloadEventsInWindow}',
-                ),
-                const SizedBox(height: 6),
-                _line(
-                  context,
-                  'Reinicios (ultima hora)',
-                  '${state.restartsInLastHour}',
-                ),
-                if (state.lastMsBehind != null &&
-                    state.lastTicksBehind != null) ...[
-                  const SizedBox(height: 6),
-                  _line(
-                    context,
-                    'Ultimo overload',
-                    '${state.lastMsBehind}ms / ${state.lastTicksBehind} ticks',
-                  ),
-                ],
-                if (selectedTask != null) ...[
-                  const SizedBox(height: 6),
-                  _line(context, 'Task status', selectedTask.status.label),
-                  if (selectedTask.status == ChunkyTaskStatus.running)
-                    const SizedBox(height: 4),
-                ],
+                const SizedBox(height: 16),
+                _infoRow(context, 'Status Chunky', state.status.label),
+                _infoRow(context, 'Saúde do Servidor', state.serverHealthState.label),
+                _infoRow(context, 'Total Processado', '${state.totalProgress.toStringAsFixed(1)}%'),
+                _infoRow(context, 'Tempo Decorrido', _formatDuration(state.elapsed)),
                 if (state.statusMessage != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     state.statusMessage!,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
                   ),
                 ],
-                if (state.healthStatusMessage != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    state.healthStatusMessage!,
-                    style: Theme.of(context).textTheme.bodySmall,
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(
+                      begin: 0,
+                      end: (state.totalProgress / 100).clamp(0, 1),
+                    ),
+                    duration: const Duration(milliseconds: 350),
+                    builder: (context, value, _) {
+                      return LinearProgressIndicator(
+                        value: value,
+                        minHeight: 12,
+                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+                        valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                      );
+                    },
                   ),
-                ],
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Text('Progresso', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 6),
-          TweenAnimationBuilder<double>(
-            tween: Tween<double>(
-              begin: 0,
-              end: (state.totalProgress / 100).clamp(0, 1),
-            ),
-            duration: const Duration(milliseconds: 350),
-            builder: (context, value, _) {
-              return _buildRoundedProgressBar(context, value: value);
-            },
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: ext.cardBackground,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: ext.cardBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Detalhes da Task',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (selectedTask != null) ...[
+                        _infoRow(context, 'Nome', selectedTask.name),
+                        _infoRow(context, 'Região', chunkyWorldLabel(selectedTask.world)),
+                        _infoRow(context, 'Centro', 'X: ${selectedTask.centerX} | Z: ${selectedTask.centerZ}'),
+                        _infoRow(context, 'Raio', '${selectedTask.radius.toStringAsFixed(0)} blocos'),
+                        _infoRow(context, 'Formato', selectedTask.shape),
+                        _infoRow(context, 'Padrão', selectedTask.pattern),
+                      ] else ...[
+                        const Text('Nenhuma task selecionada.'),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: ext.cardBackground,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: ext.cardBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Performance',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 16),
+                      _infoRow(context, 'Overloads (30s)', '${state.overloadEventsInWindow}'),
+                      _infoRow(context, 'Reinícios (1h)', '${state.restartsInLastHour}'),
+                      if (state.lastMsBehind != null && state.lastTicksBehind != null)
+                        _infoRow(context, 'Último Lag', '${state.lastMsBehind}ms (${state.lastTicksBehind} tks)'),
+                      const SizedBox(height: 12),
+                      AppBadge(
+                        icon: state.tasksPending
+                            ? Icons.warning_amber_rounded
+                            : Icons.check_circle_outline_rounded,
+                        variant: state.tasksPending
+                            ? AppVariant.warning
+                            : AppVariant.success,
+                        title: state.tasksPending
+                            ? 'Pendências detectadas'
+                            : 'Limpo',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text('${state.totalProgress.toStringAsFixed(1)}%'),
-          if (state.errorMessage != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              state.errorMessage!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
+          if (state.pendingTasks.isNotEmpty) ...[
+             const SizedBox(height: 16),
+             _pendingTaskCard(context, state, ext),
           ],
         ],
       ),
@@ -311,70 +288,69 @@ class ChunkyExecutionTab extends ConsumerWidget {
     await notifier.startSelectedTask();
   }
 
-  Widget _line(BuildContext context, String label, String value) {
-    return Row(
-      children: [
-        Text(
-          '$label: ',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        Expanded(child: Text(value, overflow: TextOverflow.ellipsis)),
-      ],
-    );
-  }
-
-  Widget _pendingTaskCard(BuildContext context, ChunkyExecutionState state) {
-    final task = state.pendingTasks.first;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Column(
+  Widget _infoRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Task pendente detectada',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
           ),
-          const SizedBox(height: 6),
-          _line(context, 'Arquivo', task.filePath),
-          const SizedBox(height: 4),
-          _line(context, 'World', task.world),
-          const SizedBox(height: 4),
-          _line(context, 'Center X/Z', '${task.centerX} / ${task.centerZ}'),
-          const SizedBox(height: 4),
-          _line(context, 'Radius', '${task.radius}'),
-          const SizedBox(height: 4),
-          _line(context, 'Shape / Pattern', '${task.shape} / ${task.pattern}'),
-          const SizedBox(height: 4),
-          _line(context, 'Chunks', '${task.chunks}'),
-          const SizedBox(height: 4),
-          _line(context, 'Time', '${task.time}'),
-          const SizedBox(height: 4),
-          _line(context, 'Cancelled', task.cancelled ? 'true' : 'false'),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+              textAlign: TextAlign.end,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildRoundedProgressBar(
-    BuildContext context, {
-    required double value,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return LinearProgressIndicator(
-      value: value,
-      minHeight: 8,
-      borderRadius: BorderRadius.circular(999),
-      backgroundColor: scheme.onPrimary,
-      valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
+  Widget _pendingTaskCard(BuildContext context, ChunkyExecutionState state, AppThemeExtension ext) {   
+    final task = state.pendingTasks.first;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.report_problem_rounded, color: Theme.of(context).colorScheme.error),
+              const SizedBox(width: 8),
+              Text(
+                'Task Inacabada Detectada',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.error,
+                    ),      
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _infoRow(context, 'Arquivo / Mundo', '${task.filePath} / ${task.world}'),
+          _infoRow(context, 'Posição', 'X ${task.centerX} Z ${task.centerZ}, r=${task.radius}'),
+          _infoRow(context, 'Progresso', '${task.chunks} chunks (${task.time})'),
+        ],
+      ),
     );
   }
 

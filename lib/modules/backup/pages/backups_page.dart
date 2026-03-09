@@ -13,7 +13,6 @@ import '../../../components/modal/app_confirm_dialog.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../config/routes/routes_config.dart';
-import '../../../config/theme/app_styles.dart';
 import '../../../config/theme/app_theme_extension.dart';
 import '../../../layout/default_layout.dart';
 import '../../../models/server_lifecycle_state.dart';
@@ -59,7 +58,6 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
     );
     final backupConfig = ref.watch(backupConfigProvider);
     final runtime = ref.watch(serverRuntimeProvider);
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final capacity = state.capacity;
 
     final filtered = state.entries.where((entry) {
@@ -77,142 +75,131 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
       title: 'MineControl',
       currentRoute: AppRoutes.backups,
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: ext.cardBackground,
-            borderRadius: AppStyles.radiusLg,
-            border: Border.all(color: ext.cardBorder),
-            boxShadow: AppStyles.softShadow(opacity: 0.12),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _tabChip('Backup servidor', _BackupsTab.server),
+                const SizedBox(width: 8),
+                _tabChip('Backup app', _BackupsTab.app),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_tab == _BackupsTab.server) ...[
               Row(
                 children: [
-                  _tabChip('Backup servidor', _BackupsTab.server),
-                  const SizedBox(width: 8),
-                  _tabChip('Backup app', _BackupsTab.app),
+                  Expanded(
+                    child: _SummaryCard(
+                      title: 'Total de backups',
+                      value: '${filtered.length}',
+                      icon: Icons.inventory_2_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _SummaryCard(
+                      title: 'Peso total',
+                      value: _formatSize(totalSize),
+                      icon: Icons.sd_storage_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _SummaryCard(
+                      title: 'Limite (retenção)',
+                      value: capacity == null || !capacity.hasLimit
+                          ? 'Ilimitado'
+                          : _formatSize(capacity.limitBytes),
+                      icon: Icons.rule_folder_rounded,
+                    ),
+                  ),
+                ],
+              ),
+              if (capacity != null && capacity.hasLimit) ...[
+                const SizedBox(height: 10),
+                _CapacityBadge(capacity: capacity),
+              ],
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 420,
+                    child: AppTextInput(
+                      controller: _searchController,
+                      hint: 'Pesquisar backup por nome',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      onChanged: (value) => setState(() => _query = value),
+                    ),
+                  ),
+                  AppButton(
+                    label: 'Atualizar',
+                    icon: Icons.refresh_rounded,
+                    variant: AppVariant.info,
+                    onPressed: notifier.load,
+                  ),
+                  ManualServerBackupButton(
+                    variant: AppVariant.primary,
+                    enabled: !state.creating,
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
-              if (_tab == _BackupsTab.server) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: _SummaryCard(
-                        title: 'Total de backups',
-                        value: '${filtered.length}',
-                        icon: Icons.inventory_2_rounded,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _SummaryCard(
-                        title: 'Peso total',
-                        value: _formatSize(totalSize),
-                        icon: Icons.sd_storage_rounded,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _SummaryCard(
-                        title: 'Limite (retenção)',
-                        value: capacity == null || !capacity.hasLimit
-                            ? 'Ilimitado'
-                            : _formatSize(capacity.limitBytes),
-                        icon: Icons.rule_folder_rounded,
-                      ),
-                    ),
-                  ],
-                ),
-                if (capacity != null && capacity.hasLimit) ...[
-                  const SizedBox(height: 10),
-                  _CapacityBadge(capacity: capacity),
-                ],
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 420,
-                      child: AppTextInput(
-                        controller: _searchController,
-                        hint: 'Pesquisar backup por nome',
-                        prefixIcon: const Icon(Icons.search_rounded),
-                        onChanged: (value) => setState(() => _query = value),
-                      ),
-                    ),
-                    AppButton(
-                      label: 'Atualizar',
-                      icon: Icons.refresh_rounded,
-                      variant: AppVariant.info,
-                      onPressed: notifier.load,
-                    ),
-                    ManualServerBackupButton(
-                      variant: AppVariant.primary,
-                      enabled: !state.creating,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (state.loading)
-                  const Expanded(
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (filtered.isEmpty)
-                  Expanded(
-                    child: _BackupsEmptyState(
-                      backupsEnabled: backupConfig.backupsEnabled,
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final entry = filtered[index];
-                        return _BackupCard(
-                          entry: entry,
-                          restoreEnabled:
-                              runtime.lifecycle ==
-                                  ServerLifecycleState.offline &&
-                              runtime.activePlayers == 0 &&
-                              !state.creating,
-                          onRestoreWorld: () =>
-                              _runRestoreFlow(ref, entry, fullRestore: false),
-                          onRestoreFull: () =>
-                              _runRestoreFlow(ref, entry, fullRestore: true),
-                          onDelete: () async {
-                            final confirmed = await showAppConfirmDialog(
-                              context,
-                              icon: Icons.delete_rounded,
-                              title: 'Remover backup',
-                              message:
-                                  'Deseja remover o backup ${entry.name}?',
-                            );
-                            if (confirmed == true && mounted) {
-                              await notifier.deleteBackup(entry.path);
-                            }
-                          },
-                        );
-                      },
-                    ),
+              if (state.loading)
+                const Expanded(
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (filtered.isEmpty)
+                Expanded(
+                  child: _BackupsEmptyState(
+                    backupsEnabled: backupConfig.backupsEnabled,
                   ),
-              ] else ...[
-                _buildAppBackupSection(
-                  appBackupsState: appBackupsState,
-                  appBackupsNotifier: appBackupsNotifier,
-                  appBackupSettings: appBackupSettings,
-                  appBackupSettingsNotifier: appBackupSettingsNotifier,
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final entry = filtered[index];
+                      return _BackupCard(
+                        entry: entry,
+                        restoreEnabled:
+                            runtime.lifecycle == ServerLifecycleState.offline &&
+                            runtime.activePlayers == 0 &&
+                            !state.creating,
+                        onRestoreWorld: () =>
+                            _runRestoreFlow(ref, entry, fullRestore: false),
+                        onRestoreFull: () =>
+                            _runRestoreFlow(ref, entry, fullRestore: true),
+                        onDelete: () async {
+                          final confirmed = await showAppConfirmDialog(
+                            context,
+                            icon: Icons.delete_rounded,
+                            title: 'Remover backup',
+                            message: 'Deseja remover o backup ${entry.name}?',
+                          );
+                          if (confirmed == true && mounted) {
+                            await notifier.deleteBackup(entry.path);
+                          }
+                        },
+                      );
+                    },
+                  ),
                 ),
-              ],
+            ] else ...[
+              _buildAppBackupSection(
+                appBackupsState: appBackupsState,
+                appBackupsNotifier: appBackupsNotifier,
+                appBackupSettings: appBackupSettings,
+                appBackupSettingsNotifier: appBackupSettingsNotifier,
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -597,8 +584,15 @@ class _SummaryCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: ext.cardBackground,
-        borderRadius: AppStyles.radiusMd,
-        border: Border.all(color: ext.cardBorder),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -695,8 +689,15 @@ class _BackupCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: ext.cardBackground,
-        borderRadius: AppStyles.radiusMd,
-        border: Border.all(color: ext.cardBorder),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -1025,13 +1026,22 @@ class _AppBackupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final dateLabel = DateFormat('dd/MM/yyyy HH:mm').format(entry.modifiedAt);
     final sizeLabel = _formatSizeStatic(entry.sizeBytes);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        color: ext.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [

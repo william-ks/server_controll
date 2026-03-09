@@ -157,7 +157,9 @@ class PlayerRankingDashboard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      state.showFullRanking ? 'Ranking completo' : 'Top 3 players',
+                      state.showFullRanking
+                          ? 'Ranking completo'
+                          : 'Top 3 players',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -186,9 +188,9 @@ class PlayerRankingDashboard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Lista geral dos players da whitelist com tempo acumulado.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: ext.mutedText,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: ext.mutedText),
           ),
           const SizedBox(height: 14),
           if (fullRanking.isEmpty)
@@ -200,10 +202,7 @@ class PlayerRankingDashboard extends StatelessWidget {
             )
           else
             for (var i = 0; i < visibleRanking.length; i++)
-              _RankingRow(
-                position: i + 1,
-                summary: visibleRanking[i],
-              ),
+              _RankingRow(position: i + 1, summary: visibleRanking[i]),
         ],
       ),
     );
@@ -239,9 +238,9 @@ class PlayerRankingDashboard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Comparativo de jogatina por período entre os players mais relevantes.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: ext.mutedText,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: ext.mutedText),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -296,7 +295,9 @@ class PlayerRankingDashboard extends StatelessWidget {
                   gridData: FlGridData(
                     drawVerticalLine: false,
                     getDrawingHorizontalLine: (value) => FlLine(
-                      color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.5),
                       strokeWidth: 1,
                     ),
                   ),
@@ -314,9 +315,12 @@ class PlayerRankingDashboard extends StatelessWidget {
                         showTitles: true,
                         getTitlesWidget: (value, meta) => Text(
                           _formatAxis(value.toInt()),
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                         ),
                       ),
                     ),
@@ -377,15 +381,16 @@ class PlayerRankingDashboard extends StatelessWidget {
     List<PlayerPlaytimeSummary> ranking,
     PlayerRankingPeriod period,
   ) {
-    final entries = ranking
-        .map(
-          (item) => _ChartEntry(
-            nickname: item.nickname,
-            seconds: _periodSeconds(item, period),
-          ),
-        )
-        .toList()
-      ..sort((a, b) => b.seconds.compareTo(a.seconds));
+    final entries =
+        ranking
+            .map(
+              (item) => _ChartEntry(
+                nickname: item.nickname,
+                seconds: _periodSeconds(item, period),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.seconds.compareTo(a.seconds));
     return entries.take(8).toList();
   }
 
@@ -398,7 +403,10 @@ class PlayerRankingDashboard extends StatelessWidget {
   }
 
   double _resolveMaxY(List<_ChartEntry> entries) {
-    final max = entries.fold<int>(0, (current, item) => item.seconds > current ? item.seconds : current);
+    final max = entries.fold<int>(
+      0,
+      (current, item) => item.seconds > current ? item.seconds : current,
+    );
     if (max <= 0) return 1;
     return (max * 1.2).ceilToDouble();
   }
@@ -437,14 +445,14 @@ class _OverviewMetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: ext.cardBackground,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.65)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.16),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -472,9 +480,9 @@ class _OverviewMetricCard extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: valueColor,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: valueColor),
           ),
           const SizedBox(height: 4),
           Text(
@@ -501,16 +509,16 @@ class _PanelCard extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: ext.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.7)),
+        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -520,10 +528,7 @@ class _PanelCard extends StatelessWidget {
 }
 
 class _RankingRow extends StatelessWidget {
-  const _RankingRow({
-    required this.position,
-    required this.summary,
-  });
+  const _RankingRow({required this.position, required this.summary});
 
   final int position;
   final PlayerPlaytimeSummary summary;
@@ -560,19 +565,16 @@ class _RankingRow extends StatelessWidget {
                 ),
                 child: Text(
                   '$position',
-                  style: TextStyle(
-                    color: accent,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(color: accent, fontWeight: FontWeight.w800),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   summary.nickname,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               Text(
@@ -589,7 +591,10 @@ class _RankingRow extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _MetricPill(label: 'Dia', value: _formatSeconds(summary.dailySeconds)),
+              _MetricPill(
+                label: 'Dia',
+                value: _formatSeconds(summary.dailySeconds),
+              ),
               _MetricPill(
                 label: 'Semana',
                 value: _formatSeconds(summary.weeklySeconds),
@@ -618,12 +623,13 @@ class _MetricPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: ext.cardBackground,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
       ),
       child: Text(
         '$label: $value',
@@ -659,9 +665,9 @@ class _LegendRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
           Text(value, style: Theme.of(context).textTheme.bodySmall),
@@ -672,10 +678,7 @@ class _LegendRow extends StatelessWidget {
 }
 
 class _ChartEntry {
-  const _ChartEntry({
-    required this.nickname,
-    required this.seconds,
-  });
+  const _ChartEntry({required this.nickname, required this.seconds});
 
   final String nickname;
   final int seconds;

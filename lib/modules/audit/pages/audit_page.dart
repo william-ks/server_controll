@@ -9,7 +9,6 @@ import '../../../components/inputs/app_text_input.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../config/routes/routes_config.dart';
-import '../../../config/theme/app_styles.dart';
 import '../../../config/theme/app_theme_extension.dart';
 import '../../../layout/default_layout.dart';
 import '../models/audit_event.dart';
@@ -51,142 +50,139 @@ class _AuditPageState extends ConsumerState<AuditPage> {
       title: 'MineControl',
       currentRoute: AppRoutes.audit,
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: ext.cardBackground,
-            borderRadius: AppStyles.radiusLg,
-            border: Border.all(color: ext.cardBorder),
-            boxShadow: AppStyles.softShadow(opacity: 0.12),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: AppSelect<String>(
-                      value: state.eventTypeFilter,
-                      items: _eventTypeItems,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        notifier.setEventTypeFilter(value);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: AppSelect<AuditDateFilter>(
-                      value: state.dateFilter,
-                      items: [
-                        for (final filter in AuditDateFilter.values)
-                          AppSelectItem(value: filter, label: filter.label),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        notifier.setDateFilter(value);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: AppTextInput(
-                      controller: _playerController,
-                      hint: 'Filtro por player',
-                      prefixIcon: const Icon(Icons.person_search_rounded),
-                      onSubmitted: notifier.setPlayerFilter,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: AppTextInput(
-                      controller: _actionController,
-                      hint: 'Filtro por ação',
-                      prefixIcon: const Icon(Icons.filter_alt_rounded),
-                      onSubmitted: notifier.setActionFilter,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  AppButton(
-                    label: 'Atualizar',
-                    icon: Icons.refresh_rounded,
-                    variant: AppVariant.info,
-                    onPressed: notifier.load,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (state.error != null)
-                Text(
-                  state.error!.replaceFirst('Bad state: ', ''),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              const SizedBox(height: 8),
-              if (state.loading)
-                const Expanded(
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else if (state.events.isEmpty)
-                const Expanded(
-                  child: Center(
-                    child: Text('Nenhum evento de auditoria encontrado.'),
-                  ),
-                )
-              else
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
                 Expanded(
-                  child: ListView.separated(
-                    itemCount: state.events.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (_, index) {
-                      final event = state.events[index];
-                      final selected = event.id == _selectedEventId;
-                      final created = DateFormat(
-                        'dd/MM/yyyy HH:mm:ss',
-                      ).format(event.createdAt);
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        onTap: () {
-                          setState(() {
-                            _selectedEventId = selected ? null : event.id;
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: selected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).dividerColor,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${event.eventType} • ${event.resultStatus}',
-                                style: Theme.of(context).textTheme.titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.w700),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Entity: ${event.entityType}/${event.entityId ?? '-'} | Actor: ${event.actorType}/${event.actorId ?? '-'} | $created',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
+                  child: AppSelect<String>(
+                    value: state.eventTypeFilter,
+                    items: _eventTypeItems,
+                    onChanged: (value) {
+                      if (value == null) return;
+                      notifier.setEventTypeFilter(value);
                     },
                   ),
                 ),
-              if (selected != null) ...[
-                const SizedBox(height: 12),
-                _SelectedAuditPayloadCard(event: selected),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: AppSelect<AuditDateFilter>(
+                    value: state.dateFilter,
+                    items: [
+                      for (final filter in AuditDateFilter.values)
+                        AppSelectItem(value: filter, label: filter.label),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      notifier.setDateFilter(value);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: AppTextInput(
+                    controller: _playerController,
+                    hint: 'Filtro por player',
+                    prefixIcon: const Icon(Icons.person_search_rounded),
+                    onSubmitted: notifier.setPlayerFilter,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: AppTextInput(
+                    controller: _actionController,
+                    hint: 'Filtro por ação',
+                    prefixIcon: const Icon(Icons.filter_alt_rounded),
+                    onSubmitted: notifier.setActionFilter,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                AppButton(
+                  label: 'Atualizar',
+                  icon: Icons.refresh_rounded,
+                  variant: AppVariant.info,
+                  onPressed: notifier.load,
+                ),
               ],
+            ),
+            const SizedBox(height: 12),
+            if (state.error != null)
+              Text(
+                state.error!.replaceFirst('Bad state: ', ''),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            const SizedBox(height: 8),
+            if (state.loading)
+              const Expanded(child: Center(child: CircularProgressIndicator()))
+            else if (state.events.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: Text('Nenhum evento de auditoria encontrado.'),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.separated(
+                  itemCount: state.events.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (_, index) {
+                    final event = state.events[index];
+                    final selected = event.id == _selectedEventId;
+                    final created = DateFormat(
+                      'dd/MM/yyyy HH:mm:ss',
+                    ).format(event.createdAt);
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        setState(() {
+                          _selectedEventId = selected ? null : event.id;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: ext.cardBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: selected
+                                ? Theme.of(context).colorScheme.primary
+                                : ext.cardBorder.withValues(alpha: 0.5),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${event.eventType} • ${event.resultStatus}',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Entity: ${event.entityType}/${event.entityId ?? '-'} | Actor: ${event.actorType}/${event.actorId ?? '-'} | $created',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            if (selected != null) ...[
+              const SizedBox(height: 12),
+              _SelectedAuditPayloadCard(event: selected),
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -215,12 +211,21 @@ class _SelectedAuditPayloadCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prettyPayload = _pretty(event.payloadJson);
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        color: ext.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -38,161 +38,244 @@ class HomePage extends ConsumerWidget {
         config.fileServerName.trim().isNotEmpty;
 
     return DefaultLayout(
-      title: 'MineControl',
+      title: 'Dashboard do Servidor',
       currentRoute: AppRoutes.home,
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: ext.cardBackground,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: ext.cardBorder.withValues(alpha: 0.7)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              const metricSpacing = 12.0;
-              const metricMinWidth = 220.0;
-              final metricColumns = _resolveMetricColumns(
-                maxWidth: constraints.maxWidth,
-                minWidth: metricMinWidth,
-                spacing: metricSpacing,
-              );
-              final metricWidth =
-                  (constraints.maxWidth - (metricSpacing * (metricColumns - 1))) /
-                  metricColumns;
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            const double spacing = 20.0;
+            const double minCardWidth = 240.0;
+            int crossAxisCount = (constraints.maxWidth / minCardWidth).floor();
+            if (crossAxisCount < 1) crossAxisCount = 1;
+            if (crossAxisCount > 3) crossAxisCount = 3;
 
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            final double cardWidth =
+                (constraints.maxWidth - (spacing * (crossAxisCount - 1))) /
+                crossAxisCount;
+
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      if (metricColumns == 1) ...[
+                      Text(
+                        'Visão Geral',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                      ),
+                      if (crossAxisCount == 1)
                         ServerStatusBadge(lifecycle: runtime.lifecycle),
-                        const SizedBox(height: 12),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Cartões Principais (Status, Uptime, Players)
+                  Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: [
+                      _buildSummaryCard(
+                        context: context,
+                        width: cardWidth,
+                        child: StatusCard(lifecycle: runtime.lifecycle),
+                      ),
+                      _buildSummaryCard(
+                        context: context,
+                        width: cardWidth,
+                        child: UptimeCard(
+                          uptime: runtime.uptime,
+                          lifecycle: runtime.lifecycle,
+                        ),
+                      ),
+                      _buildSummaryCard(
+                        context: context,
+                        width: cardWidth,
+                        child: ActivePlayersCard(
+                          activePlayers: runtime.activePlayers,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: spacing),
+
+                  // Cartão Expandido: Online Players
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: ext.cardBackground,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: ext.cardBorder.withValues(alpha: 0.5),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
                       ],
-                      Wrap(
-                        spacing: metricSpacing,
-                        runSpacing: metricSpacing,
+                    ),
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Jogadores Online',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                        ),
+                        const SizedBox(height: 16),
+                        OnlinePlayersStripCard(players: runtime.onlinePlayers),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: spacing),
+
+                  // Cartão Expandido: PVP Control
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: ext.cardBackground,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: ext.cardBorder.withValues(alpha: 0.5),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(20),
+                    child: PvpControlCard(
+                      enabled: pvpState.enabled,
+                      interactive:
+                          runtime.lifecycle == ServerLifecycleState.online &&
+                          !pvpState.updating,
+                      onChanged: (value) async {
+                        final ok = await pvpNotifier.setDesiredWithRuntime(
+                          value,
+                        );
+                        if (!ok && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Falha ao aplicar PVP no servidor.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Ações do Servidor
+                  ServerActionsBar(
+                    lifecycle: runtime.lifecycle,
+                    canStartServer: hasEssentials,
+                    maintenanceActive: maintenanceState.snapshot.isActive,
+                    onStart: actions.startServer,
+                    onStop: actions.stopServer,
+                    onRestart: actions.restartServer,
+                    onKickPlayers: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => const KickPlayersModal(),
+                    ),
+                    onMaintenance: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => const MaintenanceModeModal(),
+                    ),
+                  ),
+
+                  // Erros e avisos
+                  if (!hasEssentials) ...[
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.errorContainer.withValues(alpha: 0.5),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.errorContainer,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
                         children: [
-                          _buildMetricTile(
-                            child: StatusCard(lifecycle: runtime.lifecycle),
-                            width: metricWidth,
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Theme.of(context).colorScheme.error,
                           ),
-                          _buildMetricTile(
-                            child: UptimeCard(
-                              uptime: runtime.uptime,
-                              lifecycle: runtime.lifecycle,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Defina o Path do servidor, Comando do Java e Nome do arquivo JAR em "Config" para iniciar.',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            width: metricWidth,
-                          ),
-                          _buildMetricTile(
-                            child: ActivePlayersCard(
-                              activePlayers: runtime.activePlayers,
-                            ),
-                            width: metricWidth,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      OnlinePlayersStripCard(players: runtime.onlinePlayers),
-                      const SizedBox(height: 12),
-                      PvpControlCard(
-                        enabled: pvpState.enabled,
-                        interactive:
-                            runtime.lifecycle == ServerLifecycleState.online &&
-                            !pvpState.updating,
-                        onChanged: (value) async {
-                          final ok = await pvpNotifier.setDesiredWithRuntime(
-                            value,
-                          );
-                          if (!ok && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Falha ao aplicar PVP no servidor.',
-                                ),
-                              ),
-                            );
-                          }
-                        },
+                    ),
+                  ],
+                  if (runtime.lastError != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Erro Crítico: ${runtime.lastError}',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 16),
-                      ServerActionsBar(
-                        lifecycle: runtime.lifecycle,
-                        canStartServer: hasEssentials,
-                        maintenanceActive: maintenanceState.snapshot.isActive,
-                        onStart: actions.startServer,
-                        onStop: actions.stopServer,
-                        onRestart: actions.restartServer,
-                        onKickPlayers: () {
-                          showDialog<void>(
-                            context: context,
-                            builder: (_) => const KickPlayersModal(),
-                          );
-                        },
-                        onMaintenance: () {
-                          showDialog<void>(
-                            context: context,
-                            builder: (_) => const MaintenanceModeModal(),
-                          );
-                        },
-                      ),
-                      if (!hasEssentials) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          'Defina Path do servidor, Comando do Java e Nome do file server em Config > Arquivos para iniciar.',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                        ),
-                      ],
-                      if (runtime.lastError != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          'Erro: ${runtime.lastError}',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
+                    ),
+                  ],
+                  const SizedBox(height: 32),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  int _resolveMetricColumns({
-    required double maxWidth,
-    required double minWidth,
-    required double spacing,
+  Widget _buildSummaryCard({
+    required BuildContext context,
+    required double width,
+    required Widget child,
   }) {
-    for (var columns = 3; columns >= 1; columns--) {
-      final width = (maxWidth - (spacing * (columns - 1))) / columns;
-      if (width >= minWidth) {
-        return columns;
-      }
-    }
-    return 1;
-  }
-
-  Widget _buildMetricTile({required Widget child, required double width}) {
-    return SizedBox(width: width, height: 104, child: child);
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    return Container(
+      width: width,
+      height: 110,
+      decoration: BoxDecoration(
+        color: ext.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: child,
+    );
   }
 }

@@ -10,6 +10,7 @@ import '../../../components/buttons/app_button.dart';
 import '../../../components/modal/app_confirm_dialog.dart';
 import '../../../components/shared/app_variant.dart';
 import '../../../config/providers/theme_provider.dart';
+import '../../../config/theme/app_theme_extension.dart';
 import '../../../database/app_database.dart';
 import '../providers/config_files_provider.dart';
 
@@ -80,28 +81,45 @@ class _AdvancedSettingsTabState extends ConsumerState<AdvancedSettingsTab> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppBadge(
-            icon: Icons.warning_amber_rounded,
-            color: scheme.error,
-            title: 'Zona avançada: limpeza total de dados',
-            description:
-                'Esta ação restaura a aplicação para o estado original e remove configurações, whitelist local, cache e dados persistidos.',
-          ),
-          const SizedBox(height: 18),
-          AppButton(
-            label: 'Limpar dados',
-            onPressed: _isClearing ? null : _clearAllData,
-            isLoading: _isClearing,
-            isDisabled: _isClearing,
-            variant: AppVariant.danger,
-            icon: Icons.delete_sweep_rounded,
-          ),
-        ],
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: ext.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppBadge(
+              icon: Icons.warning_amber_rounded,
+              color: scheme.error,
+              title: 'Zona avançada: limpeza total de dados',
+              description:
+                  'Esta ação restaura a aplicação para o estado original e remove configurações, whitelist local, cache e dados persistidos.',
+            ),
+            const SizedBox(height: 18),
+            AppButton(
+              label: 'Limpar dados',
+              onPressed: _isClearing ? null : _clearAllData,
+              isLoading: _isClearing,
+              isDisabled: _isClearing,
+              variant: AppVariant.danger,
+              icon: Icons.delete_sweep_rounded,
+            ),
+          ],
+        ),
       ),
     );
   }

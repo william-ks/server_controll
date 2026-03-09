@@ -49,6 +49,7 @@ class _AppSelectState<T> extends State<AppSelect<T>> {
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: DropdownButtonFormField<T>(
+          isExpanded: true,
           initialValue: widget.value,
           decoration: InputDecoration(
             labelText: widget.label,
@@ -73,4 +74,3 @@ class _AppSelectState<T> extends State<AppSelect<T>> {
     );
   }
 }
-

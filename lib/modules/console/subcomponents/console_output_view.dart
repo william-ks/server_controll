@@ -4,10 +4,7 @@ import '../../../models/console_entry.dart';
 import 'console_line_item.dart';
 
 class ConsoleOutputView extends StatefulWidget {
-  const ConsoleOutputView({
-    super.key,
-    required this.entries,
-  });
+  const ConsoleOutputView({super.key, required this.entries});
 
   final List<ConsoleEntry> entries;
 
@@ -30,7 +27,8 @@ class _ConsoleOutputViewState extends State<ConsoleOutputView> {
     if (!_scrollController.hasClients) {
       return;
     }
-    final distance = _scrollController.position.maxScrollExtent - _scrollController.offset;
+    final distance =
+        _scrollController.position.maxScrollExtent - _scrollController.offset;
     _stickToBottom = distance <= _bottomThreshold;
   }
 
@@ -62,8 +60,17 @@ class _ConsoleOutputViewState extends State<ConsoleOutputView> {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF0B0B0B),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ListView.builder(
         controller: _scrollController,

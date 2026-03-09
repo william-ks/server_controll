@@ -60,16 +60,16 @@ class WhitelistPlayerCard extends StatelessWidget {
       clipBehavior: Clip.hardEdge,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: scheme.surface.withValues(alpha: 0.98),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Theme.of(context).dividerColor),
+            color: ext.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: noUuid ? 0.18 : 0.1),
-                blurRadius: noUuid ? 12 : 7,
-                offset: const Offset(0, 3),
+                color: Colors.black.withValues(alpha: noUuid ? 0.08 : 0.05),
+                blurRadius: noUuid ? 12 : 10,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -134,7 +134,9 @@ class WhitelistPlayerCard extends StatelessWidget {
                           ),
                         if (isBanned)
                           _StatusChip(
-                            label: isBanPending ? 'BANIMENTO PENDENTE' : 'BANIDO',
+                            label: isBanPending
+                                ? 'BANIMENTO PENDENTE'
+                                : 'BANIDO',
                             color: AppColors.danger.withValues(alpha: 0.95),
                           ),
                         if (isUnbanPending)
@@ -247,9 +249,7 @@ class WhitelistPlayerCard extends StatelessWidget {
                 ),
               ),
               child: Text(
-                player.isPendingRemoval
-                    ? 'REMOCAO PENDENTE'
-                    : 'PENDENTE',
+                player.isPendingRemoval ? 'REMOCAO PENDENTE' : 'PENDENTE',
                 style: TextStyle(
                   color: AppColors.warning.withValues(alpha: 0.92),
                   fontWeight: FontWeight.w700,

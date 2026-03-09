@@ -188,21 +188,38 @@ class _ScheduleCard extends StatelessWidget {
         : '';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: ext.cardBackground,
-        borderRadius: AppStyles.radiusMd,
-        border: Border.all(color: ext.cardBorder),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ext.cardBorder.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Icon(
-            item.isActive
-                ? Icons.schedule_send_rounded
-                : Icons.schedule_rounded,
-            color: item.isActive
-                ? Theme.of(context).colorScheme.primary
-                : ext.mutedText,
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: item.isActive
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                  : ext.cardBorder.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              item.isActive
+                  ? Icons.schedule_send_rounded
+                  : Icons.schedule_rounded,
+              color: item.isActive
+                  ? Theme.of(context).colorScheme.primary
+                  : ext.mutedText,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
