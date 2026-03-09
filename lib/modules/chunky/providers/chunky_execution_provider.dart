@@ -6,9 +6,6 @@ import 'package:path/path.dart' as p;
 
 import '../../../database/app_database.dart';
 import '../../../models/server_lifecycle_state.dart';
-import '../../backup/providers/backup_config_provider.dart';
-import '../../backup/providers/backups_provider.dart';
-import '../../backup/services/backup_service.dart';
 import '../../config/providers/config_files_provider.dart';
 import '../../config/services/server_properties_service.dart';
 import '../../maintenance/models/maintenance_mode.dart';
@@ -17,7 +14,6 @@ import '../../server/providers/server_runtime_provider.dart';
 import '../../server/services/minecraft_command_provider.dart';
 import '../../server/services/server_health_monitor.dart';
 import '../../server/services/server_process_service.dart';
-import '../models/chunky_backup_kind.dart';
 import '../models/chunky_config_settings.dart';
 import '../models/chunky_execution_log_entry.dart';
 import '../models/chunky_execution_status.dart';
@@ -409,6 +405,19 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
       return;
     }
 
+    final selectedMode = selectedTask.maintenanceMode?.trim();
+    final maintenanceMode = selectedMode == null || selectedMode.isEmpty
+        ? MaintenanceMode.total
+        : MaintenanceModeX.fromStorage(selectedMode);
+    await configureChunkProtection(
+      enabled: selectedTask.maintenanceEnabled,
+      mode: selectedTask.maintenanceEnabled ? maintenanceMode : null,
+    );
+    if (ref.read(serverRuntimeProvider).lifecycle !=
+        ServerLifecycleState.online) {
+      await _waitForOnline();
+    }
+
     _cancelRequested = false;
     _paused = false;
     _pauseAfterCurrentCycleRequested = false;
@@ -734,7 +743,6 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
     final runtimeNotifier = ref.read(serverRuntimeProvider.notifier);
     final processService = ref.read(serverProcessServiceProvider);
     final serverPath = ref.read(configFilesProvider).serverPath.trim();
-    final backupConfig = ref.read(backupConfigProvider);
     String? previousMaxPlayers;
 
     try {
@@ -772,31 +780,6 @@ class ChunkyExecutionNotifier extends Notifier<ChunkyExecutionState> {
         if (!offline) {
           throw StateError('Timeout aguardando servidor offline.');
         }
-      }
-
-      if (freshStart && config.backupBeforeStart) {
-        await _appendLog(
-          'Criando backup antes da execução (${config.backupKind.label.toLowerCase()}).',
-        );
-        final selectiveRoots = config.backupKind == ChunkyBackupKind.selective
-            ? config.backupSelectiveRoots
-            : const <String>[];
-        if (config.backupKind == ChunkyBackupKind.selective &&
-            selectiveRoots.isEmpty) {
-          throw StateError(
-            'Backup seletivo do Chunky exige itens selecionados em Config > Chunky.',
-          );
-        }
-        await ref
-            .read(backupServiceProvider)
-            .createBackup(
-              serverPath: serverPath,
-              config: backupConfig,
-              trigger: BackupTriggerType.chunk,
-              kind: config.backupKind.backupContentKind,
-              selectiveRootEntries: selectiveRoots,
-              selectiveSummary: selectiveRoots.join(', '),
-            );
       }
 
       await _appendLog('Iniciando servidor para execução do Chunky.');

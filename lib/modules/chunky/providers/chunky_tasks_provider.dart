@@ -94,7 +94,8 @@ class ChunkyTasksNotifier extends Notifier<ChunkyTasksState> {
     required double radius,
     required String shape,
     required String pattern,
-    required bool backupBeforeStart,
+    required bool maintenanceEnabled,
+    String? maintenanceMode,
   }) async {
     final now = DateTime.now();
     final item = ChunkyTask(
@@ -105,7 +106,9 @@ class ChunkyTasksNotifier extends Notifier<ChunkyTasksState> {
       radius: radius,
       shape: shape.trim(),
       pattern: pattern.trim(),
-      backupBeforeStart: backupBeforeStart,
+      backupBeforeStart: false,
+      maintenanceEnabled: maintenanceEnabled,
+      maintenanceMode: maintenanceEnabled ? maintenanceMode : null,
       status: ChunkyTaskStatus.draft,
       hasEverStarted: false,
       createdAt: now,

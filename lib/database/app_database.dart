@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
-  static const int _schemaVersion = 19;
+  static const int _schemaVersion = 20;
   static int get schemaVersion => _schemaVersion;
 
   Database? _db;
@@ -154,6 +154,8 @@ class AppDatabase {
         shape TEXT NOT NULL,
         pattern TEXT NOT NULL,
         backup_before_start INTEGER NOT NULL DEFAULT 0,
+        maintenance_enabled INTEGER NOT NULL DEFAULT 0,
+        maintenance_mode TEXT,
         status TEXT NOT NULL DEFAULT 'draft',
         has_ever_started INTEGER NOT NULL DEFAULT 0,
         center_x INTEGER NOT NULL DEFAULT 0,
@@ -238,6 +240,18 @@ class AppDatabase {
       table: 'chunky_tasks',
       column: 'center_z',
       definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'chunky_tasks',
+      column: 'maintenance_enabled',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _addColumnIfMissing(
+      db,
+      table: 'chunky_tasks',
+      column: 'maintenance_mode',
+      definition: 'TEXT',
     );
 
     await _createPlayersDomainTables(db);

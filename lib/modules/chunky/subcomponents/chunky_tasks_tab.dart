@@ -117,7 +117,8 @@ class _ChunkyTasksTabState extends ConsumerState<ChunkyTasksTab> {
               required double radius,
               required String shape,
               required String pattern,
-              required bool backupBeforeStart,
+              required bool maintenanceEnabled,
+              String? maintenanceMode,
             }) {
               return notifier.create(
                 name: name,
@@ -127,7 +128,8 @@ class _ChunkyTasksTabState extends ConsumerState<ChunkyTasksTab> {
                 radius: radius,
                 shape: shape,
                 pattern: pattern,
-                backupBeforeStart: backupBeforeStart,
+                maintenanceEnabled: maintenanceEnabled,
+                maintenanceMode: maintenanceMode,
               );
             },
         onUpdate: notifier.updateTask,

@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../components/badges/app_badge.dart';
 import '../../../components/buttons/app_button.dart';
-import '../../../components/modal/app_modal.dart';
+import '../../../components/modal/app_confirm_dialog.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../../config/theme/app_theme_extension.dart';
 import '../../../models/server_lifecycle_state.dart';
-import '../../maintenance/models/maintenance_mode.dart';
 import '../../server/providers/server_runtime_provider.dart';
 import '../../server/services/server_health_monitor.dart';
 import '../models/chunky_execution_status.dart';
@@ -76,8 +76,7 @@ class ChunkyExecutionTab extends ConsumerWidget {
                     state.status == ChunkyExecutionStatus.running ||
                     state.status == ChunkyExecutionStatus.paused ||
                     state.status == ChunkyExecutionStatus.cancelling,
-                onPressed: () =>
-                    _startTaskWithProtection(context, ref, notifier),
+                onPressed: () => _confirmAndStartTask(context, notifier),
               ),
               AppButton(
                 label: 'Pausar',
@@ -126,9 +125,23 @@ class ChunkyExecutionTab extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+              color: Theme.of(
+                context,
+              ).extension<AppThemeExtension>()!.cardBackground,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).dividerColor),
+              border: Border.all(
+                color: Theme.of(context)
+                    .extension<AppThemeExtension>()!
+                    .cardBorder
+                    .withValues(alpha: 0.65),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.16),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,12 +186,14 @@ class ChunkyExecutionTab extends ConsumerWidget {
                 const SizedBox(height: 6),
                 _line(
                   context,
-                  'Backup before start',
+                  'Modo de manutenção',
                   selectedTask == null
                       ? '-'
-                      : (selectedTask.backupBeforeStart
-                            ? 'Enabled'
-                            : 'Disabled'),
+                      : (selectedTask.maintenanceEnabled
+                            ? (selectedTask.maintenanceMode == 'admins_only'
+                                  ? 'Somente admins do app'
+                                  : 'Bloquear todos')
+                            : 'Desativado'),
                 ),
                 const SizedBox(height: 10),
                 AppBadge(
@@ -247,22 +262,7 @@ class ChunkyExecutionTab extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            'Progresso da execução atual',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 6),
-          _buildRoundedProgressBar(
-            context,
-            value: (state.currentRunProgress / 100).clamp(0, 1),
-          ),
-          const SizedBox(height: 6),
-          Text('${state.currentRunProgress.toStringAsFixed(1)}%'),
-          const SizedBox(height: 12),
-          Text(
-            'Progresso total',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('Progresso', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 6),
           TweenAnimationBuilder<double>(
             tween: Tween<double>(
@@ -288,23 +288,26 @@ class ChunkyExecutionTab extends ConsumerWidget {
     );
   }
 
-  Future<void> _startTaskWithProtection(
+  Future<void> _confirmAndStartTask(
     BuildContext context,
-    WidgetRef ref,
     ChunkyExecutionNotifier notifier,
   ) async {
-    final selection = await showDialog<_ChunkProtectionSelection>(
-      context: context,
-      builder: (_) => const _ChunkProtectionModal(),
+    final confirmed = await showAppConfirmDialog(
+      context,
+      icon: Icons.play_arrow_rounded,
+      title: 'Iniciar task selecionada?',
+      message:
+          'A task será iniciada com as configurações já salvas nela, incluindo manutenção quando habilitada.',
+      confirmLabel: 'Iniciar',
+      cancelLabel: 'Cancelar',
+      confirmVariant: AppVariant.success,
+      cancelVariant: AppVariant.danger,
+      confirmIcon: Icons.play_arrow_rounded,
     );
-    if (selection == null) {
+    if (!confirmed) {
       return;
     }
 
-    await notifier.configureChunkProtection(
-      enabled: selection.enabled,
-      mode: selection.mode,
-    );
     await notifier.startSelectedTask();
   }
 
@@ -380,95 +383,5 @@ class ChunkyExecutionTab extends ConsumerWidget {
     final mm = (duration.inMinutes % 60).toString().padLeft(2, '0');
     final ss = (duration.inSeconds % 60).toString().padLeft(2, '0');
     return '$hh:$mm:$ss';
-  }
-}
-
-class _ChunkProtectionSelection {
-  const _ChunkProtectionSelection({required this.enabled, this.mode});
-
-  final bool enabled;
-  final MaintenanceMode? mode;
-}
-
-class _ChunkProtectionModal extends StatefulWidget {
-  const _ChunkProtectionModal();
-
-  @override
-  State<_ChunkProtectionModal> createState() => _ChunkProtectionModalState();
-}
-
-class _ChunkProtectionModalState extends State<_ChunkProtectionModal> {
-  bool _enabled = false;
-  MaintenanceMode _mode = MaintenanceMode.total;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppModal(
-      icon: Icons.security_rounded,
-      title: 'Proteção durante geração',
-      width: 560,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Deseja ativar proteção de entrada enquanto o Chunky estiver em execução?',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            value: _enabled,
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Ativar proteção'),
-            subtitle: const Text(
-              'Reaproveita o mesmo mecanismo do modo de manutenção.',
-            ),
-            onChanged: (value) => setState(() => _enabled = value),
-          ),
-          const SizedBox(height: 8),
-          AppSelect<MaintenanceMode>(
-            label: 'Tipo de proteção',
-            value: _mode,
-            items: const [
-              AppSelectItem(
-                value: MaintenanceMode.total,
-                label: 'Bloquear todos',
-              ),
-              AppSelectItem(
-                value: MaintenanceMode.adminsOnly,
-                label: 'Permitir apenas admins do app',
-              ),
-            ],
-            onChanged: _enabled
-                ? (value) {
-                    if (value == null) return;
-                    setState(() => _mode = value);
-                  }
-                : null,
-          ),
-        ],
-      ),
-      actions: [
-        AppButton(
-          label: 'Cancelar',
-          onPressed: () => Navigator.of(context).pop(),
-          type: AppButtonType.textButton,
-          variant: AppVariant.danger,
-        ),
-        AppButton(
-          label: 'Iniciar geração',
-          onPressed: () {
-            Navigator.of(context).pop(
-              _ChunkProtectionSelection(
-                enabled: _enabled,
-                mode: _enabled ? _mode : null,
-              ),
-            );
-          },
-          variant: AppVariant.success,
-          icon: Icons.play_arrow_rounded,
-        ),
-      ],
-    );
   }
 }

@@ -1,1 +1,1 @@
-enum ChunkyTab { execution, tasks, logs, config }
+enum ChunkyTab { execution, tasks, logs }

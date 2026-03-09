@@ -6,6 +6,7 @@ import '../../../components/inputs/app_text_input.dart';
 import '../../../components/modal/app_modal.dart';
 import '../../../components/selects/app_select.dart';
 import '../../../components/shared/app_variant.dart';
+import '../../maintenance/models/maintenance_mode.dart';
 import '../models/chunky_task.dart';
 import '../models/chunky_task_status.dart';
 
@@ -26,7 +27,8 @@ class AddEditChunkyTaskModal extends StatefulWidget {
     required double radius,
     required String shape,
     required String pattern,
-    required bool backupBeforeStart,
+    required bool maintenanceEnabled,
+    String? maintenanceMode,
   })
   onCreate;
   final Future<void> Function(ChunkyTask task) onUpdate;
@@ -44,7 +46,8 @@ class _AddEditChunkyTaskModalState extends State<AddEditChunkyTaskModal> {
   String _world = 'overworld';
   String _shape = 'square';
   String _pattern = 'region';
-  bool _backupBeforeStart = false;
+  bool _maintenanceEnabled = false;
+  MaintenanceMode _maintenanceMode = MaintenanceMode.total;
   bool _saving = false;
   String? _error;
 
@@ -63,7 +66,10 @@ class _AddEditChunkyTaskModalState extends State<AddEditChunkyTaskModal> {
       _world = task.world;
       _shape = task.shape;
       _pattern = task.pattern;
-      _backupBeforeStart = task.backupBeforeStart;
+      _maintenanceEnabled = task.maintenanceEnabled;
+      _maintenanceMode = task.maintenanceMode == null
+          ? MaintenanceMode.total
+          : MaintenanceModeX.fromStorage(task.maintenanceMode!);
     }
   }
 
@@ -116,7 +122,11 @@ class _AddEditChunkyTaskModalState extends State<AddEditChunkyTaskModal> {
             radius: radius,
             shape: _shape,
             pattern: _pattern,
-            backupBeforeStart: _backupBeforeStart,
+            backupBeforeStart: false,
+            maintenanceEnabled: _maintenanceEnabled,
+            maintenanceMode: _maintenanceEnabled
+                ? _maintenanceMode.storageValue
+                : null,
             updatedAt: DateTime.now(),
           ),
         );
@@ -129,7 +139,10 @@ class _AddEditChunkyTaskModalState extends State<AddEditChunkyTaskModal> {
           radius: radius,
           shape: _shape,
           pattern: _pattern,
-          backupBeforeStart: _backupBeforeStart,
+          maintenanceEnabled: _maintenanceEnabled,
+          maintenanceMode: _maintenanceEnabled
+              ? _maintenanceMode.storageValue
+              : null,
         );
       }
       if (mounted) {
@@ -289,14 +302,36 @@ class _AddEditChunkyTaskModalState extends State<AddEditChunkyTaskModal> {
             children: [
               Expanded(
                 child: AppSwitchCard(
-                  label: 'Efetuar backup antes de iniciar',
-                  value: _backupBeforeStart,
+                  label: 'Usar modo de manutenção',
+                  value: _maintenanceEnabled,
                   onChanged: _immutable
                       ? null
-                      : (value) => setState(() => _backupBeforeStart = value),
+                      : (value) => setState(() => _maintenanceEnabled = value),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          AppSelect<MaintenanceMode>(
+            label: 'Tipo de manutenção',
+            value: _maintenanceMode,
+            enabled: !_immutable && _maintenanceEnabled,
+            items: const [
+              AppSelectItem(
+                value: MaintenanceMode.total,
+                label: 'Bloquear todos',
+              ),
+              AppSelectItem(
+                value: MaintenanceMode.adminsOnly,
+                label: 'Permitir apenas admins do app',
+              ),
+            ],
+            onChanged: !_immutable && _maintenanceEnabled
+                ? (value) {
+                    if (value == null) return;
+                    setState(() => _maintenanceMode = value);
+                  }
+                : null,
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),

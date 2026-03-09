@@ -6,7 +6,6 @@ import '../../../config/theme/app_styles.dart';
 import '../../../layout/default_layout.dart';
 import '../models/chunky_tab.dart';
 import '../providers/chunky_tab_provider.dart';
-import '../subcomponents/chunky_config_tab.dart';
 import '../subcomponents/chunky_execution_tab.dart';
 import '../subcomponents/chunky_logs_tab.dart';
 import '../subcomponents/chunky_tasks_tab.dart';
@@ -19,13 +18,7 @@ class ChunkyPage extends ConsumerStatefulWidget {
 }
 
 class _ChunkyPageState extends ConsumerState<ChunkyPage> {
-  int _configReloadToken = 0;
-
   void _setTab(ChunkyTab tab) {
-    final current = ref.read(chunkyTabProvider);
-    if (current != tab && tab == ChunkyTab.config) {
-      setState(() => _configReloadToken++);
-    }
     ref.read(chunkyTabProvider.notifier).setTab(tab);
   }
 
@@ -62,11 +55,6 @@ class _ChunkyPageState extends ConsumerState<ChunkyPage> {
                       onTap: () => _setTab(ChunkyTab.execution),
                     ),
                     _ChunkyTabChip(
-                      label: 'Config',
-                      active: activeTab == ChunkyTab.config,
-                      onTap: () => _setTab(ChunkyTab.config),
-                    ),
-                    _ChunkyTabChip(
                       label: 'Tasks',
                       active: activeTab == ChunkyTab.tasks,
                       onTap: () => _setTab(ChunkyTab.tasks),
@@ -85,9 +73,6 @@ class _ChunkyPageState extends ConsumerState<ChunkyPage> {
                   ChunkyTab.execution => const ChunkyExecutionTab(),
                   ChunkyTab.tasks => const ChunkyTasksTab(),
                   ChunkyTab.logs => const ChunkyLogsTab(),
-                  ChunkyTab.config => ChunkyConfigTab(
-                    key: ValueKey('chunky-config-$_configReloadToken'),
-                  ),
                 },
               ),
             ],

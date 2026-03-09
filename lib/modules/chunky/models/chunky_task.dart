@@ -11,6 +11,8 @@ class ChunkyTask {
     required this.shape,
     required this.pattern,
     required this.backupBeforeStart,
+    required this.maintenanceEnabled,
+    this.maintenanceMode,
     required this.status,
     required this.hasEverStarted,
     required this.createdAt,
@@ -28,6 +30,8 @@ class ChunkyTask {
   final String shape;
   final String pattern;
   final bool backupBeforeStart;
+  final bool maintenanceEnabled;
+  final String? maintenanceMode;
   final ChunkyTaskStatus status;
   final bool hasEverStarted;
   final DateTime createdAt;
@@ -47,6 +51,9 @@ class ChunkyTask {
     String? shape,
     String? pattern,
     bool? backupBeforeStart,
+    bool? maintenanceEnabled,
+    String? maintenanceMode,
+    bool clearMaintenanceMode = false,
     ChunkyTaskStatus? status,
     bool? hasEverStarted,
     DateTime? createdAt,
@@ -66,6 +73,10 @@ class ChunkyTask {
       shape: shape ?? this.shape,
       pattern: pattern ?? this.pattern,
       backupBeforeStart: backupBeforeStart ?? this.backupBeforeStart,
+      maintenanceEnabled: maintenanceEnabled ?? this.maintenanceEnabled,
+      maintenanceMode: clearMaintenanceMode
+          ? null
+          : (maintenanceMode ?? this.maintenanceMode),
       status: status ?? this.status,
       hasEverStarted: hasEverStarted ?? this.hasEverStarted,
       createdAt: createdAt ?? this.createdAt,
@@ -86,6 +97,8 @@ class ChunkyTask {
       'shape': shape,
       'pattern': pattern,
       'backup_before_start': backupBeforeStart ? 1 : 0,
+      'maintenance_enabled': maintenanceEnabled ? 1 : 0,
+      'maintenance_mode': maintenanceMode,
       'status': status.storageValue,
       'has_ever_started': hasEverStarted ? 1 : 0,
       'created_at': createdAt.toIso8601String(),
@@ -106,6 +119,11 @@ class ChunkyTask {
       shape: (map['shape'] as String?) ?? 'square',
       pattern: (map['pattern'] as String?) ?? 'spiral',
       backupBeforeStart: (map['backup_before_start'] as int? ?? 0) == 1,
+      maintenanceEnabled: (map['maintenance_enabled'] as int? ?? 0) == 1,
+      maintenanceMode:
+          (map['maintenance_mode'] as String?)?.trim().isEmpty ?? true
+          ? null
+          : (map['maintenance_mode'] as String?),
       status: ChunkyTaskStatusX.fromStorage(
         (map['status'] as String?) ?? ChunkyTaskStatus.draft.storageValue,
       ),
