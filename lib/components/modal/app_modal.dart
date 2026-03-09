@@ -38,7 +38,10 @@ class AppModal extends StatelessWidget {
     final dividerColor = Theme.of(context).dividerColor;
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final screenHeight = MediaQuery.sizeOf(context).height;
-    final effectiveBodyHeight = (screenHeight * 0.58).clamp(180.0, maxBodyHeight);
+    final effectiveBodyHeight = (screenHeight * 0.58).clamp(
+      180.0,
+      maxBodyHeight,
+    );
     final showHeader = showHeaderDivider ?? showDividers;
     final showFooter = showFooterDivider ?? showDividers;
 
@@ -76,7 +79,12 @@ class AppModal extends StatelessWidget {
                     child: Icon(icon, color: scheme.primary, size: 18),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(title, style: Theme.of(context).textTheme.titleLarge)),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
                   IconButton(
                     onPressed: onClose ?? () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close_rounded),
@@ -84,22 +92,14 @@ class AppModal extends StatelessWidget {
                 ],
               ),
               if (showHeader)
-                Divider(
-                  height: 16,
-                  thickness: 1,
-                  color: dividerColor,
-                ),
+                Divider(height: 16, thickness: 1, color: dividerColor),
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: effectiveBodyHeight),
                 child: SingleChildScrollView(child: body),
               ),
               if (actions.isNotEmpty) ...[
                 if (showFooter)
-                  Divider(
-                    height: 16,
-                    thickness: 1,
-                    color: dividerColor,
-                  ),
+                  Divider(height: 16, thickness: 1, color: dividerColor),
                 Align(
                   alignment: actionsAlignment,
                   child: Wrap(
