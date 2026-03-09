@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../components/buttons/app_icon_button.dart';
+import '../../../components/shared/app_variant.dart';
 import '../../../components/inputs/app_text_input.dart';
 import 'quick_commands_modal.dart';
 
 class ConsoleInputBar extends StatefulWidget {
-  const ConsoleInputBar({super.key, required this.onSend});
+  const ConsoleInputBar({
+    super.key,
+    required this.onSend,
+    required this.onScrollToBottom,
+  });
 
   final ValueChanged<String> onSend;
+  final VoidCallback onScrollToBottom;
 
   @override
   State<ConsoleInputBar> createState() => _ConsoleInputBarState();
@@ -47,12 +54,22 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
     });
   }
 
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.tab) {
+      return KeyEventResult.ignored;
+    }
+    widget.onScrollToBottom();
+    _focusNode.requestFocus();
+    return KeyEventResult.handled;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         AppIconButton(
           icon: Icons.help_outline_rounded,
+          variant: AppVariant.info,
           onPressed: () {
             showDialog<void>(
               context: context,
@@ -63,16 +80,20 @@ class _ConsoleInputBarState extends State<ConsoleInputBar> {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: AppTextInput(
-            controller: _controller,
-            focusNode: _focusNode,
-            hint: 'Digite um comando e pressione Enter',
-            onSubmitted: (_) => _send(),
+          child: Focus(
+            onKeyEvent: _handleKeyEvent,
+            child: AppTextInput(
+              controller: _controller,
+              focusNode: _focusNode,
+              hint: 'Digite um comando e pressione Enter',
+              onSubmitted: (_) => _send(),
+            ),
           ),
         ),
         const SizedBox(width: 8),
         AppIconButton(
           icon: Icons.send_rounded,
+          variant: AppVariant.success,
           onPressed: _send,
           tooltip: 'Enviar comando',
         ),

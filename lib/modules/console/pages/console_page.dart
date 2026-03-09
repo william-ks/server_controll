@@ -13,6 +13,9 @@ import '../subcomponents/console_output_view.dart';
 class ConsolePage extends ConsumerWidget {
   const ConsolePage({super.key});
 
+  static final ConsoleOutputController _outputController =
+      ConsoleOutputController();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final console = ref.watch(consoleProvider);
@@ -54,9 +57,17 @@ class ConsolePage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 10),
-            Expanded(child: ConsoleOutputView(entries: console.entries)),
+            Expanded(
+              child: ConsoleOutputView(
+                entries: console.entries,
+                controller: _outputController,
+              ),
+            ),
             const SizedBox(height: 12),
-            ConsoleInputBar(onSend: notifier.sendCommand),
+            ConsoleInputBar(
+              onSend: notifier.sendCommand,
+              onScrollToBottom: _outputController.scrollToBottomAndFollow,
+            ),
           ],
         ),
       ),

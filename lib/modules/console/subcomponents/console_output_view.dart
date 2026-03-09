@@ -3,10 +3,29 @@ import 'package:flutter/material.dart';
 import '../../../models/console_entry.dart';
 import 'console_line_item.dart';
 
+class ConsoleOutputController {
+  VoidCallback? _scrollToBottomAndFollow;
+
+  void attach(VoidCallback callback) {
+    _scrollToBottomAndFollow = callback;
+  }
+
+  void detach(VoidCallback callback) {
+    if (_scrollToBottomAndFollow == callback) {
+      _scrollToBottomAndFollow = null;
+    }
+  }
+
+  void scrollToBottomAndFollow() {
+    _scrollToBottomAndFollow?.call();
+  }
+}
+
 class ConsoleOutputView extends StatefulWidget {
-  const ConsoleOutputView({super.key, required this.entries});
+  const ConsoleOutputView({super.key, required this.entries, this.controller});
 
   final List<ConsoleEntry> entries;
+  final ConsoleOutputController? controller;
 
   @override
   State<ConsoleOutputView> createState() => _ConsoleOutputViewState();
@@ -21,6 +40,10 @@ class _ConsoleOutputViewState extends State<ConsoleOutputView> {
   void initState() {
     super.initState();
     _scrollController.addListener(_handleScroll);
+    widget.controller?.attach(_scrollToBottomAndFollow);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottomAndFollow(animated: false);
+    });
   }
 
   void _handleScroll() {
@@ -32,24 +55,40 @@ class _ConsoleOutputViewState extends State<ConsoleOutputView> {
     _stickToBottom = distance <= _bottomThreshold;
   }
 
+  void _scrollToBottomAndFollow({bool animated = true}) {
+    _stickToBottom = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) {
+        return;
+      }
+      final offset = _scrollController.position.maxScrollExtent;
+      if (animated) {
+        _scrollController.animateTo(
+          offset,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+        );
+        return;
+      }
+      _scrollController.jumpTo(offset);
+    });
+  }
+
   @override
   void didUpdateWidget(covariant ConsoleOutputView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?.detach(_scrollToBottomAndFollow);
+      widget.controller?.attach(_scrollToBottomAndFollow);
+    }
     if (widget.entries.length != oldWidget.entries.length && _stickToBottom) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-          );
-        }
-      });
+      _scrollToBottomAndFollow();
     }
   }
 
   @override
   void dispose() {
+    widget.controller?.detach(_scrollToBottomAndFollow);
     _scrollController.removeListener(_handleScroll);
     _scrollController.dispose();
     super.dispose();
